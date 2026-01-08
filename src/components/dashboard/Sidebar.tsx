@@ -131,7 +131,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'flex flex-col h-screen w-64 border-r border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl',
+          'flex flex-col h-screen w-64 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900',
           className
         )}
       >

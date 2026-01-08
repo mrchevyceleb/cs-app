@@ -138,7 +138,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId }: TicketQueuePro
   }
 
   return (
-    <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-gray-200 dark:border-gray-800">
+    <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <CardTitle className="text-lg">Ticket Queue</CardTitle>

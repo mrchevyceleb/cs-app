@@ -70,7 +70,7 @@ function getRelativeTime(dateString: string): string {
 
 export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardProps) {
   const priority = priorityIndicators[ticket.priority] || priorityIndicators.normal
-  const customerLang = ticket.customer.preferred_language || 'en'
+  const customerLang = ticket.customer?.preferred_language || 'en'
 
   return (
     <div
@@ -89,7 +89,7 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
           <Avatar className="w-10 h-10">
             <AvatarImage src="" />
             <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300 text-sm font-semibold">
-              {getInitials(ticket.customer.name)}
+              {getInitials(ticket.customer?.name ?? null)}
             </AvatarFallback>
           </Avatar>
           {ticket.priority === 'urgent' && (
@@ -100,7 +100,7 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
         {/* Ticket Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
               {ticket.subject}
             </h4>
             {languageFlags[customerLang] && (
@@ -112,8 +112,8 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 text-xs text-gray-500 dark:text-gray-400">
-            <span className="truncate">{ticket.customer.name || ticket.customer.email || 'Unknown'}</span>
+          <div className="flex items-center gap-2 sm:gap-3 text-xs text-gray-600 dark:text-gray-400">
+            <span className="truncate">{ticket.customer?.name || ticket.customer?.email || 'Unknown'}</span>
             <span className="hidden sm:inline">•</span>
             <span className="flex-shrink-0 hidden sm:inline">{getRelativeTime(ticket.created_at)}</span>
           </div>
