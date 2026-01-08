@@ -1,0 +1,270 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { TicketDetail } from '@/components/dashboard/TicketDetail'
+import { CustomerContext } from '@/components/dashboard/CustomerContext'
+import { Button } from '@/components/ui/button'
+import { ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react'
+import type { TicketWithCustomer } from '@/components/dashboard'
+import type { Message } from '@/types/database'
+
+export default function TicketDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const ticketId = params.id as string
+
+  const [ticket, setTicket] = useState<TicketWithCustomer | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showCustomerContext, setShowCustomerContext] = useState(true)
+
+  const supabase = createClient()
+
+  const fetchTicketAndMessages = async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Fetch ticket with customer
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          customer:customers(*)
+        `)
+        .eq('id', ticketId)
+        .single()
+
+      if (ticketError) {
+        if (ticketError.code === 'PGRST116') {
+          setError('not_found')
+        } else {
+          console.error('Error fetching ticket:', ticketError)
+          setError('Failed to load ticket. Please try again.')
+        }
+        setIsLoading(false)
+        return
+      }
+
+      setTicket(ticketData as TicketWithCustomer)
+
+      // Fetch messages
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: true })
+
+      if (messagesError) {
+        console.error('Error fetching messages:', messagesError)
+      } else {
+        setMessages(messagesData || [])
+      }
+    } catch (err) {
+      console.error('Error fetching ticket:', err)
+      setError('Network error. Please check your connection.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchTicketAndMessages()
+
+    // Subscribe to real-time message updates
+    const messagesChannel = supabase
+      .channel(`messages-${ticketId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `ticket_id=eq.${ticketId}`,
+        },
+        (payload) => {
+          setMessages((prev) => [...prev, payload.new as Message])
+        }
+      )
+      .subscribe()
+
+    // Subscribe to ticket updates
+    const ticketChannel = supabase
+      .channel(`ticket-${ticketId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'tickets',
+          filter: `id=eq.${ticketId}`,
+        },
+        async () => {
+          // Refetch ticket with customer data
+          const { data } = await supabase
+            .from('tickets')
+            .select(`*, customer:customers(*)`)
+            .eq('id', ticketId)
+            .single()
+          if (data) setTicket(data as TicketWithCustomer)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(messagesChannel)
+      supabase.removeChannel(ticketChannel)
+    }
+  }, [ticketId, supabase])
+
+  const handleSendMessage = async (content: string) => {
+    if (!ticket) return
+
+    const { error } = await supabase.from('messages').insert({
+      ticket_id: ticketId,
+      sender_type: 'agent',
+      content,
+    })
+
+    if (error) {
+      console.error('Error sending message:', error)
+    }
+  }
+
+  const handleUpdateTicket = async (updates: Partial<TicketWithCustomer>) => {
+    const { error } = await supabase
+      .from('tickets')
+      .update(updates)
+      .eq('id', ticketId)
+
+    if (error) {
+      console.error('Error updating ticket:', error)
+    }
+  }
+
+  if (isLoading) {
+    return <TicketDetailSkeleton />
+  }
+
+  if (error === 'not_found' || !ticket) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+        <div className="text-6xl mb-2">🔍</div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Ticket not found
+        </h3>
+        <p className="text-gray-500 dark:text-gray-400">
+          This ticket may have been deleted or you don&apos;t have access to it.
+        </p>
+        <Button variant="outline" onClick={() => router.push('/')}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+        <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7 text-red-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Failed to load ticket
+        </h3>
+        <p className="text-gray-500 dark:text-gray-400">{error}</p>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => router.push('/')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+          <Button onClick={fetchTicketAndMessages} className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Try again
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)]">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/')}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white truncate">
+              {ticket.subject}
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-500 truncate">
+              Ticket #{ticket.id.slice(0, 8)} • {ticket.customer?.name || 'Unknown Customer'}
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowCustomerContext(!showCustomerContext)}
+          className="self-start sm:self-auto"
+        >
+          {showCustomerContext ? 'Hide' : 'Show'} Customer Info
+        </Button>
+      </div>
+
+      {/* Split View - stacked on mobile, side by side on desktop */}
+      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100%-5rem)] lg:h-[calc(100%-4rem)]">
+        {/* Main Chat Area */}
+        <div className={`flex-1 min-h-[400px] lg:min-h-0 ${showCustomerContext ? 'lg:max-w-[calc(100%-320px)]' : ''}`}>
+          <TicketDetail
+            ticket={ticket}
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            onUpdateTicket={handleUpdateTicket}
+          />
+        </div>
+
+        {/* Customer Context Sidebar */}
+        {showCustomerContext && (
+          <div className="w-full lg:w-80 flex-shrink-0 order-first lg:order-last">
+            <CustomerContext
+              customer={ticket.customer}
+              ticket={ticket}
+              onUpdateTicket={handleUpdateTicket}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TicketDetailSkeleton() {
+  return (
+    <div className="h-[calc(100vh-8rem)] animate-pulse">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="space-y-2">
+          <div className="h-6 w-64 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded" />
+        </div>
+      </div>
+      <div className="flex gap-4 h-[calc(100%-4rem)]">
+        <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl" />
+        <div className="w-80 bg-gray-100 dark:bg-gray-800 rounded-xl" />
+      </div>
+    </div>
+  )
+}
