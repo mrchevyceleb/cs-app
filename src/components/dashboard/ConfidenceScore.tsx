@@ -57,14 +57,14 @@ export function ConfidenceScore({ value, showLabel = false, size = 'md' }: Confi
               />
             </div>
             <span className={cn(
-              'text-gray-500 dark:text-gray-400 tabular-nums font-medium',
+              'text-gray-600 dark:text-gray-400 tabular-nums font-medium',
               sizeClasses[size].text
             )}>
               {value}%
             </span>
             {showLabel && (
               <span className={cn(
-                'text-gray-400 dark:text-gray-500',
+                'text-gray-500 dark:text-gray-400',
                 sizeClasses[size].text
               )}>
                 {getLabel()}

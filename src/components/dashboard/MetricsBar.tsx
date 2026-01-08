@@ -37,7 +37,7 @@ function MetricCard({ label, value, change, icon, variant = 'default' }: MetricC
     )}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-400">{label}</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
           {change && (
             <p className={cn(

@@ -206,7 +206,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
 
             {/* Status Filter */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-gray-500">Status</Label>
+              <Label className="text-xs font-medium text-gray-700 dark:text-gray-400">Status</Label>
               <div className="grid grid-cols-2 gap-2">
                 {statusOptions.map((option) => (
                   <div key={option.value} className="flex items-center space-x-2">
@@ -233,7 +233,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
 
             {/* Priority Filter */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-gray-500">Priority</Label>
+              <Label className="text-xs font-medium text-gray-700 dark:text-gray-400">Priority</Label>
               <div className="grid grid-cols-2 gap-2">
                 {priorityOptions.map((option) => (
                   <div key={option.value} className="flex items-center space-x-2">
@@ -260,7 +260,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
 
             {/* AI Handled Filter */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-gray-500">Handler</Label>
+              <Label className="text-xs font-medium text-gray-700 dark:text-gray-400">Handler</Label>
               <Select
                 value={filters.aiHandled}
                 onValueChange={(v) =>

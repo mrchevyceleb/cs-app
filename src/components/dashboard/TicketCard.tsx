@@ -136,7 +136,7 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
 
       {/* Bottom row on mobile: Time, AI badge */}
       <div className="flex items-center justify-between sm:hidden pl-[52px]">
-        <span className="text-xs text-gray-500 dark:text-gray-400">{getRelativeTime(ticket.created_at)}</span>
+        <span className="text-xs text-gray-600 dark:text-gray-400">{getRelativeTime(ticket.created_at)}</span>
         {ticket.ai_handled ? (
           <Badge
             variant="outline"
@@ -153,7 +153,7 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
 
       {/* AI Confidence - hidden on mobile */}
       <div className="hidden md:block min-w-[120px]">
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">AI Confidence</div>
+        <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">AI Confidence</div>
         <ConfidenceScore value={ticket.ai_confidence || 0} size="sm" />
       </div>
 
@@ -194,13 +194,13 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
             <Badge
               key={tag}
               variant="outline"
-              className="text-[10px] px-1.5 py-0 text-gray-500 dark:text-gray-400"
+              className="text-[10px] px-1.5 py-0 text-gray-600 dark:text-gray-400"
             >
               {tag}
             </Badge>
           ))}
           {ticket.tags.length > 2 && (
-            <span className="text-xs text-gray-400">+{ticket.tags.length - 2}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">+{ticket.tags.length - 2}</span>
           )}
         </div>
       )}

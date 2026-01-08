@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 export default function SettingsPage() {
   return (
@@ -52,9 +53,7 @@ export default function SettingsPage() {
               <p className="font-medium">Dark Mode</p>
               <p className="text-sm text-gray-500">Switch between light and dark themes</p>
             </div>
-            <Button variant="outline" size="sm">
-              Toggle
-            </Button>
+<ThemeToggle />
           </div>
           <Separator />
           <div className="flex items-center justify-between">

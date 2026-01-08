@@ -226,7 +226,7 @@ function ErrorStateComponent({ message, onRetry }: { message: string; onRetry: (
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         Failed to load tickets
       </h3>
-      <p className="text-gray-500 dark:text-gray-400 mb-4">{message}</p>
+      <p className="text-gray-600 dark:text-gray-400 mb-4">{message}</p>
       <Button onClick={onRetry} variant="outline" className="gap-2">
         <RefreshCw className="w-4 h-4" />
         Try again
@@ -267,7 +267,7 @@ function EmptyState({ filter }: { filter: FilterTab }) {
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         {title}
       </h3>
-      <p className="text-gray-500 dark:text-gray-400">{description}</p>
+      <p className="text-gray-600 dark:text-gray-400">{description}</p>
     </div>
   )
 }

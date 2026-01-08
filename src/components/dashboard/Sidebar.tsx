@@ -144,7 +144,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         <div className="px-3 pt-4">
           <Button
             variant="outline"
-            className="w-full justify-start gap-2 text-gray-500 dark:text-gray-400 h-9"
+            className="w-full justify-start gap-2 text-gray-600 dark:text-gray-400 h-9"
           >
             <Icons.command className="w-4 h-4" />
             <span className="flex-1 text-left text-sm">Search...</span>
@@ -170,7 +170,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                     isActive
                       ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
                   )}
                 >
                   <item.icon className={cn(
@@ -183,7 +183,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                       'px-2 py-0.5 text-xs font-semibold rounded-full',
                       isActive
                         ? 'bg-primary-200 dark:bg-primary-800 text-primary-700 dark:text-primary-300'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-400'
                     )}>
                       {item.badge}
                     </span>
@@ -201,7 +201,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
               <NovaAvatar size="sm" />
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">Nova</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">AI Copilot</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">AI Copilot</p>
               </div>
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
@@ -227,7 +227,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 'flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                 pathname === '/settings'
                   ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
               )}
             >
               <Icons.settings className="w-5 h-5" />
@@ -262,7 +262,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {isLoading ? 'Loading...' : agent?.name || user?.email?.split('@')[0] || 'Agent'}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                     {agent?.email || user?.email || 'agent@r-link.com'}
                   </p>
                 </div>
