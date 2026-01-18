@@ -58,26 +58,27 @@ Files modified:
 
 ---
 
-### 1.2 Agent Responses in Tickets
+### 1.2 Agent Responses in Tickets ✅ COMPLETED
 
 **Priority: HIGH | Complexity: Medium**
 
-Current state: Chat input exists but doesn't send agent messages.
+Current state: Agent message sending is fully functional with optimistic updates and error handling.
 
 Tasks:
 
-- [ ] Wire up ChatInput to POST to `/api/tickets/[id]/messages`
-- [ ] Set `sender_type: 'agent'` for manual responses
-- [ ] Add "Send as AI" vs "Send as Agent" toggle
-- [ ] Real-time message updates after sending
-- [ ] Optimistic UI updates while sending
-- [ ] Error handling with retry option
+- [x] Wire up ChatInput to POST to `/api/tickets/[id]/messages`
+- [x] Set `sender_type: 'agent'` for manual responses
+- [x] Add "Send as AI" vs "Send as Agent" toggle (split button with dropdown)
+- [x] Real-time message updates after sending (via existing Supabase subscriptions)
+- [x] Optimistic UI updates while sending (pending messages show with spinner)
+- [x] Error handling with retry option
 
-Files to modify:
+Files modified:
 
-- `src/components/dashboard/ChatInput.tsx`
-- `src/app/(dashboard)/tickets/[id]/page.tsx`
-- `src/api/tickets/[id]/messages/route.ts`
+- `src/components/dashboard/ChatInput.tsx` - Added split button with mode dropdown, loading/error states
+- `src/app/(dashboard)/tickets/[id]/page.tsx` - Refactored to use API route with optimistic updates
+- `src/components/dashboard/TicketDetail.tsx` - Updated props to pass through sending state
+- `src/components/dashboard/ChatBubble.tsx` - Added pending message visual indicator
 
 ---
 
@@ -95,6 +96,7 @@ Tasks:
 - [ ] Agent can edit, then send
 - [ ] Show confidence score for suggestion
 - [ ] Add "Regenerate" button for new suggestions
+- [ ] Agent should be able to do ANYTHING a human can do in the app - the north star of this app is that it is a platform that one human can use to manage the entire customer service infrastructure without anyone else at scale. Which means the agent needs to be as agentic as possible
 
 Files to modify:
 

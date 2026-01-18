@@ -23,6 +23,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ChatBubble } from './ChatBubble'
 import { ChatInput } from './ChatInput'
 import { TypingIndicator } from './TypingIndicator'
@@ -36,6 +43,11 @@ import {
   UserPlus,
   UserMinus,
   User,
+  Copy,
+  ExternalLink,
+  Tag,
+  Trash2,
+  Archive,
 } from 'lucide-react'
 import type { TicketWithCustomer } from './TicketCard'
 import type { Message } from '@/types/database'
@@ -133,7 +145,7 @@ export function TicketDetail({
             <SelectTrigger className="w-[100px] sm:w-32 h-8 text-sm">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" sideOffset={4} className="z-[9999]">
               {statusOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   <div className="flex items-center gap-2">
@@ -150,7 +162,7 @@ export function TicketDetail({
             <SelectTrigger className="w-[90px] sm:w-28 h-8 text-sm">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" sideOffset={4} className="z-[9999]">
               {priorityOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
@@ -275,9 +287,41 @@ export function TicketDetail({
             </AlertDialogContent>
           </AlertDialog>
 
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 z-[9999]">
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(ticket.id)}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Ticket ID
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => window.open(`/tickets/${ticket.id}`, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open in New Tab
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled>
+                <Tag className="h-4 w-4 mr-2" />
+                Add Tags
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                <Archive className="h-4 w-4 mr-2" />
+                Archive Ticket
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled className="text-red-600 dark:text-red-400">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Ticket
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

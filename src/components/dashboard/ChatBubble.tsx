@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ConfidenceScore } from './ConfidenceScore'
 import { Sparkles, User, Headphones, Globe, Loader2 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import type { Message } from '@/types/database'
 
 interface ChatBubbleProps {
@@ -158,7 +159,9 @@ export function ChatBubble({ message, customerName, isPending = false }: ChatBub
             isRight ? 'rounded-br-md' : 'rounded-bl-md'
           )}
         >
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          <div className="text-sm prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-strong:font-semibold">
+            <ReactMarkdown>{message.content}</ReactMarkdown>
+          </div>
 
           {/* Show translated content if different from original */}
           {message.content_translated &&
@@ -168,7 +171,9 @@ export function ChatBubble({ message, customerName, isPending = false }: ChatBub
                   <Globe className="h-3 w-3" />
                   Translated:
                 </p>
-                <p className="text-sm opacity-90">{message.content_translated}</p>
+                <div className="text-sm opacity-90 prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown>{message.content_translated}</ReactMarkdown>
+                </div>
               </div>
             )}
         </div>

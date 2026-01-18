@@ -199,13 +199,33 @@ export default function TicketDetailPage() {
   }, [])
 
   const handleUpdateTicket = async (updates: Partial<TicketWithCustomer>) => {
-    const { error } = await supabase
-      .from('tickets')
-      .update(updates)
-      .eq('id', ticketId)
+    // Optimistically update the local state
+    if (ticket) {
+      setTicket({ ...ticket, ...updates } as TicketWithCustomer)
+    }
 
-    if (error) {
-      console.error('Error updating ticket:', error)
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        console.error('Error updating ticket:', data.error)
+        // Revert on error by refetching
+        fetchTicketAndMessages()
+        return
+      }
+
+      // Update with the server response
+      const { ticket: updatedTicket } = await response.json()
+      setTicket(updatedTicket as TicketWithCustomer)
+    } catch (err) {
+      console.error('Error updating ticket:', err)
+      // Revert on error by refetching
+      fetchTicketAndMessages()
     }
   }
 

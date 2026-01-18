@@ -15,7 +15,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .from('tickets')
       .select(`
         *,
-        customer:customers(*)
+        customer:customers(*),
+        assigned_agent:agents(id, name, avatar_url)
       `)
       .eq('id', id)
       .single()
@@ -72,7 +73,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .eq('id', id)
       .select(`
         *,
-        customer:customers(*)
+        customer:customers(*),
+        assigned_agent:agents(id, name, avatar_url)
       `)
       .single()
 
