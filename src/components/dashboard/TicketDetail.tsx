@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Select,
   SelectContent,
@@ -11,6 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { ChatBubble } from './ChatBubble'
 import { ChatInput } from './ChatInput'
 import { TypingIndicator } from './TypingIndicator'
@@ -21,6 +33,9 @@ import {
   Clock,
   Sparkles,
   MoreHorizontal,
+  UserPlus,
+  UserMinus,
+  User,
 } from 'lucide-react'
 import type { TicketWithCustomer } from './TicketCard'
 import type { Message } from '@/types/database'
@@ -28,8 +43,13 @@ import type { Message } from '@/types/database'
 interface TicketDetailProps {
   ticket: TicketWithCustomer
   messages: Message[]
-  onSendMessage: (content: string) => void
+  onSendMessage: (content: string, senderType: 'agent' | 'ai') => void
   onUpdateTicket: (updates: Partial<TicketWithCustomer>) => void
+  currentAgentId?: string | null
+  isSending?: boolean
+  sendError?: string | null
+  onRetry?: () => void
+  onClearError?: () => void
 }
 
 const statusOptions = [
@@ -46,11 +66,25 @@ const priorityOptions = [
   { value: 'urgent', label: 'Urgent' },
 ]
 
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+}
+
 export function TicketDetail({
   ticket,
   messages,
   onSendMessage,
   onUpdateTicket,
+  currentAgentId,
+  isSending,
+  sendError,
+  onRetry,
+  onClearError,
 }: TicketDetailProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isAiTyping, setIsAiTyping] = useState(false)
@@ -75,6 +109,19 @@ export function TicketDetail({
   const handleEscalate = () => {
     onUpdateTicket({ status: 'escalated', ai_handled: false })
   }
+
+  const handleAssignToMe = () => {
+    if (currentAgentId) {
+      onUpdateTicket({ assigned_agent_id: currentAgentId })
+    }
+  }
+
+  const handleUnassign = () => {
+    onUpdateTicket({ assigned_agent_id: null })
+  }
+
+  const isAssignedToMe = ticket.assigned_agent_id === currentAgentId
+  const isAssigned = !!ticket.assigned_agent_id
 
   return (
     <Card className="h-full flex flex-col bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-gray-200/50 dark:border-gray-700/50">
@@ -126,26 +173,108 @@ export function TicketDetail({
               AI Handling
             </Badge>
           )}
+
+          {/* Assigned Agent Badge - hidden on small screens */}
+          {ticket.assigned_agent && (
+            <Badge variant="secondary" className="hidden sm:inline-flex gap-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <Avatar className="h-4 w-4">
+                <AvatarImage src={ticket.assigned_agent.avatar_url || undefined} />
+                <AvatarFallback className="text-[8px] bg-blue-200 dark:bg-blue-800">
+                  {getInitials(ticket.assigned_agent.name || 'AG')}
+                </AvatarFallback>
+              </Avatar>
+              {ticket.assigned_agent.name}
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleEscalate}
-            className="text-amber-600 border-amber-300 hover:bg-amber-50 flex-1 sm:flex-none"
-          >
-            <AlertTriangle className="h-3.5 w-3.5 sm:mr-1" />
-            <span className="hidden sm:inline">Escalate</span>
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleResolve}
-            className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none"
-          >
-            <CheckCircle className="h-3.5 w-3.5 sm:mr-1" />
-            <span className="hidden sm:inline">Resolve</span>
-          </Button>
+          {/* Assign/Unassign Button */}
+          {currentAgentId && (
+            isAssignedToMe ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUnassign}
+                className="text-gray-600 border-gray-300 hover:bg-gray-50 flex-1 sm:flex-none"
+              >
+                <UserMinus className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">Unassign</span>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAssignToMe}
+                className="text-blue-600 border-blue-300 hover:bg-blue-50 flex-1 sm:flex-none"
+              >
+                <UserPlus className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">{isAssigned ? 'Reassign to Me' : 'Assign to Me'}</span>
+              </Button>
+            )
+          )}
+
+          {/* Escalate Button with Confirmation */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-amber-600 border-amber-300 hover:bg-amber-50 flex-1 sm:flex-none"
+              >
+                <AlertTriangle className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">Escalate</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Escalate Ticket?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will escalate the ticket to a human agent. The AI will stop handling this ticket and it will be marked as needing human attention.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleEscalate}
+                  className="bg-amber-600 hover:bg-amber-700"
+                >
+                  Escalate
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Resolve Button with Confirmation */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none"
+              >
+                <CheckCircle className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">Resolve</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Resolve Ticket?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will mark the ticket as resolved. The customer will be notified that their issue has been addressed.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleResolve}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Resolve
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
@@ -162,6 +291,7 @@ export function TicketDetail({
               key={message.id}
               message={message}
               customerName={ticket.customer?.name || 'Customer'}
+              isPending={message.id.startsWith('pending-')}
             />
           ))
         )}
@@ -180,11 +310,17 @@ export function TicketDetail({
       </div>
 
       {/* Quick Suggestions */}
-      <QuickSuggestions onSelect={onSendMessage} />
+      <QuickSuggestions onSelect={(text) => onSendMessage(text, 'agent')} />
 
       {/* Chat Input */}
       <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50">
-        <ChatInput onSend={onSendMessage} />
+        <ChatInput
+          onSend={onSendMessage}
+          isSending={isSending}
+          error={sendError}
+          onRetry={onRetry}
+          onClearError={onClearError}
+        />
       </div>
     </Card>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { TicketDetail } from '@/components/dashboard/TicketDetail'
@@ -20,6 +20,12 @@ export default function TicketDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showCustomerContext, setShowCustomerContext] = useState(true)
+  const [currentAgentId, setCurrentAgentId] = useState<string | null>(null)
+
+  // Message sending state
+  const [isSending, setIsSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const [pendingMessage, setPendingMessage] = useState<{ content: string; senderType: 'agent' | 'ai' } | null>(null)
 
   const supabase = createClient()
 
@@ -28,12 +34,13 @@ export default function TicketDetailPage() {
     setError(null)
 
     try {
-      // Fetch ticket with customer
+      // Fetch ticket with customer and assigned agent
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .select(`
           *,
-          customer:customers(*)
+          customer:customers(*),
+          assigned_agent:agents(id, name, avatar_url)
         `)
         .eq('id', ticketId)
         .single()
@@ -71,6 +78,17 @@ export default function TicketDetailPage() {
     }
   }
 
+  // Fetch current agent on mount
+  useEffect(() => {
+    const fetchCurrentAgent = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentAgentId(user.id)
+      }
+    }
+    fetchCurrentAgent()
+  }, [supabase])
+
   useEffect(() => {
     fetchTicketAndMessages()
 
@@ -103,10 +121,10 @@ export default function TicketDetailPage() {
           filter: `id=eq.${ticketId}`,
         },
         async () => {
-          // Refetch ticket with customer data
+          // Refetch ticket with customer and agent data
           const { data } = await supabase
             .from('tickets')
-            .select(`*, customer:customers(*)`)
+            .select(`*, customer:customers(*), assigned_agent:agents(id, name, avatar_url)`)
             .eq('id', ticketId)
             .single()
           if (data) setTicket(data as TicketWithCustomer)
@@ -120,19 +138,65 @@ export default function TicketDetailPage() {
     }
   }, [ticketId, supabase])
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = useCallback(async (content: string, senderType: 'agent' | 'ai' = 'agent') => {
     if (!ticket) return
 
-    const { error } = await supabase.from('messages').insert({
-      ticket_id: ticketId,
-      sender_type: 'agent',
-      content,
-    })
+    setIsSending(true)
+    setSendError(null)
 
-    if (error) {
-      console.error('Error sending message:', error)
+    // Create optimistic message
+    const optimisticMessage: Message = {
+      id: `pending-${Date.now()}`,
+      ticket_id: ticketId,
+      sender_type: senderType,
+      content,
+      created_at: new Date().toISOString(),
+      confidence: null,
+      content_translated: null,
+      original_language: null,
     }
-  }
+
+    // Add optimistic message to UI immediately
+    setMessages(prev => [...prev, optimisticMessage])
+    setPendingMessage({ content, senderType })
+
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, senderType }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to send message')
+      }
+
+      // Success - real-time subscription will add the actual message
+      // Remove the optimistic message (it will be replaced by the real one)
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id))
+      setPendingMessage(null)
+    } catch (err) {
+      console.error('Error sending message:', err)
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id))
+      setSendError(err instanceof Error ? err.message : 'Failed to send message')
+      // Keep pendingMessage for retry
+    } finally {
+      setIsSending(false)
+    }
+  }, [ticket, ticketId])
+
+  const handleRetry = useCallback(async () => {
+    if (pendingMessage) {
+      await handleSendMessage(pendingMessage.content, pendingMessage.senderType)
+    }
+  }, [pendingMessage, handleSendMessage])
+
+  const handleClearError = useCallback(() => {
+    setSendError(null)
+    setPendingMessage(null)
+  }, [])
 
   const handleUpdateTicket = async (updates: Partial<TicketWithCustomer>) => {
     const { error } = await supabase
@@ -233,6 +297,11 @@ export default function TicketDetailPage() {
             messages={messages}
             onSendMessage={handleSendMessage}
             onUpdateTicket={handleUpdateTicket}
+            currentAgentId={currentAgentId}
+            isSending={isSending}
+            sendError={sendError}
+            onRetry={handleRetry}
+            onClearError={handleClearError}
           />
         </div>
 

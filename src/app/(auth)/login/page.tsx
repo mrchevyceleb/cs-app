@@ -135,23 +135,6 @@ export default function LoginPage() {
           </p>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800 space-y-3">
-          <p className="text-xs text-center text-gray-400">
-            Or try the demo without signing in
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-11 border-primary-200 text-primary-600 hover:bg-primary-50 dark:border-primary-800 dark:text-primary-400 dark:hover:bg-primary-950"
-            onClick={() => {
-              document.cookie = 'demo_mode=true; path=/; max-age=86400'
-              window.location.href = '/'
-            }}
-          >
-            <span className="mr-2">🚀</span>
-            Enter Demo Mode
-          </Button>
-        </div>
       </CardContent>
     </Card>
   )

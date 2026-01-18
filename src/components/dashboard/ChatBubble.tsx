@@ -4,12 +4,13 @@ import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ConfidenceScore } from './ConfidenceScore'
-import { Sparkles, User, Headphones, Globe } from 'lucide-react'
+import { Sparkles, User, Headphones, Globe, Loader2 } from 'lucide-react'
 import type { Message } from '@/types/database'
 
 interface ChatBubbleProps {
   message: Message
   customerName?: string
+  isPending?: boolean
 }
 
 const senderConfig = {
@@ -72,7 +73,7 @@ function getRelativeTime(date: string): string {
   })
 }
 
-export function ChatBubble({ message, customerName }: ChatBubbleProps) {
+export function ChatBubble({ message, customerName, isPending = false }: ChatBubbleProps) {
   const config = senderConfig[message.sender_type] || senderConfig.customer
   const Icon = config.icon
   const isRight = config.align === 'right'
@@ -86,7 +87,11 @@ export function ChatBubble({ message, customerName }: ChatBubbleProps) {
 
   return (
     <div
-      className={cn('flex gap-3 message-enter', isRight ? 'flex-row-reverse' : 'flex-row')}
+      className={cn(
+        'flex gap-3 message-enter',
+        isRight ? 'flex-row-reverse' : 'flex-row',
+        isPending && 'opacity-70'
+      )}
     >
       {/* Avatar */}
       <Avatar className="h-8 w-8 flex-shrink-0">
@@ -116,8 +121,15 @@ export function ChatBubble({ message, customerName }: ChatBubbleProps) {
           <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
             {displayName}
           </span>
-          <span className="text-xs text-gray-400">
-            {getRelativeTime(message.created_at)}
+          <span className="text-xs text-gray-400 flex items-center gap-1">
+            {isPending ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              getRelativeTime(message.created_at)
+            )}
           </span>
 
           {/* Language Badge */}
