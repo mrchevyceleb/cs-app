@@ -1,8 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 interface RouteParams {
   params: Promise<{ id: string }>
+}
+
+// Helper to get appropriate client based on auth mode
+async function getSupabaseClient() {
+  const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
+
+  if (isDevBypass && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    // Use service role in dev mode with auth bypass
+    return createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
+
+  // Use normal authenticated client
+  return await createClient()
 }
 
 // GET /api/tickets/[id] - Get a single ticket
@@ -43,7 +60,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
-    const supabase = await createClient()
+    const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
+    const supabase = await getSupabaseClient()
+
+    // Check auth status (skip in dev bypass mode)
+    if (!isDevBypass) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        console.error('Auth error:', authError || 'No user session')
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        )
+      }
+    }
+
     const body = await request.json()
 
     // Allowed fields to update
