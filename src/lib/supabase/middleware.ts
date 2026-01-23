@@ -39,8 +39,11 @@ export async function updateSession(request: NextRequest) {
 
   // Development mode bypass - skip auth in development when DEV_SKIP_AUTH is set
   const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
+  
+  // Developer bypass cookie - allows skipping auth for testing
+  const hasDevBypassCookie = request.cookies.get('dev_bypass')?.value === 'true'
 
-  if (!user && !isDevBypass && !isAuthPage && !isEmbedPage && !isApiRoute) {
+  if (!user && !isDevBypass && !hasDevBypassCookie && !isAuthPage && !isEmbedPage && !isApiRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

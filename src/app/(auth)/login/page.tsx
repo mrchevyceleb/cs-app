@@ -158,10 +158,10 @@ export default function LoginPage() {
             variant="secondary"
             className="w-full h-11 bg-yellow-500 hover:bg-yellow-600 text-black font-bold border-2 border-yellow-600"
             onClick={() => {
-              // Set dev bypass cookie and redirect to dashboard
+              // Set dev bypass cookie and redirect to dashboard (root path)
               document.cookie = 'dev_bypass=true; path=/; max-age=86400'
               document.cookie = 'demo_mode=true; path=/; max-age=86400'
-              window.location.href = '/dashboard'
+              window.location.href = '/'
             }}
           >
             <span className="mr-2">⚡</span>
