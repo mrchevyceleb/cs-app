@@ -37,10 +37,10 @@ export async function updateSession(request: NextRequest) {
   const isEmbedPage = request.nextUrl.pathname.startsWith('/embed')
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
 
-  // Demo mode bypass - check for demo cookie
-  const isDemoMode = request.cookies.get('demo_mode')?.value === 'true'
+  // Development mode bypass - skip auth in development when DEV_SKIP_AUTH is set
+  const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
 
-  if (!user && !isDemoMode && !isAuthPage && !isEmbedPage && !isApiRoute) {
+  if (!user && !isDevBypass && !isAuthPage && !isEmbedPage && !isApiRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

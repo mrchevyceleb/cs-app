@@ -4,10 +4,11 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ConfidenceScore } from './ConfidenceScore'
-import type { Ticket, Customer } from '@/types/database'
+import type { Ticket, Customer, Agent } from '@/types/database'
 
 export interface TicketWithCustomer extends Ticket {
   customer: Customer
+  assigned_agent?: Pick<Agent, 'id' | 'name' | 'avatar_url'> | null
 }
 
 interface TicketCardProps {

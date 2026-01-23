@@ -254,6 +254,7 @@ export type CustomerInsert = Database['public']['Tables']['customers']['Insert']
 // Extended types with relations
 export type TicketWithCustomer = Ticket & {
   customer: Customer
+  assigned_agent?: Pick<Agent, 'id' | 'name' | 'avatar_url'> | null
 }
 
 export type TicketWithMessages = Ticket & {
