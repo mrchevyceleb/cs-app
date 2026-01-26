@@ -131,12 +131,12 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'flex flex-col h-screen w-64 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900',
+          'flex flex-col h-screen w-64 border-r bg-white dark:bg-[#18181B] border-gray-200 dark:border-[#3F3F46]',
           className
         )}
       >
         {/* Logo Section */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="p-4 border-b border-gray-200 dark:border-[#3F3F46]">
           <Logo size="md" />
         </div>
 
@@ -169,8 +169,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                     isActive
-                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+                      ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#27272A] hover:text-gray-900 dark:hover:text-white'
                   )}
                 >
                   <item.icon className={cn(
@@ -196,7 +196,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           <Separator className="my-4" />
 
           {/* Nova AI Copilot Section */}
-          <div className="p-3 rounded-xl bg-gradient-to-br from-primary-50 to-purple-50 dark:from-primary-950/50 dark:to-purple-950/50 border border-primary-100 dark:border-primary-900/50">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-primary-50 to-purple-50 dark:from-[#2D2640] dark:to-[#1A1625] border border-primary-100 dark:border-primary-800">
             <div className="flex items-center gap-3 mb-3">
               <NovaAvatar size="sm" />
               <div>
@@ -217,7 +217,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         </nav>
 
         {/* Bottom Section */}
-        <div className="p-3 border-t border-gray-200 dark:border-gray-800">
+        <div className="p-3 border-t border-gray-200 dark:border-[#3F3F46]">
           {/* Settings and Theme Toggle */}
           <div className="flex items-center gap-2">
             <Link
@@ -226,8 +226,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
               className={cn(
                 'flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                 pathname === '/settings'
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                  : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#27272A]'
               )}
             >
               <Icons.settings className="w-5 h-5" />
@@ -241,18 +241,18 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           {/* User Profile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-3 px-3 py-2 w-full rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+              <button className="flex items-center gap-3 px-3 py-2 w-full rounded-lg hover:bg-gray-100 dark:hover:bg-[#27272A] transition-colors">
                 <div className="relative">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={agent?.avatar_url || ''} />
-                    <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300 text-xs font-semibold">
+                    <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300 text-xs font-semibold">
                       {agent?.name ? getInitials(agent.name) : user?.email?.[0].toUpperCase() || 'AG'}
                     </AvatarFallback>
                   </Avatar>
                   {agent?.status && (
                     <span
                       className={cn(
-                        'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-gray-900',
+                        'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#18181B]',
                         getStatusColor(agent.status)
                       )}
                     />

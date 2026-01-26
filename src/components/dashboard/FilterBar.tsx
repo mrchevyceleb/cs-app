@@ -161,7 +161,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
           placeholder="Search tickets..."
           value={filters.search}
           onChange={(e) => updateFilter('search', e.target.value)}
-          className="pl-9 bg-white dark:bg-gray-900"
+          className="pl-9 bg-white dark:bg-[#18181B]"
         />
         {filters.search && (
           <button
@@ -294,7 +294,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
             onFiltersChange({ ...filters, sortBy, sortOrder })
           }}
         >
-          <SelectTrigger className="w-[180px] bg-white dark:bg-gray-900">
+          <SelectTrigger className="w-[180px] bg-white dark:bg-[#18181B]">
             <SelectValue placeholder="Sort by..." />
           </SelectTrigger>
           <SelectContent>

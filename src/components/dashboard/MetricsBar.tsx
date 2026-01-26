@@ -17,10 +17,10 @@ interface MetricCardProps {
 
 function MetricCard({ label, value, change, icon, variant = 'default' }: MetricCardProps) {
   const variantStyles = {
-    default: 'from-gray-50 to-white dark:from-gray-800 dark:to-gray-900',
-    success: 'from-emerald-50 to-white dark:from-emerald-950/30 dark:to-gray-900',
-    warning: 'from-amber-50 to-white dark:from-amber-950/30 dark:to-gray-900',
-    danger: 'from-red-50 to-white dark:from-red-950/30 dark:to-gray-900',
+    default: 'from-gray-50 to-white dark:from-[#27272A] dark:to-[#18181B]',
+    success: 'from-emerald-50 to-white dark:from-emerald-950/40 dark:to-[#18181B]',
+    warning: 'from-amber-50 to-white dark:from-amber-950/40 dark:to-[#18181B]',
+    danger: 'from-red-50 to-white dark:from-red-950/40 dark:to-[#18181B]',
   }
 
   const iconStyles = {

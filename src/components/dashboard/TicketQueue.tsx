@@ -138,7 +138,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId }: TicketQueuePro
   }
 
   return (
-    <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+    <Card className="bg-white dark:bg-[#18181B] border-gray-200 dark:border-[#3F3F46]">
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <CardTitle className="text-lg">Ticket Queue</CardTitle>
@@ -189,7 +189,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId }: TicketQueuePro
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="divide-y divide-gray-100 dark:divide-[#3F3F46]">
           {isLoading ? (
             // Skeleton loaders
             Array.from({ length: 5 }).map((_, i) => (

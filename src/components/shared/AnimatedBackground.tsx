@@ -20,7 +20,7 @@ export function AnimatedBackground({
   return (
     <div className={cn('fixed inset-0 -z-10 overflow-hidden', className)}>
       {/* Base gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-primary-50/30 to-gray-100 dark:from-gray-950 dark:via-primary-950/20 dark:to-gray-900" />
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-primary-50/30 to-gray-100 dark:from-[#09090B] dark:via-[#1A1625]/30 dark:to-[#09090B]" />
 
       {/* Animated gradient mesh */}
       <div className={cn('absolute inset-0', opacityMap[intensity])}>

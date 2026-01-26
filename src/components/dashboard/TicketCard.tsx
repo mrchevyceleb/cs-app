@@ -79,8 +79,8 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
       className={cn(
         'group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg transition-all duration-200 cursor-pointer border hover-lift',
         isSelected
-          ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800'
-          : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 border-transparent hover:border-gray-200 dark:hover:border-gray-700'
+          ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-200 dark:border-primary-700'
+          : 'hover:bg-gray-50 dark:hover:bg-[#27272A] border-transparent hover:border-gray-200 dark:hover:border-[#3F3F46]'
       )}
     >
       {/* Top row on mobile: Avatar, Info, Status */}
@@ -89,7 +89,7 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
         <div className="relative flex-shrink-0">
           <Avatar className="w-10 h-10">
             <AvatarImage src="" />
-            <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300 text-sm font-semibold">
+            <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300 text-sm font-semibold">
               {getInitials(ticket.customer?.name ?? null)}
             </AvatarFallback>
           </Avatar>

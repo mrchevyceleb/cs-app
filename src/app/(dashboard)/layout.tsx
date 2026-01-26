@@ -16,7 +16,7 @@ export default function DashboardLayout({
   const closeMobileMenu = () => setIsMobileMenuOpen(false)
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Animated background */}
       <AnimatedBackground intensity="subtle" />
 
@@ -37,7 +37,7 @@ export default function DashboardLayout({
       </MobileSidebarOverlay>
 
       {/* Main content area */}
-      <main className="flex-1 overflow-y-auto pt-14 lg:pt-0">
+      <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 bg-background">
         <div className="p-4 lg:p-6">
           {children}
         </div>
