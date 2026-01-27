@@ -130,10 +130,10 @@ function inferSentimentFromText(text: string): SentimentAnalysis {
     score = 1
   } else if (lowerText.includes('frustrated') || lowerText.includes('upset') || lowerText.includes('disappointed')) {
     score = 2
-  } else if (lowerText.includes('happy') || lowerText.includes('pleased') || lowerText.includes('satisfied')) {
-    score = 4
   } else if (lowerText.includes('very happy') || lowerText.includes('delighted') || lowerText.includes('excellent')) {
     score = 5
+  } else if (lowerText.includes('happy') || lowerText.includes('pleased') || lowerText.includes('satisfied')) {
+    score = 4
   }
 
   // Determine trend

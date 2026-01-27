@@ -1,10 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
-import type { MessageParam, ContentBlockParam, ToolResultBlockParam, TextBlock, ToolUseBlock } from '@anthropic-ai/sdk/resources/messages'
+import type { MessageParam, ContentBlockParam, ToolResultBlockParam } from '@anthropic-ai/sdk/resources/messages'
 import { anthropic, COPILOT_MODEL } from './client'
 import { copilotTools } from './tools'
 import { NOVA_SYSTEM_PROMPT } from './prompts'
 import { executeTool } from './handlers'
-import type { ToolContext, ToolResult, SSEEvent } from './types'
+import type { ToolContext, ToolResult, SSEEvent, ConversationMessage, ContentBlock } from './types'
 
 // Maximum number of agentic turns (tool use cycles)
 const MAX_ITERATIONS = 10
@@ -37,11 +37,91 @@ function buildSystemPrompt(config: AgentConfig): string {
     .replace('{ticketSubject}', config.ticketSubject || 'No subject')
 }
 
+function normalizeConversationHistory(
+  conversationHistory?: ConversationMessage[]
+): MessageParam[] {
+  if (!conversationHistory || conversationHistory.length === 0) {
+    return []
+  }
+
+  const normalized: MessageParam[] = []
+
+  for (const message of conversationHistory) {
+    if (!message || (message.role !== 'user' && message.role !== 'assistant')) {
+      continue
+    }
+
+    if (typeof message.content === 'string') {
+      if (message.content.trim().length === 0) {
+        continue
+      }
+      normalized.push({ role: message.role, content: message.content })
+      continue
+    }
+
+    if (Array.isArray(message.content)) {
+      const contentBlocks = normalizeContentBlocks(message.content)
+      if (contentBlocks.length > 0) {
+        normalized.push({ role: message.role, content: contentBlocks })
+      }
+    }
+  }
+
+  return normalized
+}
+
+function normalizeContentBlocks(blocks: ContentBlock[]): Array<ContentBlockParam | ToolResultBlockParam> {
+  const normalized: Array<ContentBlockParam | ToolResultBlockParam> = []
+
+  for (const block of blocks) {
+    if (!block) {
+      continue
+    }
+
+    if (block.type === 'text') {
+      if (typeof block.text === 'string' && block.text.trim().length > 0) {
+        normalized.push({ type: 'text', text: block.text })
+      }
+      continue
+    }
+
+    if (block.type === 'tool_use') {
+      if (block.id && block.name) {
+        normalized.push({
+          type: 'tool_use',
+          id: block.id,
+          name: block.name,
+          input: (block.input ?? {}) as Record<string, unknown>,
+        })
+      }
+      continue
+    }
+
+    if (block.type === 'tool_result') {
+      if (block.tool_use_id) {
+        const content = typeof block.content === 'string'
+          ? block.content
+          : JSON.stringify(block.content ?? '')
+
+        normalized.push({
+          type: 'tool_result',
+          tool_use_id: block.tool_use_id,
+          content,
+          is_error: Boolean(block.is_error),
+        })
+      }
+    }
+  }
+
+  return normalized
+}
+
 /**
  * Run the agentic loop with streaming
  */
 export async function runAgentLoop(
   userMessage: string,
+  conversationHistory: ConversationMessage[] | undefined,
   context: ToolContext,
   config: AgentConfig,
   callbacks: StreamCallbacks
@@ -50,6 +130,7 @@ export async function runAgentLoop(
 
   // Initialize conversation with user message
   const messages: MessageParam[] = [
+    ...normalizeConversationHistory(conversationHistory),
     { role: 'user', content: userMessage },
   ]
 
@@ -198,6 +279,7 @@ export async function runAgentLoop(
  */
 export function createSSEStream(
   userMessage: string,
+  conversationHistory: ConversationMessage[] | undefined,
   context: ToolContext,
   config: AgentConfig
 ): ReadableStream<Uint8Array> {
@@ -211,6 +293,7 @@ export function createSSEStream(
 
       await runAgentLoop(
         userMessage,
+        conversationHistory,
         context,
         config,
         {

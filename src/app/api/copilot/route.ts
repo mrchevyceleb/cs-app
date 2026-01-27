@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
     // Create SSE stream
     const stream = createSSEStream(
       message,
+      conversationHistory,
       toolContext,
       {
         ticketId,
