@@ -1,3 +1,6 @@
+import type { ChannelType, MessageSource, PreferredChannel, RoutingDecision, DeliveryStatus } from './channels';
+import type { WebhookEventType, WebhookDeliveryStatus, WebhookSourceType } from './webhooks';
+
 export type Json =
   | string
   | number
@@ -17,6 +20,8 @@ export type Database = {
           id: string
           name: string
           status: 'online' | 'away' | 'offline'
+          last_seen_at: string | null
+          current_ticket_id: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -25,6 +30,8 @@ export type Database = {
           id: string
           name: string
           status?: 'online' | 'away' | 'offline'
+          last_seen_at?: string | null
+          current_ticket_id?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -33,6 +40,8 @@ export type Database = {
           id?: string
           name?: string
           status?: 'online' | 'away' | 'offline'
+          last_seen_at?: string | null
+          current_ticket_id?: string | null
         }
         Relationships: []
       }
@@ -44,6 +53,8 @@ export type Database = {
           metadata: Json
           name: string | null
           preferred_language: string
+          phone_number: string | null
+          preferred_channel: PreferredChannel
         }
         Insert: {
           created_at?: string
@@ -52,6 +63,8 @@ export type Database = {
           metadata?: Json
           name?: string | null
           preferred_language?: string
+          phone_number?: string | null
+          preferred_channel?: PreferredChannel
         }
         Update: {
           created_at?: string
@@ -60,6 +73,8 @@ export type Database = {
           metadata?: Json
           name?: string | null
           preferred_language?: string
+          phone_number?: string | null
+          preferred_channel?: PreferredChannel
         }
         Relationships: []
       }
@@ -101,6 +116,12 @@ export type Database = {
           original_language: string | null
           sender_type: 'customer' | 'agent' | 'ai'
           ticket_id: string
+          source: MessageSource
+          external_id: string | null
+          routing_decision: RoutingDecision | null
+          delivery_status: DeliveryStatus
+          delivered_at: string | null
+          read_at: string | null
         }
         Insert: {
           confidence?: number | null
@@ -112,6 +133,12 @@ export type Database = {
           original_language?: string | null
           sender_type: 'customer' | 'agent' | 'ai'
           ticket_id: string
+          source?: MessageSource
+          external_id?: string | null
+          routing_decision?: RoutingDecision | null
+          delivery_status?: DeliveryStatus
+          delivered_at?: string | null
+          read_at?: string | null
         }
         Update: {
           confidence?: number | null
@@ -123,6 +150,12 @@ export type Database = {
           original_language?: string | null
           sender_type?: 'customer' | 'agent' | 'ai'
           ticket_id?: string
+          source?: MessageSource
+          external_id?: string | null
+          routing_decision?: RoutingDecision | null
+          delivery_status?: DeliveryStatus
+          delivered_at?: string | null
+          read_at?: string | null
         }
         Relationships: [
           {
@@ -154,6 +187,8 @@ export type Database = {
           resolution_due_at: string | null
           first_response_breached: boolean
           resolution_breached: boolean
+          // Channel field
+          source_channel: ChannelType
         }
         Insert: {
           ai_confidence?: number | null
@@ -174,6 +209,8 @@ export type Database = {
           resolution_due_at?: string | null
           first_response_breached?: boolean
           resolution_breached?: boolean
+          // Channel field
+          source_channel?: ChannelType
         }
         Update: {
           ai_confidence?: number | null
@@ -194,6 +231,8 @@ export type Database = {
           resolution_due_at?: string | null
           first_response_breached?: boolean
           resolution_breached?: boolean
+          // Channel field
+          source_channel?: ChannelType
         }
         Relationships: [
           {
@@ -788,6 +827,443 @@ export type Database = {
           }
         ]
       }
+      widget_settings: {
+        Row: {
+          id: string
+          api_key: string
+          company_name: string
+          greeting: string
+          primary_color: string
+          position: 'bottom-right' | 'bottom-left'
+          theme: 'light' | 'dark' | 'auto'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          api_key: string
+          company_name?: string
+          greeting?: string
+          primary_color?: string
+          position?: 'bottom-right' | 'bottom-left'
+          theme?: 'light' | 'dark' | 'auto'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          api_key?: string
+          company_name?: string
+          greeting?: string
+          primary_color?: string
+          position?: 'bottom-right' | 'bottom-left'
+          theme?: 'light' | 'dark' | 'auto'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      // Channel support tables (Migration 015)
+      channel_inbound_logs: {
+        Row: {
+          id: string
+          channel: ChannelType
+          external_id: string | null
+          from_identifier: string
+          to_identifier: string | null
+          raw_payload: Json
+          processed: boolean
+          ticket_id: string | null
+          message_id: string | null
+          customer_id: string | null
+          error_message: string | null
+          created_at: string
+          processed_at: string | null
+        }
+        Insert: {
+          id?: string
+          channel: ChannelType
+          external_id?: string | null
+          from_identifier: string
+          to_identifier?: string | null
+          raw_payload: Json
+          processed?: boolean
+          ticket_id?: string | null
+          message_id?: string | null
+          customer_id?: string | null
+          error_message?: string | null
+          created_at?: string
+          processed_at?: string | null
+        }
+        Update: {
+          id?: string
+          channel?: ChannelType
+          external_id?: string | null
+          from_identifier?: string
+          to_identifier?: string | null
+          raw_payload?: Json
+          processed?: boolean
+          ticket_id?: string | null
+          message_id?: string | null
+          customer_id?: string | null
+          error_message?: string | null
+          created_at?: string
+          processed_at?: string | null
+        }
+        Relationships: []
+      }
+      email_threads: {
+        Row: {
+          id: string
+          ticket_id: string
+          message_id_header: string
+          in_reply_to: string | null
+          references_header: string | null
+          subject: string
+          from_address: string
+          to_address: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          ticket_id: string
+          message_id_header: string
+          in_reply_to?: string | null
+          references_header?: string | null
+          subject: string
+          from_address: string
+          to_address: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          ticket_id?: string
+          message_id_header?: string
+          in_reply_to?: string | null
+          references_header?: string | null
+          subject?: string
+          from_address?: string
+          to_address?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_threads_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      channel_config: {
+        Row: {
+          id: string
+          channel: 'sms' | 'email' | 'slack' | 'widget'
+          enabled: boolean
+          config: Json
+          ai_auto_respond: boolean
+          ai_confidence_threshold: number
+          ai_escalation_keywords: string[] | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          channel: 'sms' | 'email' | 'slack' | 'widget'
+          enabled?: boolean
+          config?: Json
+          ai_auto_respond?: boolean
+          ai_confidence_threshold?: number
+          ai_escalation_keywords?: string[] | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          channel?: 'sms' | 'email' | 'slack' | 'widget'
+          enabled?: boolean
+          config?: Json
+          ai_auto_respond?: boolean
+          ai_confidence_threshold?: number
+          ai_escalation_keywords?: string[] | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      // Webhook tables (Migration 016)
+      webhook_endpoints: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          url: string
+          secret: string
+          enabled: boolean
+          events: WebhookEventType[]
+          filter_status: string[] | null
+          filter_priority: string[] | null
+          filter_tags: string[] | null
+          max_retries: number
+          retry_delay_seconds: number
+          timeout_seconds: number
+          headers: Json
+          last_triggered_at: string | null
+          last_success_at: string | null
+          last_failure_at: string | null
+          total_deliveries: number
+          successful_deliveries: number
+          failed_deliveries: number
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          url: string
+          secret: string
+          enabled?: boolean
+          events?: WebhookEventType[]
+          filter_status?: string[] | null
+          filter_priority?: string[] | null
+          filter_tags?: string[] | null
+          max_retries?: number
+          retry_delay_seconds?: number
+          timeout_seconds?: number
+          headers?: Json
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          url?: string
+          secret?: string
+          enabled?: boolean
+          events?: WebhookEventType[]
+          filter_status?: string[] | null
+          filter_priority?: string[] | null
+          filter_tags?: string[] | null
+          max_retries?: number
+          retry_delay_seconds?: number
+          timeout_seconds?: number
+          headers?: Json
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_endpoints_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      webhook_deliveries: {
+        Row: {
+          id: string
+          webhook_endpoint_id: string
+          event_type: WebhookEventType
+          event_id: string
+          payload: Json
+          status: WebhookDeliveryStatus
+          attempts: number
+          next_retry_at: string | null
+          response_status: number | null
+          response_body: string | null
+          response_headers: Json | null
+          response_time_ms: number | null
+          error_message: string | null
+          created_at: string
+          delivered_at: string | null
+          last_attempt_at: string | null
+        }
+        Insert: {
+          id?: string
+          webhook_endpoint_id: string
+          event_type: WebhookEventType
+          event_id: string
+          payload: Json
+          status?: WebhookDeliveryStatus
+          attempts?: number
+          next_retry_at?: string | null
+          response_status?: number | null
+          response_body?: string | null
+          response_headers?: Json | null
+          response_time_ms?: number | null
+          error_message?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          last_attempt_at?: string | null
+        }
+        Update: {
+          id?: string
+          webhook_endpoint_id?: string
+          event_type?: WebhookEventType
+          event_id?: string
+          payload?: Json
+          status?: WebhookDeliveryStatus
+          attempts?: number
+          next_retry_at?: string | null
+          response_status?: number | null
+          response_body?: string | null
+          response_headers?: Json | null
+          response_time_ms?: number | null
+          error_message?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          last_attempt_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_deliveries_webhook_endpoint_id_fkey"
+            columns: ["webhook_endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_endpoints"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      webhook_sources: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          type: WebhookSourceType
+          verification_token: string | null
+          signing_secret: string | null
+          field_mapping: Json
+          auto_create_tickets: boolean
+          default_priority: string
+          default_tags: string[]
+          enabled: boolean
+          last_received_at: string | null
+          total_received: number
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          type: WebhookSourceType
+          verification_token?: string | null
+          signing_secret?: string | null
+          field_mapping?: Json
+          auto_create_tickets?: boolean
+          default_priority?: string
+          default_tags?: string[]
+          enabled?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          type?: WebhookSourceType
+          verification_token?: string | null
+          signing_secret?: string | null
+          field_mapping?: Json
+          auto_create_tickets?: boolean
+          default_priority?: string
+          default_tags?: string[]
+          enabled?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_sources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      // Read receipts tables (Migration 017)
+      message_read_receipts: {
+        Row: {
+          id: string
+          message_id: string
+          reader_type: 'customer' | 'agent'
+          reader_id: string
+          read_at: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          reader_type: 'customer' | 'agent'
+          reader_id: string
+          read_at?: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          reader_type?: 'customer' | 'agent'
+          reader_id?: string
+          read_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_read_receipts_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      typing_indicators: {
+        Row: {
+          id: string
+          ticket_id: string
+          typer_type: 'customer' | 'agent'
+          typer_id: string
+          typer_name: string | null
+          started_at: string
+          expires_at: string
+        }
+        Insert: {
+          id?: string
+          ticket_id: string
+          typer_type: 'customer' | 'agent'
+          typer_id: string
+          typer_name?: string | null
+          started_at?: string
+          expires_at?: string
+        }
+        Update: {
+          id?: string
+          ticket_id?: string
+          typer_type?: 'customer' | 'agent'
+          typer_id?: string
+          typer_name?: string | null
+          started_at?: string
+          expires_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "typing_indicators_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1293,4 +1769,87 @@ export interface ParsedMention {
   agentName: string
   startIndex: number
   endIndex: number
+}
+
+// ==========================================
+// Channel Support Types (Migration 015)
+// ==========================================
+
+// Re-export channel types
+export type { ChannelType, MessageSource, PreferredChannel, RoutingDecision, DeliveryStatus } from './channels';
+
+export type ChannelInboundLog = Database['public']['Tables']['channel_inbound_logs']['Row']
+export type ChannelInboundLogInsert = Database['public']['Tables']['channel_inbound_logs']['Insert']
+export type ChannelInboundLogUpdate = Database['public']['Tables']['channel_inbound_logs']['Update']
+
+export type EmailThread = Database['public']['Tables']['email_threads']['Row']
+export type EmailThreadInsert = Database['public']['Tables']['email_threads']['Insert']
+export type EmailThreadUpdate = Database['public']['Tables']['email_threads']['Update']
+
+export type ChannelConfig = Database['public']['Tables']['channel_config']['Row']
+export type ChannelConfigInsert = Database['public']['Tables']['channel_config']['Insert']
+export type ChannelConfigUpdate = Database['public']['Tables']['channel_config']['Update']
+
+// ==========================================
+// Webhook Types (Migration 016)
+// ==========================================
+
+// Re-export webhook types
+export type { WebhookEventType, WebhookDeliveryStatus, WebhookSourceType } from './webhooks';
+
+export type WebhookEndpoint = Database['public']['Tables']['webhook_endpoints']['Row']
+export type WebhookEndpointInsert = Database['public']['Tables']['webhook_endpoints']['Insert']
+export type WebhookEndpointUpdate = Database['public']['Tables']['webhook_endpoints']['Update']
+
+export type WebhookDelivery = Database['public']['Tables']['webhook_deliveries']['Row']
+export type WebhookDeliveryInsert = Database['public']['Tables']['webhook_deliveries']['Insert']
+export type WebhookDeliveryUpdate = Database['public']['Tables']['webhook_deliveries']['Update']
+
+export type WebhookSource = Database['public']['Tables']['webhook_sources']['Row']
+export type WebhookSourceInsert = Database['public']['Tables']['webhook_sources']['Insert']
+export type WebhookSourceUpdate = Database['public']['Tables']['webhook_sources']['Update']
+
+// ==========================================
+// Read Receipt & Typing Types (Migration 017)
+// ==========================================
+
+export type MessageReadReceipt = Database['public']['Tables']['message_read_receipts']['Row']
+export type MessageReadReceiptInsert = Database['public']['Tables']['message_read_receipts']['Insert']
+export type MessageReadReceiptUpdate = Database['public']['Tables']['message_read_receipts']['Update']
+
+export type TypingIndicator = Database['public']['Tables']['typing_indicators']['Row']
+export type TypingIndicatorInsert = Database['public']['Tables']['typing_indicators']['Insert']
+export type TypingIndicatorUpdate = Database['public']['Tables']['typing_indicators']['Update']
+
+// Typing indicator broadcast payload (for Supabase Realtime Broadcast)
+export interface TypingBroadcast {
+  ticket_id: string
+  typer_type: 'customer' | 'agent'
+  typer_id: string
+  typer_name: string | null
+  is_typing: boolean
+}
+
+// Read receipt broadcast payload
+export interface ReadReceiptBroadcast {
+  ticket_id: string
+  reader_type: 'customer' | 'agent'
+  reader_id: string
+  last_read_message_id: string
+  read_at: string
+}
+
+// Message with read status for display
+export interface MessageWithReadStatus extends Message {
+  read_by_customer: boolean
+  read_by_agents: string[] // Agent IDs who have read the message
+}
+
+// Extended ticket with channel info
+export interface TicketWithChannel extends Ticket {
+  source_channel: ChannelType
+  customer: Customer & {
+    phone_number: string | null
+    preferred_channel: PreferredChannel
+  }
 }

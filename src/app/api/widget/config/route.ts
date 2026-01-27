@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { DEFAULT_WIDGET_CONFIG } from '@/types/widget'
 
 // Handle preflight requests
@@ -14,20 +15,47 @@ export async function OPTIONS() {
 }
 
 // GET /api/widget/config - Get widget configuration
-// This could be extended to load config from database based on API key
+// Loads config from database based on API key
 export async function GET(request: NextRequest) {
   try {
-    // API key can be used in the future to load organization-specific config
-    const _apiKey = request.nextUrl.searchParams.get('apiKey')
+    const apiKey = request.nextUrl.searchParams.get('apiKey')
 
-    // In a production system, you would:
-    // 1. Validate the API key against a database
-    // 2. Load organization-specific config
-    // 3. Return custom branding, greeting, etc.
+    // If no API key provided, return default config
+    if (!apiKey) {
+      return NextResponse.json({
+        config: { ...DEFAULT_WIDGET_CONFIG },
+      })
+    }
 
-    // For now, return default config
+    // Create Supabase client with service role to bypass RLS for public widget requests
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Look up settings by API key
+    const { data: settings, error } = await supabase
+      .from('widget_settings')
+      .select('company_name, greeting, primary_color, position, theme')
+      .eq('api_key', apiKey)
+      .single()
+
+    if (error || !settings) {
+      // Invalid API key - return default config
+      console.warn('Widget config: Invalid API key or settings not found')
+      return NextResponse.json({
+        config: { ...DEFAULT_WIDGET_CONFIG },
+      })
+    }
+
+    // Build config from database settings
     const config = {
-      ...DEFAULT_WIDGET_CONFIG,
+      position: settings.position as 'bottom-right' | 'bottom-left',
+      primaryColor: settings.primary_color,
+      greeting: settings.greeting,
+      companyName: settings.company_name,
+      theme: settings.theme as 'light' | 'dark' | 'auto',
+      zIndex: DEFAULT_WIDGET_CONFIG.zIndex,
     }
 
     return NextResponse.json({ config })

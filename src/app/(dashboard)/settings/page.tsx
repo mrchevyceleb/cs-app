@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Skeleton } from '@/components/ui/skeleton'
-import { BookMarked, ChevronRight, Zap } from 'lucide-react'
+import { BookMarked, ChevronRight, Code2, Zap } from 'lucide-react'
 import type { Agent } from '@/types/database'
 
 interface Preferences {
@@ -230,6 +230,25 @@ export default function SettingsPage() {
               <span className="flex items-center gap-2">
                 <Zap className="h-4 w-4 text-yellow-500" />
                 Manage Workflow Rules
+              </span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+
+      {/* Widget Embed */}
+      <Card className="bg-card border-border/70">
+        <CardHeader>
+          <CardTitle className="text-base">Widget Embed</CardTitle>
+          <CardDescription>Configure and embed the support widget on your website</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href="/settings/widget">
+            <Button variant="outline" className="w-full justify-between">
+              <span className="flex items-center gap-2">
+                <Code2 className="h-4 w-4 text-indigo-500" />
+                Widget Settings
               </span>
               <ChevronRight className="h-4 w-4" />
             </Button>

@@ -44,3 +44,11 @@ next-env.d.ts
 /.playwright-mcp/
 
 .vercel
+
+# AI tool artifacts
+.gemini-clipboard/
+.claude/
+
+# Windows artifacts
+nul
+NUL

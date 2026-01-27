@@ -1,6 +1,8 @@
 # CS-App: Customer Support Application
 
-A modern customer support application built with Next.js 16, React 19, Supabase, and Claude AI. Features include AI-assisted ticket management, real-time messaging, SLA tracking, customer portal, and embeddable widget.
+> **North Star:** Handle 1 million users with just 1 person and an amazing AI agent.
+
+A modern customer support application built with Next.js 16, React 19, Supabase, and Claude AI. Features include AI-assisted ticket management, real-time messaging, SLA tracking, customer portal, embeddable widget, and omnichannel communication (SMS, Email, Slack, and more).
 
 ## Quick Start
 
@@ -97,7 +99,7 @@ public/
     └── loader.js                 # Embeddable widget loader script
 
 supabase/
-└── migrations/                   # Database migrations (001-012)
+└── migrations/                   # Database migrations (001-014)
 ```
 
 ## Key Features
@@ -243,12 +245,28 @@ RESEND_API_KEY=
 
 ## Migrations
 
-Apply migrations via Supabase CLI:
+Migrations are managed via Supabase CLI. The project is already linked to the remote Supabase instance.
+
+### Common Commands
 ```bash
-supabase db push
+# Push pending migrations to remote database (auto-confirms with echo "y")
+echo "y" | npx supabase db push
+
+# List migration status
+npx supabase migration list
+
+# Create a new migration
+npx supabase migration new <migration_name>
+
+# Repair a failed migration (mark as reverted to retry)
+npx supabase migration repair <version> --status reverted
+
+# Pull remote schema changes
+npx supabase db pull
 ```
 
-Or run individual migration files directly against your database.
+### After Adding New Tables
+When adding new tables via migrations, update `src/types/database.ts` with the corresponding TypeScript types to maintain type safety.
 
 ## Testing the Widget
 
