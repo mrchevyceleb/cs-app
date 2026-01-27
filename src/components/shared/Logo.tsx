@@ -53,7 +53,7 @@ export function Logo({ className, size = 'md', showText = true }: LogoProps) {
           <span className={cn('font-bold tracking-tight text-foreground', textSizes[size])}>
             R-Link
           </span>
-          <span className="text-xs text-muted-foreground -mt-1">
+          <span className="text-xs -mt-1" style={{ color: '#475569' }}>
             Support Hub
           </span>
         </div>

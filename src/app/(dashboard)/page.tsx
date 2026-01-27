@@ -25,7 +25,7 @@ export default function DashboardPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">
             Support Dashboard
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm mt-1" style={{ color: '#475569' }}>
             Manage customer tickets with AI-powered assistance
           </p>
         </div>

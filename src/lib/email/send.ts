@@ -9,7 +9,7 @@ import {
   FeedbackEmailData,
 } from './templates'
 import type { Ticket, Customer, Message } from '@/types/database'
-import crypto from 'crypto'
+import { generatePortalToken as generatePortalAccessToken } from '@/lib/portal/auth'
 
 // Get admin Supabase client for email operations
 function getAdminClient() {
@@ -51,14 +51,9 @@ export interface EmailLog {
   sent_at: string | null
 }
 
-// Portal token generation
-// In production, you'd want to use a more secure token system
-// possibly JWT with expiration
-export function generatePortalToken(customerId: string, ticketId: string): string {
-  const payload = `${customerId}:${ticketId}:${Date.now()}`
-  const hash = crypto.createHash('sha256').update(payload + (process.env.PORTAL_TOKEN_SECRET || 'default-secret')).digest('hex')
-  // Return a URL-safe token
-  return Buffer.from(`${customerId}:${ticketId}:${hash.slice(0, 16)}`).toString('base64url')
+// Portal token generation (DB-backed access tokens)
+export async function generatePortalToken(customerId: string, ticketId: string): Promise<string | null> {
+  return generatePortalAccessToken(customerId, ticketId)
 }
 
 // Validate portal token
@@ -129,7 +124,10 @@ export async function sendTicketCreatedEmail(
   }
 
   // Generate portal token if not provided
-  const portalToken = token || generatePortalToken(customer.id, ticket.id)
+  const portalToken = token || await generatePortalToken(customer.id, ticket.id)
+  if (!portalToken) {
+    return { success: false, error: 'Failed to generate portal token' }
+  }
 
   // Generate email content
   const emailData: TicketEmailData = {
@@ -189,7 +187,10 @@ export async function sendTicketResolvedEmail(
   }
 
   // Generate portal token if not provided
-  const portalToken = token || generatePortalToken(customer.id, ticket.id)
+  const portalToken = token || await generatePortalToken(customer.id, ticket.id)
+  if (!portalToken) {
+    return { success: false, error: 'Failed to generate portal token' }
+  }
 
   // Generate email content
   const emailData: TicketEmailData = {
@@ -258,7 +259,10 @@ export async function sendAgentReplyEmail(
   }
 
   // Generate portal token if not provided
-  const portalToken = token || generatePortalToken(customer.id, ticket.id)
+  const portalToken = token || await generatePortalToken(customer.id, ticket.id)
+  if (!portalToken) {
+    return { success: false, error: 'Failed to generate portal token' }
+  }
 
   // Generate email content
   const emailData: TicketEmailData = {
@@ -378,7 +382,10 @@ export async function sendTicketResolvedWithFeedbackEmail(
   }
 
   // Generate portal token if not provided
-  const portalToken = token || generatePortalToken(customer.id, ticket.id)
+  const portalToken = token || await generatePortalToken(customer.id, ticket.id)
+  if (!portalToken) {
+    return { success: false, error: 'Failed to generate portal token' }
+  }
 
   // Generate email content with feedback URL
   const emailData: TicketEmailData = {

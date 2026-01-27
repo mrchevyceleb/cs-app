@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendAgentReplyEmail, generatePortalToken } from '@/lib/email'
+import { sendAgentReplyEmail } from '@/lib/email'
+import { generatePortalToken } from '@/lib/portal/auth'
 import type { MessageInsert, Customer, Ticket, Message, MessageWithAttachments } from '@/types/database'
 
 interface RouteParams {
@@ -168,20 +169,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (senderType === 'agent' && !isInternal && message && ticket.customer) {
       const customer = ticket.customer as Customer
       if (customer.email) {
-        const portalToken = generatePortalToken(customer.id, ticket.id)
-
-        // Send email asynchronously (don't wait for it)
-        sendAgentReplyEmail(ticket as Ticket, message as Message, customer, portalToken)
-          .then((result) => {
-            if (result.success) {
-              console.log('[Messages API] Agent reply email sent:', result.emailLogId)
-            } else {
-              console.error('[Messages API] Failed to send agent reply email:', result.error)
-            }
-          })
-          .catch((err) => {
-            console.error('[Messages API] Email send error:', err)
-          })
+        const portalToken = await generatePortalToken(customer.id, ticket.id)
+        if (!portalToken) {
+          console.error('[Messages API] Failed to generate portal token for agent reply email')
+        } else {
+          // Send email asynchronously (don't wait for it)
+          sendAgentReplyEmail(ticket as Ticket, message as Message, customer, portalToken)
+            .then((result) => {
+              if (result.success) {
+                console.log('[Messages API] Agent reply email sent:', result.emailLogId)
+              } else {
+                console.error('[Messages API] Failed to send agent reply email:', result.error)
+              }
+            })
+            .catch((err) => {
+              console.error('[Messages API] Email send error:', err)
+            })
+        }
       }
     }
 

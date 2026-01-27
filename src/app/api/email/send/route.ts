@@ -4,8 +4,8 @@ import {
   sendTicketCreatedEmail,
   sendTicketResolvedEmail,
   sendAgentReplyEmail,
-  generatePortalToken,
 } from '@/lib/email'
+import { generatePortalToken } from '@/lib/portal/auth'
 import type { Ticket, Customer, Message } from '@/types/database'
 
 // Use admin client for internal API calls
@@ -115,7 +115,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate portal token if not provided
-    const portalToken = token || generatePortalToken(customer.id, ticketId)
+    let portalToken = token || null
+    if (!portalToken) {
+      portalToken = await generatePortalToken(customer.id, ticketId)
+      if (!portalToken) {
+        return NextResponse.json(
+          { error: 'Failed to generate portal token' },
+          { status: 500 }
+        )
+      }
+    }
 
     // Send email based on type
     let result: { success: boolean; emailLogId?: string; error?: string }

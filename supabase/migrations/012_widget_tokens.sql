@@ -55,6 +55,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Update validate_customer_token to return source
+DROP FUNCTION IF EXISTS validate_customer_token(text);
 CREATE OR REPLACE FUNCTION validate_customer_token(p_token text)
 RETURNS TABLE(customer_id uuid, ticket_id uuid, source VARCHAR(20)) AS $$
 BEGIN

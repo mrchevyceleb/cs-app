@@ -222,7 +222,8 @@ export async function POST(request: NextRequest) {
         customer_id: resolvedCustomerId,
         feedback_token: feedbackToken,
         token_expires_at: tokenExpiresAt.toISOString(),
-        rating: 0, // Will be updated when customer submits
+        rating: null,
+        submitted_at: null,
       })
       .select()
       .single()

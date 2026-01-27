@@ -35,7 +35,7 @@ function MetricCard({ label, value, icon, variant = 'default', isLoading = false
     )}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-foreground">{label}</p>
+          <p className="text-sm font-medium" style={{ color: '#0F172A' }}>{label}</p>
           {isLoading ? (
             <Skeleton className="h-8 w-16 mt-1" />
           ) : (

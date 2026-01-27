@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendTicketCreatedEmail, generatePortalToken } from '@/lib/email'
+import { sendTicketCreatedEmail } from '@/lib/email'
+import { generatePortalToken } from '@/lib/portal/auth'
 import type { Customer } from '@/types/database'
 
 // GET /api/tickets - List tickets with filters
@@ -133,20 +134,23 @@ export async function POST(request: NextRequest) {
     if (ticket && ticket.customer) {
       const customer = ticket.customer as Customer
       if (customer.email) {
-        const portalToken = generatePortalToken(customer.id, ticket.id)
-
-        // Send email asynchronously (don't wait for it)
-        sendTicketCreatedEmail(ticket, customer, portalToken)
-          .then((result) => {
-            if (result.success) {
-              console.log('[Tickets API] Ticket created email sent:', result.emailLogId)
-            } else {
-              console.error('[Tickets API] Failed to send ticket created email:', result.error)
-            }
-          })
-          .catch((err) => {
-            console.error('[Tickets API] Email send error:', err)
-          })
+        const portalToken = await generatePortalToken(customer.id, ticket.id)
+        if (!portalToken) {
+          console.error('[Tickets API] Failed to generate portal token for ticket created email')
+        } else {
+          // Send email asynchronously (don't wait for it)
+          sendTicketCreatedEmail(ticket, customer, portalToken)
+            .then((result) => {
+              if (result.success) {
+                console.log('[Tickets API] Ticket created email sent:', result.emailLogId)
+              } else {
+                console.error('[Tickets API] Failed to send ticket created email:', result.error)
+              }
+            })
+            .catch((err) => {
+              console.error('[Tickets API] Email send error:', err)
+            })
+        }
       }
     }
 

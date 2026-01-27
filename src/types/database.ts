@@ -459,7 +459,7 @@ export type Database = {
           id: string
           ticket_id: string
           customer_id: string | null
-          rating: number
+          rating: number | null
           comment: string | null
           feedback_token: string | null
           token_expires_at: string | null
@@ -470,7 +470,7 @@ export type Database = {
           id?: string
           ticket_id: string
           customer_id?: string | null
-          rating: number
+          rating?: number | null
           comment?: string | null
           feedback_token?: string | null
           token_expires_at?: string | null
@@ -481,7 +481,7 @@ export type Database = {
           id?: string
           ticket_id?: string
           customer_id?: string | null
-          rating?: number
+          rating?: number | null
           comment?: string | null
           feedback_token?: string | null
           token_expires_at?: string | null

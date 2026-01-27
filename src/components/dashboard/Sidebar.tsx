@@ -147,7 +147,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         <div className="px-3 pt-4">
           <Button
             variant="outline"
-            className="w-full justify-start gap-2 text-muted-foreground h-9"
+            className="w-full justify-start gap-2 h-9"
+            style={{ color: '#475569' }}
             onClick={() => openCommandPalette(true)}
           >
             <Icons.command className="w-4 h-4" />
@@ -174,8 +175,9 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                     isActive
                       ? 'bg-primary-200/70 dark:bg-primary-900/40 text-primary-900 dark:text-primary-200'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent dark:hover:bg-[#27272A] hover:text-foreground'
+                      : 'hover:bg-[#E2E8F0] dark:hover:bg-[#27272A]'
                   )}
+                  style={!isActive ? { color: '#1E293B' } : undefined}
                 >
                   <item.icon className={cn(
                     'w-5 h-5',
@@ -200,15 +202,18 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           <Separator className="my-4" />
 
           {/* Nova AI Copilot Section */}
-          <div className="p-3 rounded-xl bg-gradient-to-br from-primary-50 to-slate-50 dark:from-[#1B2436] dark:to-[#121A24] border border-primary-100/70 dark:border-primary-900/40">
+          <div
+            className="p-3 rounded-xl border border-primary-100/70 dark:border-primary-900/40"
+            style={{ background: 'linear-gradient(to bottom right, #EEF2FF, #F8FAFC)' }}
+          >
             <div className="flex items-center gap-3 mb-3">
               <NovaAvatar size="sm" />
               <div>
-                <p className="text-sm font-semibold text-foreground">Nova</p>
-                <p className="text-xs text-muted-foreground">AI Copilot</p>
+                <p className="text-sm font-semibold text-[#0F172A] dark:text-white">Nova</p>
+                <p className="text-xs text-[#475569] dark:text-[#A8B0C2]">AI Copilot</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">
+            <p className="text-xs text-[#475569] dark:text-[#A8B0C2] mb-3">
               Ready to help with tickets, lookups, and responses.
             </p>
             <Button
@@ -231,8 +236,9 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 'flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                 pathname === '/settings'
                   ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent dark:hover:bg-[#27272A]'
+                  : 'hover:bg-[#E2E8F0] dark:hover:bg-[#27272A]'
               )}
+              style={pathname !== '/settings' ? { color: '#1E293B' } : undefined}
             >
               <Icons.settings className="w-5 h-5" />
               <span>Settings</span>
