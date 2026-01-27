@@ -23,7 +23,7 @@ export default function DashboardLayout({
     <ToastProvider>
       <KeyboardShortcutsProvider>
         <CommandPaletteProvider>
-          <div className="flex h-screen overflow-hidden bg-background">
+          <div className="flex h-screen overflow-hidden bg-transparent">
             {/* Animated background */}
             <AnimatedBackground intensity="subtle" />
 
@@ -44,7 +44,7 @@ export default function DashboardLayout({
             </MobileSidebarOverlay>
 
             {/* Main content area */}
-            <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 bg-background">
+            <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 bg-transparent">
               <div className="p-4 lg:p-6">
                 {children}
               </div>

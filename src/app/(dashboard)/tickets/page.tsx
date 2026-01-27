@@ -78,7 +78,7 @@ export default function TicketsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-foreground">
             All Tickets
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -87,7 +87,10 @@ export default function TicketsPage() {
         </div>
         <div className="flex items-center gap-2">
           <GetNextTicketButton />
-          <Button className="bg-primary-600 hover:bg-primary-700 text-white">
+          <Button
+            className="bg-primary-600 hover:bg-primary-700 text-white"
+            onClick={() => router.push('/tickets/new')}
+          >
             + New Ticket
           </Button>
         </div>
@@ -97,7 +100,7 @@ export default function TicketsPage() {
       <FilterBar filters={filters} onFiltersChange={setFilters} />
 
       {/* Ticket List */}
-      <Card className="bg-card border-border/70">
+      <Card className="glass border-0 overflow-hidden">
         <CardContent className="p-0">
           {isLoading ? (
             <div className="divide-y divide-border/70">

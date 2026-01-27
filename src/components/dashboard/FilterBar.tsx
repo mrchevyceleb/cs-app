@@ -357,7 +357,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
             <Badge
               key={status}
               variant="secondary"
-              className="gap-1 capitalize cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+              className="gap-1 capitalize cursor-pointer hover:bg-secondary/80"
               onClick={() => toggleArrayFilter('status', status)}
             >
               {status}
@@ -368,7 +368,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
             <Badge
               key={priority}
               variant="secondary"
-              className="gap-1 capitalize cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+              className="gap-1 capitalize cursor-pointer hover:bg-secondary/80"
               onClick={() => toggleArrayFilter('priority', priority)}
             >
               {priority}
@@ -379,7 +379,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
             <Badge
               key={tag}
               variant="secondary"
-              className="gap-1 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+              className="gap-1 cursor-pointer hover:bg-secondary/80"
               onClick={() => toggleArrayFilter('tags', tag)}
             >
               #{tag}
@@ -389,7 +389,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
           {filters.aiHandled !== 'all' && (
             <Badge
               variant="secondary"
-              className="gap-1 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+              className="gap-1 cursor-pointer hover:bg-secondary/80"
               onClick={() => updateFilter('aiHandled', 'all')}
             >
               {filters.aiHandled === 'ai' ? 'AI only' : 'Human only'}

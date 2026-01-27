@@ -134,12 +134,12 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'flex flex-col h-screen w-64 border-r bg-sidebar border-sidebar-border',
+          'flex flex-col h-screen w-64 border-r bg-sidebar/80 backdrop-blur-xl border-sidebar-border shadow-xl shadow-indigo-500/5 transition-all duration-300',
           className
         )}
       >
         {/* Logo Section */}
-        <div className="p-4 border-b border-sidebar-border">
+        <div className="p-4 border-b border-sidebar-border/50">
           <Logo size="md" />
         </div>
 
@@ -147,8 +147,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         <div className="px-3 pt-4">
           <Button
             variant="outline"
-            className="w-full justify-start gap-2 h-9"
-            style={{ color: '#475569' }}
+            className="w-full justify-start gap-2 h-9 text-muted-foreground"
             onClick={() => openCommandPalette(true)}
           >
             <Icons.command className="w-4 h-4" />
@@ -174,22 +173,21 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                     isActive
-                      ? 'bg-primary-200/70 dark:bg-primary-900/40 text-primary-900 dark:text-primary-200'
-                      : 'hover:bg-[#E2E8F0] dark:hover:bg-[#27272A]'
+                      ? 'bg-sidebar-accent text-sidebar-primary shadow-sm border border-sidebar-border'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                   )}
-                  style={!isActive ? { color: '#1E293B' } : undefined}
                 >
                   <item.icon className={cn(
                     'w-5 h-5',
-                    isActive && 'text-primary-800 dark:text-primary-300'
+                    isActive ? 'text-sidebar-primary' : 'text-sidebar-foreground/70'
                   )} />
                   <span className="flex-1">{item.label}</span>
                   {item.badge && (
                     <span className={cn(
                       'px-2 py-0.5 text-xs font-semibold rounded-full',
                       isActive
-                        ? 'bg-primary-200/80 dark:bg-primary-800 text-primary-800 dark:text-primary-200'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-400'
+                        ? 'bg-sidebar-primary/10 text-sidebar-primary'
+                        : 'bg-sidebar-accent text-sidebar-foreground'
                     )}>
                       {item.badge}
                     </span>
@@ -203,22 +201,21 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
 
           {/* Nova AI Copilot Section */}
           <div
-            className="p-3 rounded-xl border border-primary-100/70 dark:border-primary-900/40"
-            style={{ background: 'linear-gradient(to bottom right, #EEF2FF, #F8FAFC)' }}
+            className="p-3 rounded-xl border border-[var(--nova-border)] bg-[image:var(--nova-gradient-bg)] shadow-sm"
           >
             <div className="flex items-center gap-3 mb-3">
               <NovaAvatar size="sm" />
               <div>
-                <p className="text-sm font-semibold text-[#0F172A] dark:text-white">Nova</p>
-                <p className="text-xs text-[#475569] dark:text-[#A8B0C2]">AI Copilot</p>
+                <p className="text-sm font-semibold text-foreground">Nova</p>
+                <p className="text-xs text-primary font-medium">AI Copilot</p>
               </div>
             </div>
-            <p className="text-xs text-[#475569] dark:text-[#A8B0C2] mb-3">
+            <p className="text-xs mb-3 text-muted-foreground">
               Ready to help with tickets, lookups, and responses.
             </p>
             <Button
               size="sm"
-              className="w-full bg-primary-600 hover:bg-primary-700 text-white"
+              className="w-full shadow-sm"
             >
               Ask Nova
             </Button>
@@ -235,10 +232,9 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
               className={cn(
                 'flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                 pathname === '/settings'
-                  ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                  : 'hover:bg-[#E2E8F0] dark:hover:bg-[#27272A]'
+                  ? 'bg-sidebar-accent text-sidebar-primary'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
               )}
-              style={pathname !== '/settings' ? { color: '#1E293B' } : undefined}
             >
               <Icons.settings className="w-5 h-5" />
               <span>Settings</span>
@@ -252,11 +248,11 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           {/* User Profile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-3 px-3 py-2 w-full rounded-lg hover:bg-gray-100 dark:hover:bg-[#27272A] transition-colors">
+              <button className="flex items-center gap-3 px-3 py-2 w-full rounded-lg hover:bg-sidebar-accent transition-colors">
                 <div className="relative">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={agent?.avatar_url || ''} />
-                    <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300 text-xs font-semibold">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                       {agent?.name ? getInitials(agent.name) : user?.email?.[0].toUpperCase() || 'AG'}
                     </AvatarFallback>
                   </Avatar>
@@ -270,14 +266,14 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">
                     {isLoading ? 'Loading...' : agent?.name || user?.email?.split('@')[0] || 'Agent'}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {agent?.email || user?.email || 'agent@r-link.com'}
                   </p>
                 </div>
-                <Icons.settings className="w-4 h-4 text-gray-400" />
+                <Icons.settings className="w-4 h-4 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">

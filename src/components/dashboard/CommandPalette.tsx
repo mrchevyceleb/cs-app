@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { Command } from 'cmdk'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -248,6 +249,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         'flex items-start justify-center pt-[20vh]'
       )}
     >
+      {/* Visually hidden title for accessibility */}
+      <DialogPrimitive.Title className="sr-only">Command Palette</DialogPrimitive.Title>
+
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/50 backdrop-blur-sm"
@@ -264,14 +268,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       )}>
         {/* Search Input */}
         <div className="flex items-center border-b border-border px-4">
-          <Icons.search className="w-5 h-5 text-gray-400 dark:text-gray-500 shrink-0" />
+          <Icons.search className="w-5 h-5 text-muted-foreground shrink-0" />
           <Command.Input
             value={search}
             onValueChange={setSearch}
             placeholder="Type a command or search..."
             className={cn(
               'flex-1 h-14 px-4 bg-transparent',
-              'text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500',
+              'text-foreground placeholder:text-muted-foreground',
               'outline-none border-none',
               'text-base'
             )}
@@ -289,7 +293,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
           {/* Navigation Group */}
           <Command.Group heading="Navigation" className="px-2 py-1.5">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pl-2">
               Navigation
             </span>
             <div className="mt-2 space-y-1">
@@ -300,8 +304,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   onSelect={() => runCommand(() => router.push(item.href))}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer',
-                    'text-gray-700 dark:text-gray-300',
-                    'data-[selected=true]:bg-primary-100 data-[selected=true]:text-primary-700',
+                    'text-foreground',
+                    'data-[selected=true]:bg-primary-50 data-[selected=true]:text-primary-700',
                     'dark:data-[selected=true]:bg-primary-900/40 dark:data-[selected=true]:text-primary-300',
                     'transition-colors duration-100'
                   )}
@@ -316,7 +320,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
           {/* Recent Tickets Group */}
           {tickets.length > 0 && (
             <Command.Group heading="Recent Tickets" className="px-2 py-1.5 mt-2">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pl-2">
                 Recent Tickets
               </span>
               <div className="mt-2 space-y-1">
@@ -327,8 +331,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                     onSelect={() => runCommand(() => router.push(`/tickets/${ticket.id}`))}
                     className={cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer',
-                      'text-gray-700 dark:text-gray-300',
-                      'data-[selected=true]:bg-primary-100 data-[selected=true]:text-primary-700',
+                      'text-foreground',
+                      'data-[selected=true]:bg-primary-50 data-[selected=true]:text-primary-700',
                       'dark:data-[selected=true]:bg-primary-900/40 dark:data-[selected=true]:text-primary-300',
                       'transition-colors duration-100'
                     )}
@@ -354,7 +358,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
           {/* Quick Actions Group */}
           <Command.Group heading="Quick Actions" className="px-2 py-1.5 mt-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pl-2">
               Quick Actions
             </span>
             <div className="mt-2 space-y-1">
@@ -365,8 +369,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   onSelect={() => runCommand(item.action)}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer',
-                    'text-gray-700 dark:text-gray-300',
-                    'data-[selected=true]:bg-primary-100 data-[selected=true]:text-primary-700',
+                    'text-foreground',
+                    'data-[selected=true]:bg-primary-50 data-[selected=true]:text-primary-700',
                     'dark:data-[selected=true]:bg-primary-900/40 dark:data-[selected=true]:text-primary-300',
                     'transition-colors duration-100'
                   )}
@@ -380,7 +384,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         </Command.List>
 
         {/* Footer */}
-        <div className="border-t border-border px-4 py-2.5 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="border-t border-border px-4 py-2.5 flex items-center justify-between text-xs text-muted-foreground bg-muted/50">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-muted rounded border border-border font-mono">

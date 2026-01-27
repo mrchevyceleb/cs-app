@@ -15,10 +15,10 @@ interface MetricCardProps {
 
 function MetricCard({ label, value, icon, variant = 'default', isLoading = false }: MetricCardProps) {
   const variantStyles = {
-    default: 'bg-card border-border/60',
-    success: 'bg-card border-border/60',
-    warning: 'bg-card border-border/60',
-    danger: 'bg-card border-border/60',
+    default: 'bg-card border-gray-200 dark:border-gray-700',
+    success: 'bg-card border-emerald-300 dark:border-emerald-800/60',
+    warning: 'bg-card border-amber-300 dark:border-amber-800/60',
+    danger: 'bg-card border-red-300 dark:border-red-800/60',
   }
 
   const iconStyles = {
@@ -29,13 +29,15 @@ function MetricCard({ label, value, icon, variant = 'default', isLoading = false
   }
 
   return (
-    <Card className={cn(
-      'p-4 border shadow-sm hover:shadow-md transition-shadow',
-      variantStyles[variant]
-    )}>
+    <Card
+      className={cn(
+        'p-4 border-2 transition-all duration-200 hover:-translate-y-1 shadow-lg shadow-indigo-100/40 dark:shadow-none',
+        variantStyles[variant]
+      )}
+    >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium" style={{ color: '#0F172A' }}>{label}</p>
+          <p className="text-sm font-medium text-dark">{label}</p>
           {isLoading ? (
             <Skeleton className="h-8 w-16 mt-1" />
           ) : (

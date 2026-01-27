@@ -18,34 +18,25 @@ export function AnimatedBackground({
   }
 
   return (
-    <div className={cn('fixed inset-0 -z-10 overflow-hidden', className)}>
-      {/* Base gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#F6F8FB] via-[#EEF2FF]/40 to-[#F1F5F9] dark:from-[#0B0F16] dark:via-[#121A2A]/55 dark:to-[#0B0F16]" />
-
+    <div className={cn('fixed inset-0 -z-10 overflow-hidden pointer-events-none', className)}>
       {/* Animated gradient mesh */}
       <div className={cn('absolute inset-0', opacityMap[intensity])}>
-        {/* Blob 1 - Top left */}
+        {/* Blob 1 - Top left - Softer Indigo */}
         <div
-          className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-br from-primary-200 to-primary-400 dark:from-[#1A223B] dark:to-[#26305A] rounded-full blur-3xl animate-gradient-shift"
+          className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-indigo-300/50 dark:bg-primary-900/30 rounded-full blur-[100px] animate-gradient-shift mix-blend-multiply dark:mix-blend-screen"
           style={{ animationDelay: '0s' }}
         />
 
-        {/* Blob 2 - Top right */}
+        {/* Blob 2 - Top right - Subtle Purple */}
         <div
-          className="absolute -top-20 right-0 w-80 h-80 bg-gradient-to-bl from-[#E0E7FF] to-primary-300 dark:from-[#1B2540] dark:to-[#2B3358] rounded-full blur-3xl animate-gradient-shift"
+          className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-300/40 dark:bg-purple-900/30 rounded-full blur-[120px] animate-gradient-shift mix-blend-multiply dark:mix-blend-screen"
+          style={{ animationDelay: '-5s' }}
+        />
+
+        {/* Blob 3 - Bottom left - Warm Slate */}
+        <div
+          className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-slate-300/60 dark:bg-slate-800/30 rounded-full blur-[100px] animate-gradient-shift mix-blend-multiply dark:mix-blend-screen"
           style={{ animationDelay: '-10s' }}
-        />
-
-        {/* Blob 3 - Bottom center */}
-        <div
-          className="absolute bottom-0 left-1/3 w-96 h-96 bg-gradient-to-tr from-[#E2E8F0] to-primary-200 dark:from-[#172435] dark:to-[#25324B] rounded-full blur-3xl animate-gradient-shift"
-          style={{ animationDelay: '-20s' }}
-        />
-
-        {/* Blob 4 - Center */}
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-primary-100/45 dark:from-[#253050]/45 to-transparent rounded-full blur-3xl"
-          style={{ animation: 'pulse 8s ease-in-out infinite' }}
         />
       </div>
 

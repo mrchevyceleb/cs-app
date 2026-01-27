@@ -25,7 +25,7 @@ export default function DashboardPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">
             Support Dashboard
           </h1>
-          <p className="text-sm mt-1" style={{ color: '#475569' }}>
+          <p className="text-sm mt-1 text-medium">
             Manage customer tickets with AI-powered assistance
           </p>
         </div>
@@ -33,7 +33,11 @@ export default function DashboardPage() {
           <Button variant="outline" size="sm" className="sm:size-default">
             Export
           </Button>
-          <Button size="sm" className="sm:size-default bg-primary-600 hover:bg-primary-700 text-white">
+          <Button
+            size="sm"
+            className="sm:size-default bg-primary-600 hover:bg-primary-700 text-white"
+            onClick={() => router.push('/tickets/new')}
+          >
             + New Ticket
           </Button>
         </div>
