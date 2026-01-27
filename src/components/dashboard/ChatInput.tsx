@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { cn } from '@/lib/utils'
+import { useTicketTyping, formatTypingIndicator } from '@/contexts/RealtimeContext'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -60,6 +61,9 @@ interface ChatInputProps {
   error?: string | null
   onRetry?: () => void
   onClearError?: () => void
+  // Typing indicator props
+  currentAgentId?: string
+  currentAgentName?: string
 }
 
 function isValidFile(file: File): { valid: boolean; error?: string } {
@@ -87,6 +91,8 @@ export function ChatInput({
   error,
   onRetry,
   onClearError,
+  currentAgentId,
+  currentAgentName,
 }: ChatInputProps) {
   const [message, setMessage] = useState('')
   const [isExpanded, setIsExpanded] = useState(false)
@@ -96,6 +102,42 @@ export function ChatInput({
   const [attachments, setAttachments] = useState<UploadedFile[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Typing indicator integration
+  const { typingUsers, startTyping, stopTyping } = useTicketTyping(ticketId)
+  const typingIndicatorText = useMemo(() => formatTypingIndicator(typingUsers), [typingUsers])
+
+  // Handle typing indicator on message change
+  useEffect(() => {
+    if (!ticketId || !currentAgentId || !message.trim()) {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+        typingTimeoutRef.current = null
+      }
+      if (currentAgentId) {
+        stopTyping(currentAgentId, 'agent')
+      }
+      return
+    }
+
+    // Broadcast typing
+    startTyping(currentAgentId, 'agent', currentAgentName)
+
+    // Debounce stop typing
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+    typingTimeoutRef.current = setTimeout(() => {
+      stopTyping(currentAgentId, 'agent')
+    }, 3000)
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+    }
+  }, [message, ticketId, currentAgentId, currentAgentName, startTyping, stopTyping])
 
   // Canned response shortcut hook
   const handleShortcutMatch = useCallback((newValue: string) => {
@@ -426,13 +468,13 @@ export function ChatInput({
 
       <div
         className={cn(
-          'flex items-end gap-2 p-2 rounded-xl border transition-all duration-200',
+          'flex items-end gap-2 p-2 rounded-xl transition-all duration-200 border shadow-sm',
           isInternalNote
-            ? 'border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/20'
-            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800',
+            ? 'border-amber-200 bg-amber-50/80 dark:bg-amber-900/20 dark:border-amber-800'
+            : 'border-indigo-100 dark:border-slate-700 bg-gradient-to-r from-white via-indigo-50/30 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-900',
           isInternalNote
-            ? 'focus-within:ring-2 focus-within:ring-amber-500/20 focus-within:border-amber-500'
-            : 'focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:border-primary-500',
+            ? 'focus-within:ring-2 focus-within:ring-amber-500/20'
+            : 'focus-within:ring-2 focus-within:ring-primary-500/10 focus-within:border-primary-400/50',
           (disabled || isSending) && 'opacity-50 cursor-not-allowed'
         )}
       >
@@ -477,9 +519,10 @@ export function ChatInput({
           data-chat-input="true"
           className={cn(
             'flex-1 resize-none border-0 shadow-none focus-visible:ring-0 p-0',
-            'min-h-[36px] max-h-[120px]',
-            'text-sm placeholder:text-gray-400'
-          )}
+                        'min-h-[36px] max-h-[120px]',
+                        'text-sm placeholder:text-muted-foreground'
+                      )
+                    }
           rows={1}
         />
 
@@ -640,6 +683,18 @@ export function ChatInput({
               <X className="h-4 w-4" />
             </button>
           )}
+        </div>
+      )}
+
+      {/* Typing Indicator */}
+      {typingIndicatorText && (
+        <div className="flex items-center gap-2 px-2 py-1 text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex gap-1">
+            <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+          <span>{typingIndicatorText}</span>
         </div>
       )}
 

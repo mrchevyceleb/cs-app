@@ -171,6 +171,12 @@ export default function TicketDetailPage() {
       content_translated: null,
       original_language: null,
       metadata: isInternal ? { is_internal: true } : {},
+      source: 'dashboard',
+      external_id: null,
+      routing_decision: null,
+      delivery_status: 'pending',
+      delivered_at: null,
+      read_at: null,
     }
 
     // Add optimistic message to UI immediately
@@ -359,16 +365,16 @@ export default function TicketDetailPage() {
             variant="ghost"
             size="sm"
             onClick={() => router.push('/')}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            className="text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white truncate">
+            <h1 className="text-lg sm:text-xl font-semibold text-foreground truncate">
               {ticket.subject}
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
               Ticket #{ticket.id.slice(0, 8)} • {ticket.customer?.name || 'Unknown Customer'}
             </p>
           </div>

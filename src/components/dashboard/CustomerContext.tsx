@@ -142,13 +142,13 @@ export function CustomerContext({
   )
 
   return (
-    <Card className="h-full overflow-y-auto bg-card border-border/70">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
+    <div className="h-full flex flex-col glass border-0 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/10">
+      <div className="p-4 border-b border-border/40 bg-white/30 dark:bg-slate-900/30">
+        <h2 className="font-semibold flex items-center gap-2 text-foreground">
           <User className="h-4 w-4" />
           Customer Context
-        </CardTitle>
-      </CardHeader>
+        </h2>
+      </div>
 
       <CardContent className="space-y-5">
         {/* Customer Profile */}
@@ -254,7 +254,7 @@ export function CustomerContext({
               <button
                 key={tag}
                 onClick={() => handleTagAdd(tag)}
-                className="text-[10px] px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                className="text-[10px] px-2 py-0.5 bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-slate-400 rounded hover:bg-indigo-100 dark:hover:bg-slate-700 border border-indigo-100 dark:border-slate-700 transition-colors"
               >
                 + {tag}
               </button>
@@ -327,6 +327,6 @@ export function CustomerContext({
           </div>
         </div>
       </CardContent>
-    </Card>
+    </div>
   )
 }

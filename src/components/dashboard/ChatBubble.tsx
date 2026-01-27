@@ -5,28 +5,52 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ConfidenceScore } from './ConfidenceScore'
 import { MessageAttachments } from './MessageAttachment'
-import { Sparkles, User, Headphones, Globe, Loader2, Lock } from 'lucide-react'
+import { Sparkles, User, Headphones, Globe, Loader2, Lock, Check, CheckCheck, Phone, Mail, MessageSquare } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import type { Message, MessageMetadata, MessageAttachment, MessageWithAttachments } from '@/types/database'
+import type { Message, MessageMetadata, MessageAttachment, MessageWithAttachments, DeliveryStatus, MessageSource } from '@/types/database'
 
 interface ChatBubbleProps {
   message: Message | MessageWithAttachments
   customerName?: string
   isPending?: boolean
+  showReadStatus?: boolean
+  isRead?: boolean
+}
+
+// Channel icon mapping
+const channelIcons: Record<MessageSource, React.ComponentType<{ className?: string }>> = {
+  dashboard: Headphones,
+  portal: User,
+  widget: MessageSquare,
+  sms: Phone,
+  email: Mail,
+  slack: MessageSquare,
+  api: MessageSquare,
+}
+
+// Channel labels
+const channelLabels: Record<MessageSource, string> = {
+  dashboard: 'Dashboard',
+  portal: 'Portal',
+  widget: 'Widget',
+  sms: 'SMS',
+  email: 'Email',
+  slack: 'Slack',
+  api: 'API',
 }
 
 const senderConfig = {
   customer: {
     align: 'left' as const,
-    bgColor: 'bg-gray-100 dark:bg-gray-800',
-    textColor: 'text-gray-900 dark:text-gray-100',
+    bgColor: 'bg-gradient-to-br from-white to-indigo-50/50 dark:from-slate-800 dark:to-slate-800/50 border border-indigo-100 dark:border-slate-700 shadow-sm',
+    textColor: 'text-slate-900 dark:text-slate-100',
     icon: User,
     label: 'Customer',
-    avatarBg: 'bg-gray-200 dark:bg-gray-700',
+    avatarBg: 'bg-indigo-100 text-indigo-600 dark:bg-slate-700 dark:text-slate-300',
   },
   agent: {
     align: 'right' as const,
-    bgColor: 'bg-primary-600 dark:bg-primary-700',
+    bgColor: 'bg-primary-600 dark:bg-primary-700 shadow-md shadow-primary-500/10 text-white',
     textColor: 'text-white',
     icon: Headphones,
     label: 'Agent',
@@ -34,8 +58,8 @@ const senderConfig = {
   },
   ai: {
     align: 'left' as const,
-    bgColor: 'bg-gradient-to-br from-purple-50 to-primary-50 dark:from-purple-900/30 dark:to-primary-900/30',
-    textColor: 'text-gray-900 dark:text-gray-100',
+    bgColor: 'bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800 shadow-sm shadow-purple-500/5',
+    textColor: 'text-slate-900 dark:text-slate-100',
     icon: Sparkles,
     label: 'Nova AI',
     avatarBg: 'bg-gradient-to-br from-primary-400 to-purple-500',
@@ -100,7 +124,7 @@ function getAttachments(message: Message | MessageWithAttachments): MessageAttac
   return []
 }
 
-export function ChatBubble({ message, customerName, isPending = false }: ChatBubbleProps) {
+export function ChatBubble({ message, customerName, isPending = false, showReadStatus = false, isRead = false }: ChatBubbleProps) {
   const isInternal = isInternalNote(message)
   const attachments = getAttachments(message)
 
@@ -180,6 +204,31 @@ export function ChatBubble({ message, customerName, isPending = false }: ChatBub
               getRelativeTime(message.created_at)
             )}
           </span>
+
+          {/* Channel indicator */}
+          {message.source && message.source !== 'dashboard' && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 h-4 gap-1"
+            >
+              {(() => {
+                const ChannelIcon = channelIcons[message.source as MessageSource] || MessageSquare
+                return <ChannelIcon className="h-2.5 w-2.5" />
+              })()}
+              {channelLabels[message.source as MessageSource] || message.source}
+            </Badge>
+          )}
+
+          {/* Read status for agent/AI messages */}
+          {showReadStatus && message.sender_type !== 'customer' && !isPending && (
+            <span className="text-xs text-gray-400 flex items-center">
+              {isRead ? (
+                <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
+              ) : (
+                <Check className="h-3.5 w-3.5" />
+              )}
+            </span>
+          )}
 
           {/* Language Badge */}
           {message.original_language && message.original_language !== 'en' && (

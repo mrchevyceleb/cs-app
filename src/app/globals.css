@@ -139,7 +139,8 @@
   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 
    /* Nova Gradient - Dark */
-  --nova-gradient-bg: linear-gradient(135deg, rgba(49, 46, 129, 0.2) 0%, rgba(15, 23, 42, 0.4) 100%);
+  /* Increased opacity and darker base for better contrast */
+  --nova-gradient-bg: linear-gradient(135deg, rgba(49, 46, 129, 0.4) 0%, rgba(15, 23, 42, 0.95) 100%);
   --nova-border: var(--primary-900);
 }
 
@@ -229,7 +230,8 @@
   }
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(135deg, #F1F5F9 0%, #E0E7FF 100%);
+    background-image: var(--nova-gradient-bg);
+    background-attachment: fixed;
     min-height: 100vh;
   }
   

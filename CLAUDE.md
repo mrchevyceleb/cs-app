@@ -43,12 +43,18 @@ src/
 │   │   ├── canned-responses/     # Saved responses
 │   │   ├── chat/                 # AI chat endpoints
 │   │   ├── feedback/             # CSAT feedback
+│   │   ├── ingest/               # Unified channel ingest
 │   │   ├── knowledge/            # RAG knowledge base
 │   │   ├── metrics/              # Dashboard metrics
 │   │   ├── portal/               # Customer portal APIs
 │   │   ├── sla/                  # SLA policies
+│   │   ├── sms/send/             # Outbound SMS
 │   │   ├── tickets/              # Ticket CRUD + messages
 │   │   ├── upload/               # File attachments
+│   │   ├── webhooks/             # Webhook management + inbound
+│   │   │   ├── twilio/sms/       # Twilio SMS webhook
+│   │   │   ├── email/            # Email inbound webhook
+│   │   │   └── inbound/slack/    # Slack webhook
 │   │   ├── widget/               # Embeddable widget APIs
 │   │   └── workflows/            # Automation rules
 │   ├── feedback/                 # Public feedback pages
@@ -74,15 +80,31 @@ src/
 │       └── WidgetNewTicket.tsx   # New ticket form
 │
 ├── contexts/                     # React contexts
-│   └── KeyboardShortcutsContext.tsx
+│   ├── KeyboardShortcutsContext.tsx
+│   └── RealtimeContext.tsx       # Typing, read receipts, presence
 │
 ├── hooks/                        # Custom hooks
-│   └── useKeyboardShortcuts.ts
+│   ├── useKeyboardShortcuts.ts
+│   ├── useTypingIndicator.ts     # Typing indicator hook
+│   └── useReadReceipts.ts        # Read receipts hook
 │
 ├── lib/
+│   ├── ai-router/                # AI unified routing
+│   │   ├── index.ts              # Main orchestrator
+│   │   ├── triage.ts             # Claude triage logic
+│   │   ├── prompts.ts            # AI prompts
+│   │   └── formatters.ts         # Channel-aware formatting
+│   ├── channels/                 # Channel management
+│   │   └── customer.ts           # Find/create customers
 │   ├── email/                    # Email utilities
+│   │   └── inbound.ts            # Inbound email processing
 │   ├── portal/                   # Portal auth
 │   ├── supabase/                 # Supabase clients
+│   ├── twilio/                   # Twilio SMS integration
+│   │   └── client.ts             # SMS send/receive
+│   ├── webhooks/                 # Webhook infrastructure
+│   │   ├── service.ts            # Dispatch & retry logic
+│   │   └── signatures.ts         # HMAC signatures
 │   ├── widget/                   # Widget utilities
 │   │   ├── auth.ts               # Widget authentication
 │   │   ├── config.ts             # Widget configuration
@@ -99,7 +121,10 @@ public/
     └── loader.js                 # Embeddable widget loader script
 
 supabase/
-└── migrations/                   # Database migrations (001-014)
+└── migrations/                   # Database migrations (001-017)
+    ├── 015_channel_support.sql   # Multi-channel support
+    ├── 016_webhooks.sql          # Webhook infrastructure
+    └── 017_read_receipts.sql     # Read receipts & typing
 ```
 
 ## Key Features
@@ -138,6 +163,20 @@ supabase/
 - Resolution times
 - CSAT scores
 - Agent performance metrics
+
+### 7. Omnichannel Communication
+- **SMS** (Twilio) - Inbound/outbound SMS support
+- **Email** - Inbound email creates/updates tickets
+- **Slack** - Slack workspace integration
+- **Webhooks** - Extensible webhook infrastructure
+- Unified AI routing across all channels
+- Channel-aware response formatting
+
+### 8. Real-time Features
+- Typing indicators (Supabase Broadcast)
+- Read receipts
+- Live presence tracking
+- Real-time message delivery status
 
 ## Database Schema
 
@@ -217,6 +256,19 @@ OPENAI_API_KEY=
 
 # Email (optional, enables notifications)
 RESEND_API_KEY=
+
+# Twilio SMS (optional, enables SMS channel)
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_PHONE_NUMBER=
+
+# Email Inbound (optional, enables email channel)
+INBOUND_EMAIL_ADDRESS=support@yourdomain.com
+INBOUND_EMAIL_WEBHOOK_SECRET=
+
+# Slack Integration (optional, enables Slack channel)
+SLACK_BOT_TOKEN=
+SLACK_SIGNING_SECRET=
 ```
 
 ## Development Guidelines

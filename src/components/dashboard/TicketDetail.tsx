@@ -167,9 +167,9 @@ export function TicketDetail({
   const hasSlaInfo = firstResponseSla || resolutionSla
 
   return (
-    <Card className="h-full flex flex-col bg-card border-border/70">
+    <div className="h-full flex flex-col glass border-0 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/10">
       {/* Ticket Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-b border-gray-200/50 dark:border-gray-700/50 gap-2 sm:gap-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-b border-border/40 gap-2 sm:gap-0">
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Status Select */}
           <Select value={ticket.status} onValueChange={handleStatusChange}>
@@ -373,10 +373,10 @@ export function TicketDetail({
 
       {/* SLA Status Section - shown when SLA info is available */}
       {hasSlaInfo && (
-        <div className="px-4 py-3 border-b border-gray-200/50 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/30">
+        <div className="px-4 py-3 border-b border-border/40 bg-slate-50/40 dark:bg-slate-900/20 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-3">
-            <Timer className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <Timer className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium text-foreground">
               SLA Status
             </h3>
             {activeSla && (
@@ -478,7 +478,7 @@ export function TicketDetail({
           <TicketTimeline ticketId={ticket.id} />
         </TabsContent>
       </Tabs>
-    </Card>
+    </div>
   )
 }
 
@@ -514,7 +514,7 @@ function QuickSuggestions({ onSelect }: { onSelect: (text: string) => void }) {
           <button
             key={index}
             onClick={() => onSelect(suggestion)}
-            className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="px-3 py-1.5 text-xs bg-white border border-indigo-100 text-indigo-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 rounded-full hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
           >
             {suggestion}
           </button>

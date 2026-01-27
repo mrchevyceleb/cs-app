@@ -192,10 +192,10 @@ export default function KnowledgePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">
             Knowledge Base
           </h1>
-          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Manage help articles for AI-powered responses ({total} articles)
           </p>
         </div>
@@ -250,7 +250,7 @@ export default function KnowledgePage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="bg-card border-border/70">
+            <Card key={i} className="glass border-0">
               <CardHeader className="pb-2">
                 <Skeleton className="h-5 w-20 mb-2" />
                 <Skeleton className="h-6 w-full" />
@@ -263,15 +263,15 @@ export default function KnowledgePage() {
           ))}
         </div>
       ) : error ? (
-        <Card className="bg-card border-border/70">
+        <Card className="glass border-0">
           <CardContent className="py-12 text-center">
             <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-7 h-7 text-red-500" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Failed to load articles
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">{error}</p>
+            <p className="text-muted-foreground mb-4">{error}</p>
             <Button
               onClick={fetchArticles}
               variant="outline"
@@ -283,13 +283,13 @@ export default function KnowledgePage() {
           </CardContent>
         </Card>
       ) : articles.length === 0 ? (
-        <Card className="bg-card border-border/70">
+        <Card className="glass border-0">
           <CardContent className="py-12 text-center">
             <div className="text-6xl mb-4">📚</div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               No articles found
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-muted-foreground mb-4">
               {searchQuery || categoryFilter !== 'all'
                 ? 'Try adjusting your search or filters'
                 : 'Get started by adding your first knowledge base article'}
@@ -309,7 +309,7 @@ export default function KnowledgePage() {
           {articles.map((article) => (
             <Card
               key={article.id}
-              className="bg-card border-border/70 hover:shadow-lg transition-all cursor-pointer group relative hover-lift"
+              className="glass border-0 hover:shadow-lg transition-all cursor-pointer group relative hover-lift"
               onClick={() => handleEdit(article)}
             >
               <CardHeader className="pb-2">
@@ -318,16 +318,16 @@ export default function KnowledgePage() {
                     {article.category}
                   </Badge>
                 )}
-                <CardTitle className="text-base leading-snug pr-8">
+                <CardTitle className="text-base leading-snug pr-8 text-foreground">
                   {article.title}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3">
+                <p className="text-sm text-muted-foreground line-clamp-3">
                   {article.content}
                 </p>
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-muted-foreground/70">
                     {new Date(article.created_at).toLocaleDateString()}
                   </span>
                   <Button
