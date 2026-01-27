@@ -50,10 +50,10 @@ export function Logo({ className, size = 'md', showText = true }: LogoProps) {
 
       {showText && (
         <div className="flex flex-col">
-          <span className={cn('font-bold tracking-tight text-gray-900 dark:text-white', textSizes[size])}>
+          <span className={cn('font-bold tracking-tight text-foreground', textSizes[size])}>
             R-Link
           </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
+          <span className="text-xs text-muted-foreground -mt-1">
             Support Hub
           </span>
         </div>

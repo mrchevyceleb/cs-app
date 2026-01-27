@@ -255,7 +255,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
               onValueChange={(v) => setActiveTab(v as FilterTab)}
               className="w-full sm:w-auto"
             >
-              <TabsList className="h-8 w-full sm:w-auto grid grid-cols-4 sm:flex text-foreground/70">
+              <TabsList className="h-8 w-full sm:w-auto grid grid-cols-4 sm:flex">
                 <TabsTrigger value="all" className="text-xs px-2 sm:px-3">
                   <span className="hidden sm:inline">All</span>
                   <span className="sm:hidden">All</span>
@@ -364,7 +364,7 @@ function ErrorStateComponent({ message, onRetry }: { message: string; onRetry: (
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         Failed to load tickets
       </h3>
-      <p className="text-muted-foreground mb-4">{message}</p>
+              <p className="text-muted-foreground mb-4">{message}</p>
       <Button onClick={onRetry} variant="outline" className="gap-2">
         <RefreshCw className="w-4 h-4" />
         Try again

@@ -22,10 +22,10 @@ function MetricCard({ label, value, icon, variant = 'default', isLoading = false
   }
 
   const iconStyles = {
-    default: 'bg-primary-100 text-primary-600 dark:bg-primary-900/50 dark:text-primary-400',
-    success: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400',
-    warning: 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400',
-    danger: 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400',
+    default: 'bg-primary-200/70 text-primary-800 dark:bg-primary-900/50 dark:text-primary-300',
+    success: 'bg-emerald-200/70 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
+    warning: 'bg-amber-200/70 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
+    danger: 'bg-red-200/70 text-red-800 dark:bg-red-900/50 dark:text-red-300',
   }
 
   return (
@@ -35,7 +35,7 @@ function MetricCard({ label, value, icon, variant = 'default', isLoading = false
     )}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-foreground/70">{label}</p>
+          <p className="text-sm font-medium text-foreground">{label}</p>
           {isLoading ? (
             <Skeleton className="h-8 w-16 mt-1" />
           ) : (

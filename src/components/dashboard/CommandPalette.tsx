@@ -380,7 +380,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         </Command.List>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 dark:border-[#3F3F46] px-4 py-2.5 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="border-t border-border px-4 py-2.5 flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-muted rounded border border-border font-mono">

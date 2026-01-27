@@ -173,20 +173,20 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                     isActive
-                      ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                      : 'text-foreground/80 hover:bg-gray-100/70 dark:hover:bg-[#27272A] hover:text-foreground'
+                      ? 'bg-primary-200/70 dark:bg-primary-900/40 text-primary-900 dark:text-primary-200'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent dark:hover:bg-[#27272A] hover:text-foreground'
                   )}
                 >
                   <item.icon className={cn(
                     'w-5 h-5',
-                    isActive && 'text-primary-600 dark:text-primary-400'
+                    isActive && 'text-primary-800 dark:text-primary-300'
                   )} />
                   <span className="flex-1">{item.label}</span>
                   {item.badge && (
                     <span className={cn(
                       'px-2 py-0.5 text-xs font-semibold rounded-full',
                       isActive
-                        ? 'bg-primary-200 dark:bg-primary-800 text-primary-700 dark:text-primary-300'
+                        ? 'bg-primary-200/80 dark:bg-primary-800 text-primary-800 dark:text-primary-200'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-400'
                     )}>
                       {item.badge}
@@ -204,7 +204,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
             <div className="flex items-center gap-3 mb-3">
               <NovaAvatar size="sm" />
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">Nova</p>
+                <p className="text-sm font-semibold text-foreground">Nova</p>
                 <p className="text-xs text-muted-foreground">AI Copilot</p>
               </div>
             </div>
@@ -231,7 +231,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 'flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                 pathname === '/settings'
                   ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                  : 'text-foreground/80 hover:bg-gray-100/70 dark:hover:bg-[#27272A]'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent dark:hover:bg-[#27272A]'
               )}
             >
               <Icons.settings className="w-5 h-5" />

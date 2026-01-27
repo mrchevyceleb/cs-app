@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Widget Test Page</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      padding: 40px;
+      max-width: 800px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+    h1 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+    p {
+      margin-bottom: 15px;
+      color: #666;
+    }
+    .controls {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+    .controls h2 {
+      font-size: 16px;
+      margin-bottom: 15px;
+      color: #333;
+    }
+    button {
+      padding: 10px 20px;
+      margin-right: 10px;
+      margin-bottom: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #4F46E5;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #4338CA;
+    }
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+    .content {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .content h2 {
+      margin-bottom: 15px;
+      color: #333;
+    }
+    .content ul {
+      padding-left: 20px;
+    }
+    .content li {
+      margin-bottom: 8px;
+      color: #666;
+    }
+    code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    pre {
+      background: #1f2937;
+      color: #e5e7eb;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 13px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Customer Support Widget Test</h1>
+
+  <p>
+    This page demonstrates the embeddable support widget. Look at the bottom-right
+    corner for the floating chat button.
+  </p>
+
+  <div class="controls">
+    <h2>Programmatic Controls</h2>
+    <button class="btn-primary" onclick="window.csWidget && window.csWidget.open()">
+      Open Widget
+    </button>
+    <button class="btn-secondary" onclick="window.csWidget && window.csWidget.close()">
+      Close Widget
+    </button>
+    <button class="btn-secondary" onclick="window.csWidget && window.csWidget.toggle()">
+      Toggle Widget
+    </button>
+    <br><br>
+    <button class="btn-primary" onclick="identifyUser()">
+      Identify as test@example.com
+    </button>
+  </div>
+
+  <div class="content">
+    <h2>How to Embed the Widget</h2>
+    <p>Add this script tag to any website:</p>
+    <pre>&lt;script
+  src="http://localhost:3000/widget/loader.js"
+  data-position="bottom-right"
+  data-primary-color="#4F46E5"
+  data-greeting="Hi! How can we help?"
+  data-company-name="Acme Support"
+  data-theme="auto"
+&gt;&lt;/script&gt;</pre>
+
+    <h2>Available Options</h2>
+    <ul>
+      <li><code>data-api-key</code> - Your widget API key (optional for now)</li>
+      <li><code>data-position</code> - "bottom-right" (default) or "bottom-left"</li>
+      <li><code>data-primary-color</code> - Hex color for branding (default: #4F46E5)</li>
+      <li><code>data-greeting</code> - Welcome message</li>
+      <li><code>data-company-name</code> - Your company name</li>
+      <li><code>data-theme</code> - "light", "dark", or "auto"</li>
+      <li><code>data-z-index</code> - Z-index for positioning (default: 999999)</li>
+    </ul>
+
+    <h2>JavaScript API</h2>
+    <ul>
+      <li><code>window.csWidget.open()</code> - Open the widget</li>
+      <li><code>window.csWidget.close()</code> - Close the widget</li>
+      <li><code>window.csWidget.toggle()</code> - Toggle open/close</li>
+      <li><code>window.csWidget.identify({email, name})</code> - Pre-identify user</li>
+      <li><code>window.csWidget.isOpen()</code> - Check if open</li>
+      <li><code>window.csWidget.on(event, callback)</code> - Listen for events</li>
+      <li><code>window.csWidget.off(event, callback)</code> - Remove listener</li>
+      <li><code>window.csWidget.destroy()</code> - Remove widget</li>
+    </ul>
+
+    <h2>Events</h2>
+    <ul>
+      <li><code>ready</code> - Widget has finished loading</li>
+      <li><code>open</code> - Widget was opened</li>
+      <li><code>close</code> - Widget was closed</li>
+      <li><code>error</code> - An error occurred</li>
+    </ul>
+  </div>
+
+  <script>
+    function identifyUser() {
+      if (window.csWidget) {
+        window.csWidget.identify({
+          email: 'test@example.com',
+          name: 'Test User'
+        });
+        alert('Identity sent! The widget will auto-authenticate this user.');
+      } else {
+        alert('Widget not loaded yet');
+      }
+    }
+
+    // Listen for widget events
+    document.addEventListener('DOMContentLoaded', function() {
+      // Wait for widget to load
+      var checkWidget = setInterval(function() {
+        if (window.csWidget) {
+          clearInterval(checkWidget);
+          console.log('Widget loaded!');
+
+          window.csWidget.on('ready', function() {
+            console.log('Widget ready');
+          });
+
+          window.csWidget.on('open', function() {
+            console.log('Widget opened');
+          });
+
+          window.csWidget.on('close', function() {
+            console.log('Widget closed');
+          });
+        }
+      }, 100);
+    });
+  </script>
+
+  <!-- Load the widget -->
+  <script
+    src="/widget/loader.js"
+    data-position="bottom-right"
+    data-primary-color="#4F46E5"
+    data-greeting="Hi! How can we help you today?"
+    data-company-name="Test Support"
+    data-theme="auto"
+  ></script>
+</body>
+</html>

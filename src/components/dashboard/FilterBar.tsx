@@ -169,7 +169,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
     <div className={cn('flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap', className)}>
       {/* Search Input */}
       <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-md">
-        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           type="text"
           placeholder="Search tickets..."
@@ -180,7 +180,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
         {filters.search && (
           <button
             onClick={() => updateFilter('search', '')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground/80 dark:hover:text-gray-200"
           >
             <XIcon className="w-4 h-4" />
           </button>
@@ -220,7 +220,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
 
             {/* Status Filter */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-foreground/70">Status</Label>
+              <Label className="text-xs font-medium text-foreground">Status</Label>
               <div className="grid grid-cols-2 gap-2">
                 {statusOptions.map((option) => (
                   <div key={option.value} className="flex items-center space-x-2">
@@ -247,7 +247,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
 
             {/* Priority Filter */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-foreground/70">Priority</Label>
+              <Label className="text-xs font-medium text-foreground">Priority</Label>
               <div className="grid grid-cols-2 gap-2">
                 {priorityOptions.map((option) => (
                   <div key={option.value} className="flex items-center space-x-2">
@@ -274,7 +274,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
 
             {/* Tags Filter */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-foreground/70">Tags</Label>
+              <Label className="text-xs font-medium text-foreground">Tags</Label>
               <div className="grid grid-cols-2 gap-2">
                 {tagOptions.map((option) => (
                   <div key={option.value} className="flex items-center space-x-2">
@@ -301,7 +301,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
 
             {/* AI Handled Filter */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-foreground/70">Handler</Label>
+              <Label className="text-xs font-medium text-foreground">Handler</Label>
               <Select
                 value={filters.aiHandled}
                 onValueChange={(v) =>
@@ -324,7 +324,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
 
       {/* Sort Dropdown */}
       <div className="flex items-center gap-2">
-        <SortIcon className="w-4 h-4 text-gray-400" />
+        <SortIcon className="w-4 h-4 text-muted-foreground" />
         <Select
           value={`${filters.sortBy}-${filters.sortOrder}`}
           onValueChange={(v) => {
