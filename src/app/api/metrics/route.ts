@@ -200,7 +200,7 @@ export async function GET(request: NextRequest) {
     let csatSum = 0
 
     for (const fb of feedbackList) {
-      if (fb.rating >= 1 && fb.rating <= 5) {
+      if (fb.rating !== null && fb.rating >= 1 && fb.rating <= 5) {
         csatDistribution[fb.rating]++
         csatSum += fb.rating
       }
@@ -218,7 +218,7 @@ export async function GET(request: NextRequest) {
 
     let csatTrend: number | null = null
     if (prevFeedback && prevFeedback.length > 0) {
-      const prevSum = prevFeedback.reduce((acc, fb) => acc + fb.rating, 0)
+      const prevSum = prevFeedback.reduce((acc, fb) => acc + (fb.rating ?? 0), 0)
       const prevAvg = prevSum / prevFeedback.length
       if (csatAverage !== null && prevAvg > 0) {
         csatTrend = Math.round(((csatAverage - prevAvg) / prevAvg) * 100)
@@ -329,7 +329,7 @@ export async function GET(request: NextRequest) {
     const ticketAgentMap = new Map(ticketList.map((t) => [t.id, t.assigned_agent_id]))
     for (const fb of feedbackList) {
       const agentId = ticketAgentMap.get(fb.ticket_id)
-      if (agentId && agentPerformance[agentId]) {
+      if (agentId && agentPerformance[agentId] && fb.rating !== null) {
         agentPerformance[agentId].feedbackCount++
         if (agentPerformance[agentId].avgRating === null) {
           agentPerformance[agentId].avgRating = fb.rating
