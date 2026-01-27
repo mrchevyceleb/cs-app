@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { sendTicketResolvedEmail, generatePortalToken } from '@/lib/email'
+import type { Customer } from '@/types/database'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -77,6 +79,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const body = await request.json()
 
+    // Fetch current ticket status before update (for email notification logic)
+    const { data: currentTicket } = await supabase
+      .from('tickets')
+      .select('status, customer:customers(*)')
+      .eq('id', id)
+      .single()
+
+    const previousStatus = currentTicket?.status
+
     // Allowed fields to update
     const allowedFields = [
       'status',
@@ -115,6 +126,32 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         { error: 'Failed to update ticket' },
         { status: 500 }
       )
+    }
+
+    // Send resolved email if status changed to 'resolved'
+    if (
+      ticket &&
+      body.status === 'resolved' &&
+      previousStatus !== 'resolved' &&
+      ticket.customer
+    ) {
+      const customer = ticket.customer as Customer
+      if (customer.email) {
+        const portalToken = generatePortalToken(customer.id, ticket.id)
+
+        // Send email asynchronously (don't wait for it)
+        sendTicketResolvedEmail(ticket, customer, portalToken)
+          .then((result) => {
+            if (result.success) {
+              console.log('[Tickets API] Ticket resolved email sent:', result.emailLogId)
+            } else {
+              console.error('[Tickets API] Failed to send ticket resolved email:', result.error)
+            }
+          })
+          .catch((err) => {
+            console.error('[Tickets API] Email send error:', err)
+          })
+      }
     }
 
     return NextResponse.json({ ticket })

@@ -15,10 +15,10 @@ interface MetricCardProps {
 
 function MetricCard({ label, value, icon, variant = 'default', isLoading = false }: MetricCardProps) {
   const variantStyles = {
-    default: 'from-gray-50 to-white dark:from-[#27272A] dark:to-[#18181B]',
-    success: 'from-emerald-50 to-white dark:from-emerald-950/40 dark:to-[#18181B]',
-    warning: 'from-amber-50 to-white dark:from-amber-950/40 dark:to-[#18181B]',
-    danger: 'from-red-50 to-white dark:from-red-950/40 dark:to-[#18181B]',
+    default: 'bg-card border-border/60',
+    success: 'bg-card border-border/60',
+    warning: 'bg-card border-border/60',
+    danger: 'bg-card border-border/60',
   }
 
   const iconStyles = {
@@ -30,16 +30,16 @@ function MetricCard({ label, value, icon, variant = 'default', isLoading = false
 
   return (
     <Card className={cn(
-      'p-4 bg-gradient-to-br border-0 shadow-sm hover:shadow-md transition-shadow',
+      'p-4 border shadow-sm hover:shadow-md transition-shadow',
       variantStyles[variant]
     )}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-400">{label}</p>
+          <p className="text-sm font-medium text-foreground/70">{label}</p>
           {isLoading ? (
             <Skeleton className="h-8 w-16 mt-1" />
           ) : (
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
           )}
         </div>
         <div className={cn('p-2 rounded-lg', iconStyles[variant])}>

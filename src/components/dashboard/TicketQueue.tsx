@@ -1,12 +1,17 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { TicketCard, TicketCardSkeleton, TicketWithCustomer } from './TicketCard'
+import { GetNextTicketButtonCompact } from './GetNextTicketButton'
+import { BulkActionsBar, BulkUpdates } from './BulkActionsBar'
+import { useTicketSelection } from '@/hooks'
 import { RefreshCw, AlertCircle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { Ticket, Customer } from '@/types/database'
 
 type FilterTab = 'all' | 'ai' | 'human' | 'escalated'
@@ -14,14 +19,27 @@ type FilterTab = 'all' | 'ai' | 'human' | 'escalated'
 interface TicketQueueProps {
   onTicketSelect?: (ticket: TicketWithCustomer) => void
   selectedTicketId?: string
+  currentAgentId?: string
 }
 
-export function TicketQueue({ onTicketSelect, selectedTicketId }: TicketQueueProps) {
+export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }: TicketQueueProps) {
   const [tickets, setTickets] = useState<TicketWithCustomer[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
+  const [bulkUpdateMessage, setBulkUpdateMessage] = useState<string | null>(null)
   const supabase = createClient()
+
+  // Use the ticket selection hook
+  const {
+    selectedIds,
+    isSelected: isTicketChecked,
+    toggleTicket,
+    selectAll,
+    clearSelection,
+    selectedCount,
+    hasSelection,
+  } = useTicketSelection()
 
   const fetchTickets = useCallback(async () => {
     setIsLoading(true)
@@ -116,18 +134,83 @@ export function TicketQueue({ onTicketSelect, selectedTicketId }: TicketQueuePro
   }, [supabase, fetchTickets])
 
   // Filter tickets based on active tab
-  const filteredTickets = tickets.filter((ticket) => {
-    switch (activeTab) {
-      case 'ai':
-        return ticket.ai_handled === true
-      case 'human':
-        return ticket.ai_handled === false
-      case 'escalated':
-        return ticket.status === 'escalated'
-      default:
-        return true
+  const filteredTickets = useMemo(() => {
+    return tickets.filter((ticket) => {
+      switch (activeTab) {
+        case 'ai':
+          return ticket.ai_handled === true
+        case 'human':
+          return ticket.ai_handled === false
+        case 'escalated':
+          return ticket.status === 'escalated'
+        default:
+          return true
+      }
+    })
+  }, [tickets, activeTab])
+
+  // Get IDs of filtered tickets for "Select All" functionality
+  const filteredTicketIds = useMemo(
+    () => filteredTickets.map((t) => t.id),
+    [filteredTickets]
+  )
+
+  // Check if all filtered tickets are selected
+  const allFilteredSelected = useMemo(() => {
+    if (filteredTicketIds.length === 0) return false
+    return filteredTicketIds.every((id) => selectedIds.has(id))
+  }, [filteredTicketIds, selectedIds])
+
+  // Check if some but not all filtered tickets are selected
+  const someFilteredSelected = useMemo(() => {
+    if (filteredTicketIds.length === 0) return false
+    const selectedFiltered = filteredTicketIds.filter((id) => selectedIds.has(id))
+    return selectedFiltered.length > 0 && selectedFiltered.length < filteredTicketIds.length
+  }, [filteredTicketIds, selectedIds])
+
+  // Handle select all checkbox
+  const handleSelectAll = (checked: boolean | 'indeterminate') => {
+    if (checked === true) {
+      selectAll(filteredTicketIds)
+    } else {
+      clearSelection()
     }
-  })
+  }
+
+  // Handle bulk update
+  const handleBulkUpdate = async (updates: BulkUpdates) => {
+    const ticketIds = Array.from(selectedIds)
+
+    try {
+      const response = await fetch('/api/tickets/bulk', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ticketIds, updates }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update tickets')
+      }
+
+      // Show success message
+      setBulkUpdateMessage(`Successfully updated ${data.updatedCount} ticket${data.updatedCount !== 1 ? 's' : ''}`)
+      setTimeout(() => setBulkUpdateMessage(null), 3000)
+
+      // Clear selection after successful update
+      clearSelection()
+
+      // Refresh tickets to get updated data
+      await fetchTickets()
+    } catch (err) {
+      console.error('Bulk update error:', err)
+      setBulkUpdateMessage(`Error: ${err instanceof Error ? err.message : 'Failed to update tickets'}`)
+      setTimeout(() => setBulkUpdateMessage(null), 5000)
+    }
+  }
 
   // Count badges
   const counts = {
@@ -138,82 +221,137 @@ export function TicketQueue({ onTicketSelect, selectedTicketId }: TicketQueuePro
   }
 
   return (
-    <Card className="bg-white dark:bg-[#18181B] border-gray-200 dark:border-[#3F3F46]">
-      <CardHeader className="pb-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <CardTitle className="text-lg">Ticket Queue</CardTitle>
-          <Tabs
-            value={activeTab}
-            onValueChange={(v) => setActiveTab(v as FilterTab)}
-            className="w-full sm:w-auto"
-          >
-            <TabsList className="h-8 w-full sm:w-auto grid grid-cols-4 sm:flex">
-              <TabsTrigger value="all" className="text-xs px-2 sm:px-3">
-                <span className="hidden sm:inline">All</span>
-                <span className="sm:hidden">All</span>
-                {counts.all > 0 && (
-                  <span className="ml-1 sm:ml-1.5 text-[10px] bg-gray-200 dark:bg-gray-700 px-1 sm:px-1.5 py-0.5 rounded-full">
-                    {counts.all}
-                  </span>
+    <>
+      <Card className="bg-card border-border/70">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              {/* Select All Checkbox */}
+              <div
+                className={cn(
+                  'flex items-center transition-opacity duration-200',
+                  hasSelection || filteredTickets.length > 0 ? 'opacity-100' : 'opacity-0'
                 )}
-              </TabsTrigger>
-              <TabsTrigger value="ai" className="text-xs px-2 sm:px-3">
-                <span className="hidden sm:inline">AI Handled</span>
-                <span className="sm:hidden">AI</span>
-                {counts.ai > 0 && (
-                  <span className="ml-1 sm:ml-1.5 text-[10px] bg-primary-200 dark:bg-primary-800 text-primary-700 dark:text-primary-300 px-1 sm:px-1.5 py-0.5 rounded-full">
-                    {counts.ai}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="human" className="text-xs px-2 sm:px-3">
-                <span className="hidden sm:inline">Needs Human</span>
-                <span className="sm:hidden">Human</span>
-                {counts.human > 0 && (
-                  <span className="ml-1 sm:ml-1.5 text-[10px] bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300 px-1 sm:px-1.5 py-0.5 rounded-full">
-                    {counts.human}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="escalated" className="text-xs px-2 sm:px-3">
-                <span className="hidden sm:inline">Escalated</span>
-                <span className="sm:hidden">Esc</span>
-                {counts.escalated > 0 && (
-                  <span className="ml-1 sm:ml-1.5 text-[10px] bg-red-200 dark:bg-red-800 text-red-700 dark:text-red-300 px-1 sm:px-1.5 py-0.5 rounded-full">
-                    {counts.escalated}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="divide-y divide-gray-100 dark:divide-[#3F3F46]">
-          {isLoading ? (
-            // Skeleton loaders
-            Array.from({ length: 5 }).map((_, i) => (
-              <TicketCardSkeleton key={i} />
-            ))
-          ) : error ? (
-            // Error State
-            <ErrorStateComponent message={error} onRetry={fetchTickets} />
-          ) : filteredTickets.length > 0 ? (
-            filteredTickets.map((ticket) => (
-              <TicketCard
-                key={ticket.id}
-                ticket={ticket}
-                isSelected={ticket.id === selectedTicketId}
-                onClick={() => onTicketSelect?.(ticket)}
-              />
-            ))
-          ) : (
-            // Empty State
-            <EmptyState filter={activeTab} />
+              >
+                <Checkbox
+                  checked={allFilteredSelected ? true : someFilteredSelected ? 'indeterminate' : false}
+                  onCheckedChange={handleSelectAll}
+                  disabled={filteredTickets.length === 0}
+                  aria-label="Select all tickets"
+                  className="w-4 h-4"
+                />
+              </div>
+              <CardTitle className="text-lg">Ticket Queue</CardTitle>
+              {hasSelection ? (
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                  {selectedCount} selected
+                </span>
+              ) : (
+                <GetNextTicketButtonCompact />
+              )}
+            </div>
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as FilterTab)}
+              className="w-full sm:w-auto"
+            >
+              <TabsList className="h-8 w-full sm:w-auto grid grid-cols-4 sm:flex text-foreground/70">
+                <TabsTrigger value="all" className="text-xs px-2 sm:px-3">
+                  <span className="hidden sm:inline">All</span>
+                  <span className="sm:hidden">All</span>
+                  {counts.all > 0 && (
+                    <span className="ml-1 sm:ml-1.5 text-[10px] bg-muted px-1 sm:px-1.5 py-0.5 rounded-full">
+                      {counts.all}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="ai" className="text-xs px-2 sm:px-3">
+                  <span className="hidden sm:inline">AI Handled</span>
+                  <span className="sm:hidden">AI</span>
+                  {counts.ai > 0 && (
+                    <span className="ml-1 sm:ml-1.5 text-[10px] bg-primary-200 dark:bg-primary-800 text-primary-700 dark:text-primary-300 px-1 sm:px-1.5 py-0.5 rounded-full">
+                      {counts.ai}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="human" className="text-xs px-2 sm:px-3">
+                  <span className="hidden sm:inline">Needs Human</span>
+                  <span className="sm:hidden">Human</span>
+                  {counts.human > 0 && (
+                    <span className="ml-1 sm:ml-1.5 text-[10px] bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300 px-1 sm:px-1.5 py-0.5 rounded-full">
+                      {counts.human}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="escalated" className="text-xs px-2 sm:px-3">
+                  <span className="hidden sm:inline">Escalated</span>
+                  <span className="sm:hidden">Esc</span>
+                  {counts.escalated > 0 && (
+                    <span className="ml-1 sm:ml-1.5 text-[10px] bg-red-200 dark:bg-red-800 text-red-700 dark:text-red-300 px-1 sm:px-1.5 py-0.5 rounded-full">
+                      {counts.escalated}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {/* Success/Error Toast */}
+          {bulkUpdateMessage && (
+            <div
+              className={cn(
+                'mb-4 px-4 py-2 rounded-md text-sm font-medium',
+                bulkUpdateMessage.startsWith('Error')
+                  ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                  : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+              )}
+            >
+              {bulkUpdateMessage}
+            </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+
+          <div className="divide-y divide-border/70">
+            {isLoading ? (
+              // Skeleton loaders
+              Array.from({ length: 5 }).map((_, i) => (
+                <TicketCardSkeleton key={i} />
+              ))
+            ) : error ? (
+              // Error State
+              <ErrorStateComponent message={error} onRetry={fetchTickets} />
+            ) : filteredTickets.length > 0 ? (
+              filteredTickets.map((ticket) => (
+                <TicketCard
+                  key={ticket.id}
+                  ticket={ticket}
+                  isSelected={ticket.id === selectedTicketId}
+                  isChecked={isTicketChecked(ticket.id)}
+                  selectionMode={hasSelection}
+                  onClick={() => onTicketSelect?.(ticket)}
+                  onCheckboxChange={() => toggleTicket(ticket.id)}
+                />
+              ))
+            ) : (
+              // Empty State
+              <EmptyState filter={activeTab} />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bulk Actions Bar */}
+      <BulkActionsBar
+        selectedCount={selectedCount}
+        selectedIds={selectedIds}
+        onClearSelection={clearSelection}
+        onBulkUpdate={handleBulkUpdate}
+        currentAgentId={currentAgentId}
+      />
+
+      {/* Spacer to prevent content from being hidden behind the bulk actions bar */}
+      {hasSelection && <div className="h-16" />}
+    </>
   )
 }
 
@@ -226,7 +364,7 @@ function ErrorStateComponent({ message, onRetry }: { message: string; onRetry: (
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         Failed to load tickets
       </h3>
-      <p className="text-gray-600 dark:text-gray-400 mb-4">{message}</p>
+      <p className="text-muted-foreground mb-4">{message}</p>
       <Button onClick={onRetry} variant="outline" className="gap-2">
         <RefreshCw className="w-4 h-4" />
         Try again
@@ -238,22 +376,22 @@ function ErrorStateComponent({ message, onRetry }: { message: string; onRetry: (
 function EmptyState({ filter }: { filter: FilterTab }) {
   const messages: Record<FilterTab, { icon: string; title: string; description: string }> = {
     all: {
-      icon: '☕',
+      icon: String.fromCodePoint(0x2615),
       title: 'All caught up! Time for coffee.',
       description: 'Nova is watching the queue. You\'ll be notified instantly.',
     },
     ai: {
-      icon: '🤖',
+      icon: String.fromCodePoint(0x1F916),
       title: 'No AI-handled tickets',
       description: 'New tickets will appear here when Nova handles them automatically.',
     },
     human: {
-      icon: '✨',
+      icon: String.fromCodePoint(0x2728),
       title: 'No tickets need attention',
       description: 'Nova is handling everything smoothly right now.',
     },
     escalated: {
-      icon: '🎉',
+      icon: String.fromCodePoint(0x1F389),
       title: 'No escalations',
       description: 'Great news! All customers are happy.',
     },
@@ -267,7 +405,7 @@ function EmptyState({ filter }: { filter: FilterTab }) {
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         {title}
       </h3>
-      <p className="text-gray-600 dark:text-gray-400">{description}</p>
+      <p className="text-muted-foreground">{description}</p>
     </div>
   )
 }

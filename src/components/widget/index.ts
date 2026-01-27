@@ -1,0 +1,10 @@
+// Widget components exports
+export { WidgetContainer } from './WidgetContainer'
+export { WidgetThemeProvider } from './WidgetThemeProvider'
+export { WidgetLauncher } from './WidgetLauncher'
+export { WidgetHeader } from './WidgetHeader'
+export { WidgetAuth } from './WidgetAuth'
+export { WidgetTicketList } from './WidgetTicketList'
+export { WidgetNewTicket } from './WidgetNewTicket'
+export { WidgetChat } from './WidgetChat'
+export { WidgetInput } from './WidgetInput'

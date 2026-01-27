@@ -1,14 +1,18 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { TicketDetail } from '@/components/dashboard/TicketDetail'
 import { CustomerContext } from '@/components/dashboard/CustomerContext'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react'
+import { useRegisterTicketShortcuts } from '@/contexts/KeyboardShortcutsContext'
 import type { TicketWithCustomer } from '@/components/dashboard'
-import type { Message } from '@/types/database'
+import type { Message, MessageWithAttachments } from '@/types/database'
+
+// Priority cycle order
+const PRIORITY_ORDER = ['low', 'normal', 'high', 'urgent'] as const
 
 export default function TicketDetailPage() {
   const params = useParams()
@@ -16,7 +20,7 @@ export default function TicketDetailPage() {
   const ticketId = params.id as string
 
   const [ticket, setTicket] = useState<TicketWithCustomer | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<(Message | MessageWithAttachments)[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showCustomerContext, setShowCustomerContext] = useState(true)
@@ -25,7 +29,7 @@ export default function TicketDetailPage() {
   // Message sending state
   const [isSending, setIsSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
-  const [pendingMessage, setPendingMessage] = useState<{ content: string; senderType: 'agent' | 'ai' } | null>(null)
+  const [pendingMessage, setPendingMessage] = useState<{ content: string; senderType: 'agent' | 'ai'; isInternal?: boolean; attachmentIds?: string[] } | null>(null)
 
   const supabase = createClient()
 
@@ -58,10 +62,10 @@ export default function TicketDetailPage() {
 
       setTicket(ticketData as TicketWithCustomer)
 
-      // Fetch messages
+      // Fetch messages with attachments
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
-        .select('*')
+        .select('*, message_attachments(*)')
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true })
 
@@ -103,8 +107,20 @@ export default function TicketDetailPage() {
           table: 'messages',
           filter: `ticket_id=eq.${ticketId}`,
         },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message])
+        async (payload) => {
+          // Fetch the message with attachments
+          const { data: messageWithAttachments } = await supabase
+            .from('messages')
+            .select('*, message_attachments(*)')
+            .eq('id', (payload.new as Message).id)
+            .single()
+
+          if (messageWithAttachments) {
+            setMessages((prev) => [...prev, messageWithAttachments as MessageWithAttachments])
+          } else {
+            // Fallback to basic message if fetch fails
+            setMessages((prev) => [...prev, payload.new as Message])
+          }
         }
       )
       .subscribe()
@@ -138,13 +154,13 @@ export default function TicketDetailPage() {
     }
   }, [ticketId, supabase])
 
-  const handleSendMessage = useCallback(async (content: string, senderType: 'agent' | 'ai' = 'agent') => {
+  const handleSendMessage = useCallback(async (content: string, senderType: 'agent' | 'ai' = 'agent', isInternal: boolean = false, attachmentIds?: string[]) => {
     if (!ticket) return
 
     setIsSending(true)
     setSendError(null)
 
-    // Create optimistic message
+    // Create optimistic message with metadata
     const optimisticMessage: Message = {
       id: `pending-${Date.now()}`,
       ticket_id: ticketId,
@@ -154,17 +170,23 @@ export default function TicketDetailPage() {
       confidence: null,
       content_translated: null,
       original_language: null,
+      metadata: isInternal ? { is_internal: true } : {},
     }
 
     // Add optimistic message to UI immediately
     setMessages(prev => [...prev, optimisticMessage])
-    setPendingMessage({ content, senderType })
+    setPendingMessage({ content, senderType, isInternal, attachmentIds })
 
     try {
       const response = await fetch(`/api/tickets/${ticketId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, senderType }),
+        body: JSON.stringify({
+          content,
+          senderType,
+          metadata: isInternal ? { is_internal: true } : {},
+          attachmentIds: attachmentIds || [],
+        }),
       })
 
       if (!response.ok) {
@@ -189,7 +211,7 @@ export default function TicketDetailPage() {
 
   const handleRetry = useCallback(async () => {
     if (pendingMessage) {
-      await handleSendMessage(pendingMessage.content, pendingMessage.senderType)
+      await handleSendMessage(pendingMessage.content, pendingMessage.senderType, pendingMessage.isInternal, pendingMessage.attachmentIds)
     }
   }, [pendingMessage, handleSendMessage])
 
@@ -228,6 +250,59 @@ export default function TicketDetailPage() {
       fetchTicketAndMessages()
     }
   }
+
+  // Keyboard shortcut handlers
+  const handleResolve = useCallback(() => {
+    if (ticket) {
+      handleUpdateTicket({ status: 'resolved' })
+    }
+  }, [ticket])
+
+  const handleEscalate = useCallback(() => {
+    if (ticket) {
+      handleUpdateTicket({ status: 'escalated', ai_handled: false })
+    }
+  }, [ticket])
+
+  const handleAssign = useCallback(() => {
+    if (ticket && currentAgentId) {
+      handleUpdateTicket({ assigned_agent_id: currentAgentId })
+    }
+  }, [ticket, currentAgentId])
+
+  const handleUnassign = useCallback(() => {
+    if (ticket) {
+      handleUpdateTicket({ assigned_agent_id: null })
+    }
+  }, [ticket])
+
+  const handleTogglePriority = useCallback(() => {
+    if (ticket) {
+      const currentIndex = PRIORITY_ORDER.indexOf(ticket.priority as typeof PRIORITY_ORDER[number])
+      const nextIndex = (currentIndex + 1) % PRIORITY_ORDER.length
+      handleUpdateTicket({ priority: PRIORITY_ORDER[nextIndex] })
+    }
+  }, [ticket])
+
+  // Memoize shortcut actions to prevent unnecessary re-registrations
+  const shortcutActions = useMemo(() => ({
+    onResolve: handleResolve,
+    onEscalate: handleEscalate,
+    onAssign: handleAssign,
+    onUnassign: handleUnassign,
+    onTogglePriority: handleTogglePriority,
+    onFocusInput: () => {
+      // Focus will be handled by the ChatInput component
+      // We just need to trigger a focus event on the textarea
+      const textarea = document.querySelector('[data-chat-input="true"]') as HTMLTextAreaElement
+      if (textarea) {
+        textarea.focus()
+      }
+    },
+  }), [handleResolve, handleEscalate, handleAssign, handleUnassign, handleTogglePriority])
+
+  // Register keyboard shortcuts for this ticket
+  useRegisterTicketShortcuts(shortcutActions)
 
   if (isLoading) {
     return <TicketDetailSkeleton />
@@ -284,7 +359,7 @@ export default function TicketDetailPage() {
             variant="ghost"
             size="sm"
             onClick={() => router.push('/')}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
@@ -293,7 +368,7 @@ export default function TicketDetailPage() {
             <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white truncate">
               {ticket.subject}
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 truncate">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
               Ticket #{ticket.id.slice(0, 8)} • {ticket.customer?.name || 'Unknown Customer'}
             </p>
           </div>

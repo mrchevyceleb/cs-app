@@ -4,12 +4,13 @@ import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ConfidenceScore } from './ConfidenceScore'
-import { Sparkles, User, Headphones, Globe, Loader2 } from 'lucide-react'
+import { MessageAttachments } from './MessageAttachment'
+import { Sparkles, User, Headphones, Globe, Loader2, Lock } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import type { Message } from '@/types/database'
+import type { Message, MessageMetadata, MessageAttachment, MessageWithAttachments } from '@/types/database'
 
 interface ChatBubbleProps {
-  message: Message
+  message: Message | MessageWithAttachments
   customerName?: string
   isPending?: boolean
 }
@@ -41,18 +42,28 @@ const senderConfig = {
   },
 }
 
+// Internal note styling (overrides agent styling)
+const internalNoteConfig = {
+  align: 'right' as const,
+  bgColor: 'bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-600',
+  textColor: 'text-amber-900 dark:text-amber-100',
+  icon: Lock,
+  label: 'Internal Note',
+  avatarBg: 'bg-amber-200 dark:bg-amber-800',
+}
+
 // Language flag mapping
 const languageFlags: Record<string, string> = {
-  en: '🇺🇸',
-  es: '🇪🇸',
-  tl: '🇵🇭',
-  hi: '🇮🇳',
-  zh: '🇨🇳',
-  ja: '🇯🇵',
-  ko: '🇰🇷',
-  fr: '🇫🇷',
-  de: '🇩🇪',
-  pt: '🇧🇷',
+  en: '',
+  es: '',
+  tl: '',
+  hi: '',
+  zh: '',
+  ja: '',
+  ko: '',
+  fr: '',
+  de: '',
+  pt: '',
 }
 
 function getRelativeTime(date: string): string {
@@ -74,13 +85,35 @@ function getRelativeTime(date: string): string {
   })
 }
 
+// Helper to check if message is an internal note
+function isInternalNote(message: Message): boolean {
+  if (!message.metadata) return false
+  const metadata = message.metadata as MessageMetadata
+  return metadata.is_internal === true
+}
+
+// Helper to get attachments from message
+function getAttachments(message: Message | MessageWithAttachments): MessageAttachment[] {
+  if ('message_attachments' in message && message.message_attachments) {
+    return message.message_attachments
+  }
+  return []
+}
+
 export function ChatBubble({ message, customerName, isPending = false }: ChatBubbleProps) {
-  const config = senderConfig[message.sender_type] || senderConfig.customer
+  const isInternal = isInternalNote(message)
+  const attachments = getAttachments(message)
+
+  // Use internal note config if this is an internal note, otherwise use sender config
+  const config = isInternal
+    ? internalNoteConfig
+    : (senderConfig[message.sender_type] || senderConfig.customer)
   const Icon = config.icon
   const isRight = config.align === 'right'
 
-  const displayName =
-    message.sender_type === 'customer'
+  const displayName = isInternal
+    ? 'Internal Note'
+    : message.sender_type === 'customer'
       ? customerName || 'Customer'
       : message.sender_type === 'ai'
         ? 'Nova AI'
@@ -119,9 +152,24 @@ export function ChatBubble({ message, customerName, isPending = false }: ChatBub
             isRight ? 'flex-row-reverse' : 'flex-row'
           )}
         >
-          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+          <span className={cn(
+            'text-xs font-medium',
+            isInternal ? 'text-amber-700 dark:text-amber-400' : 'text-gray-600 dark:text-gray-400'
+          )}>
             {displayName}
           </span>
+
+          {/* Internal Note Badge */}
+          {isInternal && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 h-4 gap-1 border-amber-400 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+            >
+              <Lock className="h-2.5 w-2.5" />
+              Private
+            </Badge>
+          )}
+
           <span className="text-xs text-gray-400 flex items-center gap-1">
             {isPending ? (
               <>
@@ -159,9 +207,20 @@ export function ChatBubble({ message, customerName, isPending = false }: ChatBub
             isRight ? 'rounded-br-md' : 'rounded-bl-md'
           )}
         >
-          <div className="text-sm prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-strong:font-semibold">
-            <ReactMarkdown>{message.content}</ReactMarkdown>
-          </div>
+          {/* Message text content */}
+          {message.content && (
+            <div className="text-sm prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-strong:font-semibold">
+              <ReactMarkdown>{message.content}</ReactMarkdown>
+            </div>
+          )}
+
+          {/* Attachments */}
+          {attachments.length > 0 && (
+            <MessageAttachments
+              attachments={attachments}
+              variant={message.sender_type === 'agent' ? 'default' : 'default'}
+            />
+          )}
 
           {/* Show translated content if different from original */}
           {message.content_translated &&

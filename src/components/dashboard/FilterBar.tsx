@@ -25,10 +25,22 @@ export interface FilterOptions {
   search: string
   status: string[]
   priority: string[]
+  tags: string[]
   aiHandled: 'all' | 'ai' | 'human'
   sortBy: 'created_at' | 'updated_at' | 'priority' | 'ai_confidence'
   sortOrder: 'asc' | 'desc'
 }
+
+const tagOptions = [
+  { value: 'billing', label: 'Billing', color: 'bg-green-500' },
+  { value: 'technical', label: 'Technical', color: 'bg-blue-500' },
+  { value: 'feature-request', label: 'Feature Request', color: 'bg-purple-500' },
+  { value: 'bug', label: 'Bug', color: 'bg-red-500' },
+  { value: 'urgent', label: 'Urgent', color: 'bg-orange-500' },
+  { value: 'vip', label: 'VIP', color: 'bg-yellow-500' },
+  { value: 'onboarding', label: 'Onboarding', color: 'bg-cyan-500' },
+  { value: 'integration', label: 'Integration', color: 'bg-indigo-500' },
+]
 
 interface FilterBarProps {
   filters: FilterOptions
@@ -122,6 +134,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
   const activeFilterCount =
     filters.status.length +
     filters.priority.length +
+    (filters.tags?.length || 0) +
     (filters.aiHandled !== 'all' ? 1 : 0)
 
   const updateFilter = <K extends keyof FilterOptions>(
@@ -132,10 +145,10 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
   }
 
   const toggleArrayFilter = (
-    key: 'status' | 'priority',
+    key: 'status' | 'priority' | 'tags',
     value: string
   ) => {
-    const current = filters[key]
+    const current = filters[key] || []
     const updated = current.includes(value)
       ? current.filter((v) => v !== value)
       : [...current, value]
@@ -147,6 +160,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
       ...filters,
       status: [],
       priority: [],
+      tags: [],
       aiHandled: 'all',
     })
   }
@@ -161,12 +175,12 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
           placeholder="Search tickets..."
           value={filters.search}
           onChange={(e) => updateFilter('search', e.target.value)}
-          className="pl-9 bg-white dark:bg-[#18181B]"
+          className="pl-9 bg-card border-border"
         />
         {filters.search && (
           <button
             onClick={() => updateFilter('search', '')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
           >
             <XIcon className="w-4 h-4" />
           </button>
@@ -206,7 +220,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
 
             {/* Status Filter */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-gray-700 dark:text-gray-400">Status</Label>
+              <Label className="text-xs font-medium text-foreground/70">Status</Label>
               <div className="grid grid-cols-2 gap-2">
                 {statusOptions.map((option) => (
                   <div key={option.value} className="flex items-center space-x-2">
@@ -233,7 +247,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
 
             {/* Priority Filter */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-gray-700 dark:text-gray-400">Priority</Label>
+              <Label className="text-xs font-medium text-foreground/70">Priority</Label>
               <div className="grid grid-cols-2 gap-2">
                 {priorityOptions.map((option) => (
                   <div key={option.value} className="flex items-center space-x-2">
@@ -258,9 +272,36 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
 
             <Separator />
 
+            {/* Tags Filter */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-foreground/70">Tags</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {tagOptions.map((option) => (
+                  <div key={option.value} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`tag-${option.value}`}
+                      checked={(filters.tags || []).includes(option.value)}
+                      onCheckedChange={() =>
+                        toggleArrayFilter('tags', option.value)
+                      }
+                    />
+                    <label
+                      htmlFor={`tag-${option.value}`}
+                      className="text-sm flex items-center gap-2 cursor-pointer"
+                    >
+                      <span className={cn('w-2 h-2 rounded-full', option.color)} />
+                      {option.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
             {/* AI Handled Filter */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-gray-700 dark:text-gray-400">Handler</Label>
+              <Label className="text-xs font-medium text-foreground/70">Handler</Label>
               <Select
                 value={filters.aiHandled}
                 onValueChange={(v) =>
@@ -294,7 +335,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
             onFiltersChange({ ...filters, sortBy, sortOrder })
           }}
         >
-          <SelectTrigger className="w-[180px] bg-white dark:bg-[#18181B]">
+          <SelectTrigger className="w-[180px] bg-card border-border">
             <SelectValue placeholder="Sort by..." />
           </SelectTrigger>
           <SelectContent>
@@ -334,6 +375,17 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
               <XIcon className="w-3 h-3" />
             </Badge>
           ))}
+          {(filters.tags || []).map((tag) => (
+            <Badge
+              key={tag}
+              variant="secondary"
+              className="gap-1 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+              onClick={() => toggleArrayFilter('tags', tag)}
+            >
+              #{tag}
+              <XIcon className="w-3 h-3" />
+            </Badge>
+          ))}
           {filters.aiHandled !== 'all' && (
             <Badge
               variant="secondary"
@@ -355,6 +407,7 @@ export const defaultFilters: FilterOptions = {
   search: '',
   status: [],
   priority: [],
+  tags: [],
   aiHandled: 'all',
   sortBy: 'created_at',
   sortOrder: 'desc',

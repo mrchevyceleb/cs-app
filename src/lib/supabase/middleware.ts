@@ -33,17 +33,14 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Redirect to login if not authenticated and trying to access protected routes
-  const isAuthPage = request.nextUrl.pathname.startsWith('/login')
+  const isAuthPage = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup')
   const isEmbedPage = request.nextUrl.pathname.startsWith('/embed')
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
+  const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback')
+  const isPortalPage = request.nextUrl.pathname.startsWith('/portal')
 
-  // Development mode bypass - skip auth in development when DEV_SKIP_AUTH is set
-  const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
-  
-  // Developer bypass cookie - allows skipping auth for testing
-  const hasDevBypassCookie = request.cookies.get('dev_bypass')?.value === 'true'
-
-  if (!user && !isDevBypass && !hasDevBypassCookie && !isAuthPage && !isEmbedPage && !isApiRoute) {
+  // Portal pages use their own token-based auth, not Supabase auth
+  if (!user && !isAuthPage && !isEmbedPage && !isApiRoute && !isAuthCallback && !isPortalPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

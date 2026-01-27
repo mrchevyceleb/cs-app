@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   Select,
   SelectContent,
@@ -34,6 +35,14 @@ import { ChatBubble } from './ChatBubble'
 import { ChatInput } from './ChatInput'
 import { TypingIndicator } from './TypingIndicator'
 import { ConfidenceScore } from './ConfidenceScore'
+import { TagManager } from './TagManager'
+import { TicketTimeline } from './TicketTimeline'
+import { SlaBadge, SlaProgressBar, SlaAlertBanner } from './SlaBadge'
+import {
+  getFirstResponseSlaInfo,
+  getResolutionSlaInfo,
+  getActiveSlaInfo,
+} from '@/lib/sla'
 import {
   CheckCircle,
   AlertTriangle,
@@ -48,6 +57,9 @@ import {
   Tag,
   Trash2,
   Archive,
+  MessageSquare,
+  History,
+  Timer,
 } from 'lucide-react'
 import type { TicketWithCustomer } from './TicketCard'
 import type { Message } from '@/types/database'
@@ -55,7 +67,7 @@ import type { Message } from '@/types/database'
 interface TicketDetailProps {
   ticket: TicketWithCustomer
   messages: Message[]
-  onSendMessage: (content: string, senderType: 'agent' | 'ai') => void
+  onSendMessage: (content: string, senderType: 'agent' | 'ai', isInternal?: boolean, attachmentIds?: string[]) => void
   onUpdateTicket: (updates: Partial<TicketWithCustomer>) => void
   currentAgentId?: string | null
   isSending?: boolean
@@ -100,6 +112,7 @@ export function TicketDetail({
 }: TicketDetailProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isAiTyping, setIsAiTyping] = useState(false)
+  const [activeTab, setActiveTab] = useState<'messages' | 'timeline'>('messages')
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -132,11 +145,29 @@ export function TicketDetail({
     onUpdateTicket({ assigned_agent_id: null })
   }
 
+  const handleAddTag = (tag: string) => {
+    const currentTags = ticket.tags || []
+    if (!currentTags.includes(tag)) {
+      onUpdateTicket({ tags: [...currentTags, tag] })
+    }
+  }
+
+  const handleRemoveTag = (tag: string) => {
+    const currentTags = ticket.tags || []
+    onUpdateTicket({ tags: currentTags.filter((t) => t !== tag) })
+  }
+
   const isAssignedToMe = ticket.assigned_agent_id === currentAgentId
   const isAssigned = !!ticket.assigned_agent_id
 
+  // SLA information
+  const firstResponseSla = getFirstResponseSlaInfo(ticket)
+  const resolutionSla = getResolutionSlaInfo(ticket)
+  const activeSla = getActiveSlaInfo(ticket)
+  const hasSlaInfo = firstResponseSla || resolutionSla
+
   return (
-    <Card className="h-full flex flex-col bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-gray-200/50 dark:border-gray-700/50">
+    <Card className="h-full flex flex-col bg-card border-border/70">
       {/* Ticket Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-b border-gray-200/50 dark:border-gray-700/50 gap-2 sm:gap-0">
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -208,7 +239,7 @@ export function TicketDetail({
                 variant="outline"
                 size="sm"
                 onClick={handleUnassign}
-                className="text-gray-600 border-gray-300 hover:bg-gray-50 flex-1 sm:flex-none"
+                className="text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/60 flex-1 sm:flex-none"
               >
                 <UserMinus className="h-3.5 w-3.5 sm:mr-1" />
                 <span className="hidden sm:inline">Unassign</span>
@@ -307,10 +338,22 @@ export function TicketDetail({
                 Open in New Tab
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem disabled>
-                <Tag className="h-4 w-4 mr-2" />
-                Add Tags
-              </DropdownMenuItem>
+              <TagManager
+                tags={ticket.tags || []}
+                onAddTag={handleAddTag}
+                onRemoveTag={handleRemoveTag}
+                trigger={
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <Tag className="h-4 w-4 mr-2" />
+                    Manage Tags
+                    {(ticket.tags?.length || 0) > 0 && (
+                      <Badge variant="secondary" className="ml-auto text-xs">
+                        {ticket.tags?.length}
+                      </Badge>
+                    )}
+                  </DropdownMenuItem>
+                }
+              />
               <DropdownMenuItem disabled>
                 <Archive className="h-4 w-4 mr-2" />
                 Archive Ticket
@@ -325,47 +368,116 @@ export function TicketDetail({
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 ? (
-          <EmptyMessages />
-        ) : (
-          messages.map((message) => (
-            <ChatBubble
-              key={message.id}
-              message={message}
-              customerName={ticket.customer?.name || 'Customer'}
-              isPending={message.id.startsWith('pending-')}
-            />
-          ))
-        )}
+      {/* SLA Alert Banner - shown when SLA is breached */}
+      <SlaAlertBanner ticket={ticket} className="mx-4 mt-3" />
 
-        {/* Typing Indicator */}
-        {isAiTyping && (
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-white" />
-            </div>
-            <TypingIndicator />
+      {/* SLA Status Section - shown when SLA info is available */}
+      {hasSlaInfo && (
+        <div className="px-4 py-3 border-b border-gray-200/50 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/30">
+          <div className="flex items-center gap-2 mb-3">
+            <Timer className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              SLA Status
+            </h3>
+            {activeSla && (
+              <SlaBadge ticket={ticket} variant="compact" className="ml-auto" />
+            )}
           </div>
-        )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {firstResponseSla && (
+              <SlaProgressBar
+                slaInfo={firstResponseSla}
+                label="First Response"
+                showDetails
+              />
+            )}
+            {resolutionSla && (
+              <SlaProgressBar
+                slaInfo={resolutionSla}
+                label="Resolution"
+                showDetails
+              />
+            )}
+          </div>
+        </div>
+      )}
 
-        <div ref={messagesEndRef} />
-      </div>
+      {/* Tabs Container */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as 'messages' | 'timeline')}
+        className="flex-1 flex flex-col min-h-0"
+      >
+        {/* Tab Navigation */}
+        <div className="px-4 pt-2 border-b border-gray-200/50 dark:border-gray-700/50">
+          <TabsList className="w-auto">
+            <TabsTrigger value="messages" className="gap-1.5">
+              <MessageSquare className="h-4 w-4" />
+              Messages
+              {messages.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {messages.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="gap-1.5">
+              <History className="h-4 w-4" />
+              Timeline
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-      {/* Quick Suggestions */}
-      <QuickSuggestions onSelect={(text) => onSendMessage(text, 'agent')} />
+        {/* Messages Tab Content */}
+        <TabsContent value="messages" className="flex-1 flex flex-col min-h-0 m-0">
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.length === 0 ? (
+              <EmptyMessages />
+            ) : (
+              messages.map((message) => (
+                <ChatBubble
+                  key={message.id}
+                  message={message}
+                  customerName={ticket.customer?.name || 'Customer'}
+                  isPending={message.id.startsWith('pending-')}
+                />
+              ))
+            )}
 
-      {/* Chat Input */}
-      <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50">
-        <ChatInput
-          onSend={onSendMessage}
-          isSending={isSending}
-          error={sendError}
-          onRetry={onRetry}
-          onClearError={onClearError}
-        />
-      </div>
+            {/* Typing Indicator */}
+            {isAiTyping && (
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
+                  <Sparkles className="h-4 w-4 text-white" />
+                </div>
+                <TypingIndicator />
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Quick Suggestions */}
+          <QuickSuggestions onSelect={(text) => onSendMessage(text, 'agent')} />
+
+          {/* Chat Input */}
+          <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50">
+            <ChatInput
+              ticketId={ticket.id}
+              onSend={onSendMessage}
+              isSending={isSending}
+              error={sendError}
+              onRetry={onRetry}
+              onClearError={onClearError}
+            />
+          </div>
+        </TabsContent>
+
+        {/* Timeline Tab Content */}
+        <TabsContent value="timeline" className="flex-1 overflow-y-auto m-0">
+          <TicketTimeline ticketId={ticket.id} />
+        </TabsContent>
+      </Tabs>
     </Card>
   )
 }
@@ -396,7 +508,7 @@ function QuickSuggestions({ onSelect }: { onSelect: (text: string) => void }) {
 
   return (
     <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800">
-      <p className="text-xs text-gray-500 mb-2">Quick replies:</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Quick replies:</p>
       <div className="flex flex-wrap gap-2">
         {suggestions.map((suggestion, index) => (
           <button

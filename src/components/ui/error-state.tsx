@@ -30,8 +30,8 @@ export function ErrorState({
       <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
         <Icon className="w-8 h-8 text-red-500" />
       </div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-      <p className="text-sm text-gray-500 max-w-sm mb-6">{message}</p>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{title}</h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-6">{message}</p>
       {onRetry && (
         <Button
           onClick={onRetry}
@@ -64,9 +64,9 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
           {icon}
         </div>
       )}
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{title}</h3>
       {description && (
-        <p className="text-sm text-gray-500 max-w-sm mb-6">{description}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-6">{description}</p>
       )}
       {action && (
         <Button onClick={action.onClick} className="gap-2">

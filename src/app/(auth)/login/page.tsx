@@ -6,13 +6,15 @@ import { Logo } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { signInWithMagicLink } from '@/lib/supabase/actions'
+import { signIn, signUp } from '@/lib/supabase/actions'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [emailSent, setEmailSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isSignUp, setIsSignUp] = useState(false)
   const searchParams = useSearchParams()
   const errorParam = searchParams.get('error')
 
@@ -21,58 +23,36 @@ export default function LoginPage() {
     setIsLoading(true)
     setError(null)
 
-    const formData = new FormData()
-    formData.append('email', email)
-
-    const result = await signInWithMagicLink(formData)
-
-    if (result.error) {
-      setError(result.error)
+    if (isSignUp && password !== confirmPassword) {
+      setError('Passwords do not match')
       setIsLoading(false)
-    } else {
-      setEmailSent(true)
+      return
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters')
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const formData = new FormData()
+      formData.append('email', email)
+      formData.append('password', password)
+
+      const result = isSignUp ? await signUp(formData) : await signIn(formData)
+
+      if (result.error) {
+        setError(result.error)
+        setIsLoading(false)
+      } else {
+        // Use hard navigation to ensure session cookies are picked up
+        window.location.href = '/'
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
       setIsLoading(false)
     }
-  }
-
-  if (emailSent) {
-    return (
-      <Card className="w-full max-w-md mx-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-gray-200 dark:border-gray-800 shadow-2xl">
-        <CardHeader className="text-center pb-2">
-          <div className="flex justify-center mb-4">
-            <Logo size="lg" />
-          </div>
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-            <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-            Check your email
-          </CardTitle>
-          <CardDescription className="text-gray-500 dark:text-gray-400">
-            We sent a magic link to <span className="font-medium text-gray-700 dark:text-gray-300">{email}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-center text-gray-500 dark:text-gray-400">
-            Click the link in the email to sign in to your account.
-            The link will expire in 24 hours.
-          </p>
-
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => {
-              setEmailSent(false)
-              setEmail('')
-            }}
-          >
-            Use a different email
-          </Button>
-        </CardContent>
-      </Card>
-    )
   }
 
   return (
@@ -82,10 +62,12 @@ export default function LoginPage() {
           <Logo size="lg" />
         </div>
         <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-          Welcome back
+          {isSignUp ? 'Create an account' : 'Welcome back'}
         </CardTitle>
         <CardDescription className="text-gray-500 dark:text-gray-400">
-          Sign in to access the support dashboard
+          {isSignUp
+            ? 'Sign up to get started with the support dashboard'
+            : 'Sign in to access the support dashboard'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -105,13 +87,45 @@ export default function LoginPage() {
             <Input
               id="email"
               type="email"
-              placeholder="agent@r-link.com"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-11"
+              className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 border-gray-300 dark:border-gray-600"
               required
             />
           </div>
+
+          <div className="space-y-2">
+            <label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Password
+            </label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 border-gray-300 dark:border-gray-600"
+              required
+            />
+          </div>
+
+          {isSignUp && (
+            <div className="space-y-2">
+              <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Confirm Password
+              </label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 border-gray-300 dark:border-gray-600"
+                required
+              />
+            </div>
+          )}
 
           <Button
             type="submit"
@@ -121,52 +135,30 @@ export default function LoginPage() {
             {isLoading ? (
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Sending magic link...
+                {isSignUp ? 'Creating account...' : 'Signing in...'}
               </div>
             ) : (
-              'Continue with Email'
+              isSignUp ? 'Sign Up' : 'Sign In'
             )}
           </Button>
-
-          <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-            We&apos;ll send you a magic link to sign in instantly.
-            <br />
-            No password required.
-          </p>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800 space-y-3">
-          <p className="text-xs text-center text-gray-400">
-            Or try the demo without signing in
+        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp)
+                setError(null)
+                setPassword('')
+                setConfirmPassword('')
+              }}
+              className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+            >
+              {isSignUp ? 'Sign in' : 'Sign up'}
+            </button>
           </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-11 border-primary-200 text-primary-600 hover:bg-primary-50 dark:border-primary-800 dark:text-primary-400 dark:hover:bg-primary-950"
-            onClick={() => {
-              document.cookie = 'demo_mode=true; path=/; max-age=86400'
-              window.location.href = '/'
-            }}
-          >
-            <span className="mr-2">🚀</span>
-            Enter Demo Mode
-          </Button>
-          
-          {/* Developer Bypass Button */}
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full h-11 bg-yellow-500 hover:bg-yellow-600 text-black font-bold border-2 border-yellow-600"
-            onClick={() => {
-              // Set dev bypass cookie and redirect to dashboard (root path)
-              document.cookie = 'dev_bypass=true; path=/; max-age=86400'
-              document.cookie = 'demo_mode=true; path=/; max-age=86400'
-              window.location.href = '/'
-            }}
-          >
-            <span className="mr-2">⚡</span>
-            DEVELOPER BYPASS (Skip Auth)
-          </Button>
         </div>
       </CardContent>
     </Card>

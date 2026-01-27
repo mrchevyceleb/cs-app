@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sendTicketCreatedEmail, generatePortalToken } from '@/lib/email'
+import type { Customer } from '@/types/database'
 
 // GET /api/tickets - List tickets with filters
 export async function GET(request: NextRequest) {
@@ -124,6 +126,27 @@ export async function POST(request: NextRequest) {
 
       if (messageError) {
         console.error('Error creating initial message:', messageError)
+      }
+    }
+
+    // Send ticket created email notification to customer
+    if (ticket && ticket.customer) {
+      const customer = ticket.customer as Customer
+      if (customer.email) {
+        const portalToken = generatePortalToken(customer.id, ticket.id)
+
+        // Send email asynchronously (don't wait for it)
+        sendTicketCreatedEmail(ticket, customer, portalToken)
+          .then((result) => {
+            if (result.success) {
+              console.log('[Tickets API] Ticket created email sent:', result.emailLogId)
+            } else {
+              console.error('[Tickets API] Failed to send ticket created email:', result.error)
+            }
+          })
+          .catch((err) => {
+            console.error('[Tickets API] Email send error:', err)
+          })
       }
     }
 

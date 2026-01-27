@@ -13,7 +13,7 @@ interface MobileHeaderProps {
 
 export function MobileHeader({ onMenuClick, isMenuOpen }: MobileHeaderProps) {
   return (
-    <header className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl">
+    <header className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b border-border/70 bg-card/85 backdrop-blur-xl">
       <div className="flex items-center justify-between h-full px-4">
         <Button
           variant="ghost"

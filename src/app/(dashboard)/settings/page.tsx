@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Skeleton } from '@/components/ui/skeleton'
+import { BookMarked, ChevronRight, Zap } from 'lucide-react'
 import type { Agent } from '@/types/database'
 
 interface Preferences {
@@ -116,7 +118,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Profile */}
-      <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+      <Card className="bg-card border-border/70">
         <CardHeader>
           <CardTitle className="text-base">Profile</CardTitle>
           <CardDescription>Your personal information</CardDescription>
@@ -167,7 +169,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Appearance */}
-      <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+      <Card className="bg-card border-border/70">
         <CardHeader>
           <CardTitle className="text-base">Appearance</CardTitle>
           <CardDescription>Customize the look and feel</CardDescription>
@@ -176,7 +178,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Dark Mode</p>
-              <p className="text-sm text-gray-500">Switch between light and dark themes</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Switch between light and dark themes</p>
             </div>
             <ThemeToggle />
           </div>
@@ -184,7 +186,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Sounds</p>
-              <p className="text-sm text-gray-500">Enable notification sounds</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Enable notification sounds</p>
             </div>
             <Button
               variant="outline"
@@ -197,8 +199,46 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Canned Responses */}
+      <Card className="bg-card border-border/70">
+        <CardHeader>
+          <CardTitle className="text-base">Canned Responses</CardTitle>
+          <CardDescription>Manage pre-written responses for quick replies</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href="/settings/canned-responses">
+            <Button variant="outline" className="w-full justify-between">
+              <span className="flex items-center gap-2">
+                <BookMarked className="h-4 w-4" />
+                Manage Canned Responses
+              </span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+
+      {/* Workflow Automation */}
+      <Card className="bg-card border-border/70">
+        <CardHeader>
+          <CardTitle className="text-base">Workflow Automation</CardTitle>
+          <CardDescription>Automate ticket routing and actions with custom rules</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href="/settings/workflows">
+            <Button variant="outline" className="w-full justify-between">
+              <span className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-yellow-500" />
+                Manage Workflow Rules
+              </span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+
       {/* Nova AI Settings */}
-      <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+      <Card className="bg-card border-border/70">
         <CardHeader>
           <CardTitle className="text-base">Nova AI Copilot</CardTitle>
           <CardDescription>Configure your AI assistant</CardDescription>
@@ -207,7 +247,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Auto-suggestions</p>
-              <p className="text-sm text-gray-500">Show response suggestions automatically</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Show response suggestions automatically</p>
             </div>
             <Button
               variant="outline"
@@ -221,7 +261,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Confidence threshold</p>
-              <p className="text-sm text-gray-500">Minimum AI confidence for auto-responses</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Minimum AI confidence for auto-responses</p>
             </div>
             <Input
               type="number"
@@ -240,3 +280,4 @@ export default function SettingsPage() {
     </div>
   )
 }
+

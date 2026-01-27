@@ -126,9 +126,9 @@ export function CustomerContext({
 
   if (!customer) {
     return (
-      <Card className="h-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
+      <Card className="h-full bg-card border-border/70">
         <CardContent className="flex items-center justify-center h-full">
-          <div className="text-center text-gray-500">
+          <div className="text-center text-gray-500 dark:text-gray-400">
             <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">Customer information unavailable</p>
           </div>
@@ -142,7 +142,7 @@ export function CustomerContext({
   )
 
   return (
-    <Card className="h-full overflow-y-auto bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-gray-200/50 dark:border-gray-700/50">
+    <Card className="h-full overflow-y-auto bg-card border-border/70">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <User className="h-4 w-4" />
@@ -162,7 +162,7 @@ export function CustomerContext({
             <h3 className="font-medium text-gray-900 dark:text-white truncate">
               {customer.name || 'Unknown Customer'}
             </h3>
-            <div className="flex items-center gap-1 text-sm text-gray-500">
+            <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
               <Mail className="h-3 w-3" />
               <span className="truncate">{customer.email || 'No email'}</span>
             </div>
@@ -173,7 +173,7 @@ export function CustomerContext({
 
         {/* Customer Details */}
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             Details
           </h4>
 
@@ -222,7 +222,7 @@ export function CustomerContext({
         {/* Tags */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1">
               <Tag className="h-3 w-3" />
               Tags
             </h4>
@@ -254,7 +254,7 @@ export function CustomerContext({
               <button
                 key={tag}
                 onClick={() => handleTagAdd(tag)}
-                className="text-[10px] px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                className="text-[10px] px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
               >
                 + {tag}
               </button>
@@ -266,7 +266,7 @@ export function CustomerContext({
 
         {/* Ticket History */}
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1">
             <History className="h-3 w-3" />
             Recent Tickets
           </h4>
@@ -312,7 +312,7 @@ export function CustomerContext({
 
         {/* Quick Actions */}
         <div className="space-y-2">
-          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             Quick Actions
           </h4>
           <div className="grid grid-cols-2 gap-2">

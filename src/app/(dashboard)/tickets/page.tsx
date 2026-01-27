@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { FilterBar, defaultFilters, TicketCard, TicketCardSkeleton } from '@/components/dashboard'
+import { FilterBar, defaultFilters, TicketCard, TicketCardSkeleton, GetNextTicketButton } from '@/components/dashboard'
 import type { FilterOptions, TicketWithCustomer } from '@/components/dashboard'
 
 const PAGE_SIZE = 20
@@ -81,23 +81,26 @@ export default function TicketsPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             All Tickets
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             {isLoading ? 'Loading...' : `${totalCount} total tickets`}
           </p>
         </div>
-        <Button className="bg-primary-600 hover:bg-primary-700 text-white">
-          + New Ticket
-        </Button>
+        <div className="flex items-center gap-2">
+          <GetNextTicketButton />
+          <Button className="bg-primary-600 hover:bg-primary-700 text-white">
+            + New Ticket
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
       <FilterBar filters={filters} onFiltersChange={setFilters} />
 
       {/* Ticket List */}
-      <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+      <Card className="bg-card border-border/70">
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            <div className="divide-y divide-border/70">
               {Array.from({ length: 5 }).map((_, i) => (
                 <TicketCardSkeleton key={i} />
               ))}
@@ -121,14 +124,14 @@ export default function TicketsPage() {
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
                 No tickets found
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 {filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.aiHandled !== 'all'
                   ? 'Try adjusting your filters'
                   : 'No tickets have been created yet'}
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            <div className="divide-y divide-border/70">
               {tickets.map((ticket) => (
                 <TicketCard
                   key={ticket.id}
@@ -144,7 +147,7 @@ export default function TicketsPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Showing {currentPage * PAGE_SIZE + 1} -{' '}
             {Math.min((currentPage + 1) * PAGE_SIZE, totalCount)} of {totalCount}
           </p>
@@ -157,7 +160,7 @@ export default function TicketsPage() {
             >
               Previous
             </Button>
-            <span className="text-sm text-gray-600 dark:text-gray-400 px-2">
+            <span className="text-sm text-muted-foreground px-2">
               Page {currentPage + 1} of {totalPages}
             </span>
             <Button

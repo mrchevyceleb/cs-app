@@ -2,8 +2,11 @@
 
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ConfidenceScore } from './ConfidenceScore'
+import { SlaBadge, SlaIndicator } from './SlaBadge'
+import { hasSlaConcerns, getActiveSlaInfo } from '@/lib/sla'
 import type { Ticket, Customer, Agent } from '@/types/database'
 
 export interface TicketWithCustomer extends Ticket {
@@ -14,7 +17,10 @@ export interface TicketWithCustomer extends Ticket {
 interface TicketCardProps {
   ticket: TicketWithCustomer
   isSelected?: boolean
+  isChecked?: boolean
+  selectionMode?: boolean
   onClick?: () => void
+  onCheckboxChange?: (checked: boolean) => void
 }
 
 const statusColors: Record<string, string> = {
@@ -69,9 +75,28 @@ function getRelativeTime(dateString: string): string {
   return date.toLocaleDateString()
 }
 
-export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardProps) {
+export function TicketCard({
+  ticket,
+  isSelected = false,
+  isChecked = false,
+  selectionMode = false,
+  onClick,
+  onCheckboxChange,
+}: TicketCardProps) {
   const priority = priorityIndicators[ticket.priority] || priorityIndicators.normal
   const customerLang = ticket.customer?.preferred_language || 'en'
+  const slaBreached = hasSlaConcerns(ticket)
+  const activeSla = getActiveSlaInfo(ticket)
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+  }
+
+  const handleCheckboxChange = (checked: boolean | 'indeterminate') => {
+    if (typeof checked === 'boolean') {
+      onCheckboxChange?.(checked)
+    }
+  }
 
   return (
     <div
@@ -80,11 +105,31 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
         'group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg transition-all duration-200 cursor-pointer border hover-lift',
         isSelected
           ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-200 dark:border-primary-700'
-          : 'hover:bg-gray-50 dark:hover:bg-[#27272A] border-transparent hover:border-gray-200 dark:hover:border-[#3F3F46]'
+          : isChecked
+          ? 'bg-primary-50/50 dark:bg-primary-900/20 border-primary-100 dark:border-primary-800'
+          : 'hover:bg-muted/60 border-transparent hover:border-border/70'
       )}
     >
-      {/* Top row on mobile: Avatar, Info, Status */}
+      {/* Top row on mobile: Checkbox, Avatar, Info, Status */}
       <div className="flex items-center gap-3 sm:contents">
+        {/* Selection Checkbox */}
+        <div
+          onClick={handleCheckboxClick}
+          className={cn(
+            'flex-shrink-0 transition-opacity duration-200',
+            selectionMode || isChecked
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100'
+          )}
+        >
+          <Checkbox
+            checked={isChecked}
+            onCheckedChange={handleCheckboxChange}
+            className="w-4 h-4"
+            aria-label={`Select ticket: ${ticket.subject}`}
+          />
+        </div>
+
         {/* Customer Avatar */}
         <div className="relative flex-shrink-0">
           <Avatar className="w-10 h-10">
@@ -93,7 +138,7 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
               {getInitials(ticket.customer?.name ?? null)}
             </AvatarFallback>
           </Avatar>
-          {ticket.priority === 'urgent' && (
+          {(ticket.priority === 'urgent' || (activeSla?.status === 'breached')) && (
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
           )}
         </div>
@@ -101,7 +146,7 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
         {/* Ticket Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+            <h4 className="text-sm font-semibold text-foreground truncate">
               {ticket.subject}
             </h4>
             {languageFlags[customerLang] && (
@@ -112,10 +157,12 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
                 {languageFlags[customerLang]}
               </span>
             )}
+            {/* SLA Indicator - compact icon for ticket list */}
+            <SlaIndicator ticket={ticket} className="flex-shrink-0" />
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 text-xs text-gray-600 dark:text-gray-400">
+          <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground">
             <span className="truncate">{ticket.customer?.name || ticket.customer?.email || 'Unknown'}</span>
-            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline">&#183;</span>
             <span className="flex-shrink-0 hidden sm:inline">{getRelativeTime(ticket.created_at)}</span>
           </div>
         </div>
@@ -129,15 +176,19 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
             {ticket.status}
           </Badge>
           <div
-            className={cn('w-2 h-2 rounded-full flex-shrink-0', priority.color)}
-            title={priority.label}
+            className={cn(
+              'w-2 h-2 rounded-full flex-shrink-0',
+              priority.color,
+              activeSla?.status === 'breached' && 'animate-pulse bg-red-500'
+            )}
+            title={activeSla?.status === 'breached' ? 'SLA Breached!' : priority.label}
           />
         </div>
       </div>
 
       {/* Bottom row on mobile: Time, AI badge */}
-      <div className="flex items-center justify-between sm:hidden pl-[52px]">
-        <span className="text-xs text-gray-600 dark:text-gray-400">{getRelativeTime(ticket.created_at)}</span>
+      <div className="flex items-center justify-between sm:hidden pl-[68px]">
+        <span className="text-xs text-muted-foreground">{getRelativeTime(ticket.created_at)}</span>
         {ticket.ai_handled ? (
           <Badge
             variant="outline"
@@ -154,8 +205,15 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
 
       {/* AI Confidence - hidden on mobile */}
       <div className="hidden md:block min-w-[120px]">
-        <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">AI Confidence</div>
+        <div className="text-xs text-muted-foreground mb-1">AI Confidence</div>
         <ConfidenceScore value={ticket.ai_confidence || 0} size="sm" />
+      </div>
+
+      {/* SLA Badge - hidden on mobile, shown on larger screens */}
+      <div className="hidden md:block min-w-[80px]">
+        {activeSla && (
+          <SlaBadge ticket={ticket} variant="compact" />
+        )}
       </div>
 
       {/* Status & Priority - hidden on mobile */}
@@ -167,8 +225,12 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
           {ticket.status}
         </Badge>
         <div
-          className={cn('w-2 h-2 rounded-full flex-shrink-0', priority.color)}
-          title={priority.label}
+          className={cn(
+            'w-2 h-2 rounded-full flex-shrink-0',
+            priority.color,
+            activeSla?.status === 'breached' && 'animate-pulse bg-red-500'
+          )}
+          title={activeSla?.status === 'breached' ? 'SLA Breached!' : priority.label}
         />
       </div>
 
@@ -195,13 +257,13 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
             <Badge
               key={tag}
               variant="outline"
-              className="text-[10px] px-1.5 py-0 text-gray-600 dark:text-gray-400"
+              className="text-[10px] px-1.5 py-0 text-muted-foreground"
             >
               {tag}
             </Badge>
           ))}
           {ticket.tags.length > 2 && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">+{ticket.tags.length - 2}</span>
+            <span className="text-xs text-muted-foreground">+{ticket.tags.length - 2}</span>
           )}
         </div>
       )}
@@ -213,6 +275,7 @@ export function TicketCard({ ticket, isSelected = false, onClick }: TicketCardPr
 export function TicketCardSkeleton() {
   return (
     <div className="flex items-center gap-4 p-4 animate-pulse">
+      <div className="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded" />
       <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
       <div className="flex-1 space-y-2">
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />

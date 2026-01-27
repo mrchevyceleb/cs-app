@@ -250,7 +250,7 @@ export default function KnowledgePage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+            <Card key={i} className="bg-card border-border/70">
               <CardHeader className="pb-2">
                 <Skeleton className="h-5 w-20 mb-2" />
                 <Skeleton className="h-6 w-full" />
@@ -263,7 +263,7 @@ export default function KnowledgePage() {
           ))}
         </div>
       ) : error ? (
-        <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+        <Card className="bg-card border-border/70">
           <CardContent className="py-12 text-center">
             <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-7 h-7 text-red-500" />
@@ -283,7 +283,7 @@ export default function KnowledgePage() {
           </CardContent>
         </Card>
       ) : articles.length === 0 ? (
-        <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+        <Card className="bg-card border-border/70">
           <CardContent className="py-12 text-center">
             <div className="text-6xl mb-4">📚</div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
@@ -309,7 +309,7 @@ export default function KnowledgePage() {
           {articles.map((article) => (
             <Card
               key={article.id}
-              className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:shadow-lg transition-all cursor-pointer group relative hover-lift"
+              className="bg-card border-border/70 hover:shadow-lg transition-all cursor-pointer group relative hover-lift"
               onClick={() => handleEdit(article)}
             >
               <CardHeader className="pb-2">
@@ -448,3 +448,4 @@ export default function KnowledgePage() {
     </div>
   )
 }
+

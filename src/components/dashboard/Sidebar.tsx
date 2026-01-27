@@ -7,6 +7,7 @@ import { Logo } from '@/components/shared/Logo'
 import { NovaAvatar } from '@/components/shared/NovaAvatar'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { signOut } from '@/lib/supabase/actions'
+import { useCommandPalette } from '@/components/dashboard/CommandPalette'
 import {
   Tooltip,
   TooltipContent,
@@ -25,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { NotificationBell } from '@/components/dashboard/NotificationBell'
 
 // Icons as simple SVG components for clean design
 const Icons = {
@@ -106,6 +108,7 @@ interface SidebarProps {
 export function Sidebar({ className, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const { agent, user, isLoading } = useAuth()
+  const { setOpen: openCommandPalette } = useCommandPalette()
 
   const getInitials = (name: string) => {
     return name
@@ -131,12 +134,12 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'flex flex-col h-screen w-64 border-r bg-white dark:bg-[#18181B] border-gray-200 dark:border-[#3F3F46]',
+          'flex flex-col h-screen w-64 border-r bg-sidebar border-sidebar-border',
           className
         )}
       >
         {/* Logo Section */}
-        <div className="p-4 border-b border-gray-200 dark:border-[#3F3F46]">
+        <div className="p-4 border-b border-sidebar-border">
           <Logo size="md" />
         </div>
 
@@ -144,7 +147,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         <div className="px-3 pt-4">
           <Button
             variant="outline"
-            className="w-full justify-start gap-2 text-gray-600 dark:text-gray-400 h-9"
+            className="w-full justify-start gap-2 text-muted-foreground h-9"
+            onClick={() => openCommandPalette(true)}
           >
             <Icons.command className="w-4 h-4" />
             <span className="flex-1 text-left text-sm">Search...</span>
@@ -170,7 +174,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                     isActive
                       ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#27272A] hover:text-gray-900 dark:hover:text-white'
+                      : 'text-foreground/80 hover:bg-gray-100/70 dark:hover:bg-[#27272A] hover:text-foreground'
                   )}
                 >
                   <item.icon className={cn(
@@ -196,15 +200,15 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           <Separator className="my-4" />
 
           {/* Nova AI Copilot Section */}
-          <div className="p-3 rounded-xl bg-gradient-to-br from-primary-50 to-purple-50 dark:from-[#2D2640] dark:to-[#1A1625] border border-primary-100 dark:border-primary-800">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-primary-50 to-slate-50 dark:from-[#1B2436] dark:to-[#121A24] border border-primary-100/70 dark:border-primary-900/40">
             <div className="flex items-center gap-3 mb-3">
               <NovaAvatar size="sm" />
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">Nova</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">AI Copilot</p>
+                <p className="text-xs text-muted-foreground">AI Copilot</p>
               </div>
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+            <p className="text-xs text-muted-foreground mb-3">
               Ready to help with tickets, lookups, and responses.
             </p>
             <Button
@@ -217,8 +221,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         </nav>
 
         {/* Bottom Section */}
-        <div className="p-3 border-t border-gray-200 dark:border-[#3F3F46]">
-          {/* Settings and Theme Toggle */}
+        <div className="p-3 border-t border-sidebar-border">
+          {/* Settings, Notifications, and Theme Toggle */}
           <div className="flex items-center gap-2">
             <Link
               href="/settings"
@@ -227,12 +231,13 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 'flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                 pathname === '/settings'
                   ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#27272A]'
+                  : 'text-foreground/80 hover:bg-gray-100/70 dark:hover:bg-[#27272A]'
               )}
             >
               <Icons.settings className="w-5 h-5" />
               <span>Settings</span>
             </Link>
+            <NotificationBell />
             <ThemeToggle />
           </div>
 
@@ -252,7 +257,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                   {agent?.status && (
                     <span
                       className={cn(
-                        'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#18181B]',
+                        'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-sidebar',
                         getStatusColor(agent.status)
                       )}
                     />
@@ -262,7 +267,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {isLoading ? 'Loading...' : agent?.name || user?.email?.split('@')[0] || 'Agent'}
                   </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                  <p className="text-xs text-muted-foreground truncate">
                     {agent?.email || user?.email || 'agent@r-link.com'}
                   </p>
                 </div>
