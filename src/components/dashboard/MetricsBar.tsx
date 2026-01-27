@@ -1,21 +1,19 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface MetricCardProps {
   label: string
   value: string | number
-  change?: {
-    value: number
-    label: string
-    positive?: boolean
-  }
   icon: React.ReactNode
   variant?: 'default' | 'success' | 'warning' | 'danger'
+  isLoading?: boolean
 }
 
-function MetricCard({ label, value, change, icon, variant = 'default' }: MetricCardProps) {
+function MetricCard({ label, value, icon, variant = 'default', isLoading = false }: MetricCardProps) {
   const variantStyles = {
     default: 'from-gray-50 to-white dark:from-[#27272A] dark:to-[#18181B]',
     success: 'from-emerald-50 to-white dark:from-emerald-950/40 dark:to-[#18181B]',
@@ -38,16 +36,10 @@ function MetricCard({ label, value, change, icon, variant = 'default' }: MetricC
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-gray-700 dark:text-gray-400">{label}</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
-          {change && (
-            <p className={cn(
-              'text-xs mt-1 flex items-center gap-1',
-              change.positive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
-            )}>
-              <span>{change.positive ? '↑' : '↓'}</span>
-              <span>{Math.abs(change.value)}%</span>
-              <span className="text-gray-500 dark:text-gray-400">{change.label}</span>
-            </p>
+          {isLoading ? (
+            <Skeleton className="h-8 w-16 mt-1" />
+          ) : (
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
           )}
         </div>
         <div className={cn('p-2 rounded-lg', iconStyles[variant])}>
@@ -89,54 +81,79 @@ const Icons = {
   ),
 }
 
-interface MetricsBarProps {
-  className?: string
-  metrics?: {
-    openTickets: number
-    avgResponseTime: string
-    aiResolutionRate: number
-    customerSatisfaction: number
-  }
+interface MetricsData {
+  openTickets: number
+  avgResponseTime: string
+  aiResolutionRate: number | null
+  customerSatisfaction: number | null
 }
 
-export function MetricsBar({ className, metrics }: MetricsBarProps) {
-  // Demo data if no metrics provided
-  const data = metrics || {
-    openTickets: 12,
-    avgResponseTime: '2.4m',
-    aiResolutionRate: 87,
-    customerSatisfaction: 94,
+interface MetricsBarProps {
+  className?: string
+}
+
+export function MetricsBar({ className }: MetricsBarProps) {
+  const [metrics, setMetrics] = useState<MetricsData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchMetrics() {
+      try {
+        const response = await fetch('/api/metrics')
+        if (response.ok) {
+          const data = await response.json()
+          setMetrics({
+            openTickets: data.openTickets,
+            avgResponseTime: data.avgResponseTime,
+            aiResolutionRate: data.aiResolutionRate,
+            customerSatisfaction: data.customerSatisfaction,
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch metrics:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchMetrics()
+  }, [])
+
+  const displayValue = (value: number | string | null | undefined, suffix?: string): string => {
+    if (value === null || value === undefined) return '--'
+    if (typeof value === 'string') return value
+    return suffix ? `${value}${suffix}` : String(value)
   }
 
   return (
     <div className={cn('grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4', className)}>
       <MetricCard
         label="Open Tickets"
-        value={data.openTickets}
-        change={{ value: 8, label: 'from yesterday', positive: false }}
+        value={displayValue(metrics?.openTickets ?? 0)}
         icon={Icons.ticket}
         variant="warning"
+        isLoading={isLoading}
       />
       <MetricCard
         label="Avg Response Time"
-        value={data.avgResponseTime}
-        change={{ value: 12, label: 'faster', positive: true }}
+        value={displayValue(metrics?.avgResponseTime)}
         icon={Icons.clock}
         variant="default"
+        isLoading={isLoading}
       />
       <MetricCard
         label="AI Resolution Rate"
-        value={`${data.aiResolutionRate}%`}
-        change={{ value: 5, label: 'this week', positive: true }}
+        value={displayValue(metrics?.aiResolutionRate, '%')}
         icon={Icons.robot}
         variant="success"
+        isLoading={isLoading}
       />
       <MetricCard
         label="Customer Satisfaction"
-        value={`${data.customerSatisfaction}%`}
-        change={{ value: 2, label: 'this month', positive: true }}
+        value={displayValue(metrics?.customerSatisfaction, '%')}
         icon={Icons.happy}
         variant="success"
+        isLoading={isLoading}
       />
     </div>
   )
