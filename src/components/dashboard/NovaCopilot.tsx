@@ -183,8 +183,8 @@ export function NovaCopilot() {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+      <ScrollArea className="flex-1 overflow-hidden">
+        <div className="space-y-4 p-4">
           {messages.map((message) => (
             <div
               key={message.id}
