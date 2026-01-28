@@ -10,6 +10,7 @@ import { KeyboardShortcutsManager } from '@/components/dashboard/KeyboardShortcu
 import { ToastProvider } from '@/components/ui/toast'
 import { NovaCopilotProvider } from '@/contexts/NovaCopilotContext'
 import { NovaCopilot } from '@/components/dashboard/NovaCopilot'
+import { RealtimeProvider } from '@/contexts/RealtimeContext'
 
 export default function DashboardLayout({
   children,
@@ -25,6 +26,7 @@ export default function DashboardLayout({
     <ToastProvider>
       <KeyboardShortcutsProvider>
         <CommandPaletteProvider>
+          <RealtimeProvider>
           <NovaCopilotProvider>
             <div className="flex h-screen overflow-hidden bg-transparent">
               {/* Animated background */}
@@ -60,6 +62,7 @@ export default function DashboardLayout({
               <NovaCopilot />
             </div>
           </NovaCopilotProvider>
+          </RealtimeProvider>
         </CommandPaletteProvider>
       </KeyboardShortcutsProvider>
     </ToastProvider>

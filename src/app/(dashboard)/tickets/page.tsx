@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { FilterBar, defaultFilters, TicketCard, TicketCardSkeleton, GetNextTicketButton } from '@/components/dashboard'
@@ -12,14 +13,16 @@ const PAGE_SIZE = 20
 export default function TicketsPage() {
   const router = useRouter()
   const [filters, setFilters] = useState<FilterOptions>(defaultFilters)
-  const [tickets, setTickets] = useState<TicketWithCustomer[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [totalCount, setTotalCount] = useState(0)
   const [currentPage, setCurrentPage] = useState(0)
 
-  const fetchTickets = useCallback(async () => {
-    setIsLoading(true)
-    try {
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(0)
+  }, [filters])
+
+  const { data, isPending } = useQuery({
+    queryKey: ['tickets', filters, currentPage],
+    queryFn: async () => {
       const params = new URLSearchParams()
       params.set('limit', String(PAGE_SIZE))
       params.set('offset', String(currentPage * PAGE_SIZE))
@@ -44,27 +47,17 @@ export default function TicketsPage() {
       }
 
       const response = await fetch(`/api/tickets?${params.toString()}`)
-      if (response.ok) {
-        const data = await response.json()
-        setTickets(data.tickets || [])
-        setTotalCount(data.total || 0)
+      if (!response.ok) {
+        throw new Error('Failed to fetch tickets')
       }
-    } catch (error) {
-      console.error('Failed to fetch tickets:', error)
-      setTickets([])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [filters, currentPage])
+      return response.json()
+    },
+    placeholderData: keepPreviousData,
+  })
 
-  useEffect(() => {
-    fetchTickets()
-  }, [fetchTickets])
-
-  // Reset to first page when filters change
-  useEffect(() => {
-    setCurrentPage(0)
-  }, [filters])
+  const tickets: TicketWithCustomer[] = data?.tickets || []
+  const totalCount = data?.total || 0
+  const isLoading = isPending
 
   const handleTicketClick = (ticket: TicketWithCustomer) => {
     router.push(`/tickets/${ticket.id}`)

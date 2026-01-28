@@ -36,7 +36,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .select(`
         *,
         customer:customers(*),
-        assigned_agent:agents(id, name, avatar_url)
+        assigned_agent:agents!assigned_agent_id(id, name, avatar_url)
       `)
       .eq('id', id)
       .single()
@@ -117,7 +117,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .select(`
         *,
         customer:customers(*),
-        assigned_agent:agents(id, name, avatar_url)
+        assigned_agent:agents!assigned_agent_id(id, name, avatar_url)
       `)
       .single()
 

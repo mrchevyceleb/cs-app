@@ -233,7 +233,9 @@
     background-image: var(--nova-gradient-bg);
     min-height: 100vh;
   }
-  
+}
+
+@layer components {
   /* Modern Glass Utility */
   .glass {
     @apply bg-card/95 backdrop-blur-md border border-border/70 shadow-lg;

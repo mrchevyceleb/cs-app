@@ -44,7 +44,7 @@ export default function TicketDetailPage() {
         .select(`
           *,
           customer:customers(*),
-          assigned_agent:agents(id, name, avatar_url)
+          assigned_agent:agents!assigned_agent_id(id, name, avatar_url)
         `)
         .eq('id', ticketId)
         .single()
@@ -140,7 +140,7 @@ export default function TicketDetailPage() {
           // Refetch ticket with customer and agent data
           const { data } = await supabase
             .from('tickets')
-            .select(`*, customer:customers(*), assigned_agent:agents(id, name, avatar_url)`)
+            .select(`*, customer:customers(*), assigned_agent:agents!assigned_agent_id(id, name, avatar_url)`)
             .eq('id', ticketId)
             .single()
           if (data) setTicket(data as TicketWithCustomer)

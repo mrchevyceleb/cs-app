@@ -258,7 +258,14 @@ export function ChatBubble({ message, customerName, isPending = false, showReadS
         >
           {/* Message text content */}
           {message.content && (
-            <div className="text-sm prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-strong:font-semibold">
+            <div className={cn(
+              "text-sm prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-strong:font-semibold",
+              // For agent messages (dark background), always use inverted (light) prose
+              // For others, use standard prose that switches based on dark mode
+              (message.sender_type === 'agent' && !isInternal) 
+                ? 'prose-invert text-white prose-p:text-white prose-headings:text-white prose-strong:text-white prose-a:text-white' 
+                : 'dark:prose-invert'
+            )}>
               <ReactMarkdown>{message.content}</ReactMarkdown>
             </div>
           )}

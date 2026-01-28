@@ -1,6 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { MessageParam, ContentBlockParam, ToolResultBlockParam } from '@anthropic-ai/sdk/resources/messages'
-import { anthropic, COPILOT_MODEL } from './client'
+import { getAnthropicClient, COPILOT_MODEL } from './client'
 import { copilotTools } from './tools'
 import { NOVA_SYSTEM_PROMPT } from './prompts'
 import { executeTool } from './handlers'
@@ -141,7 +140,7 @@ export async function runAgentLoop(
 
     try {
       // Create streaming message request
-      const stream = anthropic.messages.stream({
+      const stream = getAnthropicClient().messages.stream({
         model: COPILOT_MODEL,
         max_tokens: 4096,
         system: systemPrompt,

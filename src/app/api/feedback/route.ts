@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
           priority,
           assigned_agent_id,
           created_at,
-          agent:agents(id, name, avatar_url)
+          agent:agents!assigned_agent_id(id, name, avatar_url)
         ),
         customer:customers(id, name, email)
       `, { count: 'exact' })

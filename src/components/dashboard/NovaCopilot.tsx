@@ -96,26 +96,36 @@ export function NovaCopilot() {
       if (!reader) throw new Error('No reader available')
 
       let assistantContent = ''
+      let buffer = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // Keep the last partial line
         
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6))
-              if (data.content) {
+              
+              if (data.type === 'text' && data.content) {
                 assistantContent += data.content
-                setMessages(prev => prev.map(msg => 
-                  msg.id === assistantMessageId 
-                    ? { ...msg, content: assistantContent } 
-                    : msg
-                ))
+              } else if (data.type === 'tool_start' && data.tool) {
+                // Show tool usage in italics
+                assistantContent += `\n_Using tool: ${data.tool.name}._\n`
+              } else if (data.type === 'error' && data.error) {
+                assistantContent += `\n**Error:** ${data.error}\n`
               }
+
+              setMessages(prev => prev.map(msg => 
+                msg.id === assistantMessageId 
+                  ? { ...msg, content: assistantContent }
+                  : msg
+              ))
+              
             } catch (e) {
               console.error('Error parsing SSE data:', e)
             }
@@ -127,7 +137,7 @@ export function NovaCopilot() {
       console.error('Chat error:', error)
       setMessages(prev => prev.map(msg => 
         msg.id === assistantMessageId 
-          ? { ...msg, content: "I'm sorry, I encountered an error. Please try again." } 
+          ? { ...msg, content: "I'm sorry, I encountered an error. Please try again." }
           : msg
       ))
     } finally {

@@ -128,7 +128,7 @@ export async function POST() {
       .select(`
         *,
         customer:customers(*),
-        assigned_agent:agents(id, name, avatar_url)
+        assigned_agent:agents!assigned_agent_id(id, name, avatar_url)
       `)
       .single()
 
