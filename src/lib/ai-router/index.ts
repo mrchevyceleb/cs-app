@@ -3,7 +3,8 @@
  * Orchestrates AI triage, routing, and response generation across all channels
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 import type { ChannelType, IngestRequest, IngestResponse, RoutingDecision } from '@/types/channels';
 import type { Ticket, Message, Customer, ChannelConfig } from '@/types/database';
 import { triageMessage, generateResponse } from './triage';
@@ -12,10 +13,21 @@ import { findOrCreateCustomer } from '@/lib/channels/customer';
 import { dispatchWebhook } from '@/lib/webhooks/service';
 import { sendSupportSms } from '@/lib/twilio/client';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient<Database> | null = null;
+function getSupabase(): SupabaseClient<Database> {
+  if (!_supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!url || !key) {
+      throw new Error('Missing required Supabase environment variables');
+    }
+
+    _supabase = createClient<Database>(url, key);
+  }
+  return _supabase;
+}
 
 /**
  * Process an inbound message from any channel
@@ -50,7 +62,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
 
   if (request.ticket_id) {
     // Add to existing ticket
-    const { data: existing } = await supabase
+    const { data: existing } = await getSupabase()
       .from('tickets')
       .select('*')
       .eq('id', request.ticket_id)
@@ -63,7 +75,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     ticket = existing;
   } else {
     // Try to find recent open ticket
-    const { data: recentTicket } = await supabase
+    const { data: recentTicket } = await getSupabase()
       .from('tickets')
       .select('*')
       .eq('customer_id', customer.id)
@@ -76,7 +88,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
       ticket = recentTicket;
     } else {
       // Create new ticket
-      const { data: newTicket, error } = await supabase
+      const { data: newTicket, error } = await getSupabase()
         .from('tickets')
         .insert({
           customer_id: customer.id,
@@ -106,7 +118,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
   });
 
   // 4. Create customer message
-  const { data: message, error: msgError } = await supabase
+  const { data: message, error: msgError } = await getSupabase()
     .from('messages')
     .insert({
       ticket_id: ticket.id,
@@ -114,8 +126,8 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
       content: request.message_content,
       source: request.channel,
       external_id: request.external_id,
-      routing_decision: routingDecision,
-      metadata: request.metadata || {},
+      routing_decision: routingDecision as any,
+      metadata: (request.metadata || {}) as any,
     })
     .select()
     .single();
@@ -138,7 +150,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     ticketUpdate.priority = 'high';
   }
 
-  await supabase
+  await getSupabase()
     .from('tickets')
     .update(ticketUpdate)
     .eq('id', ticket.id);
@@ -203,7 +215,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     const formattedResponse = formatResponseForChannel(responseContent, request.channel);
 
     // Create AI message
-    const { data: aiMessage } = await supabase
+    const { data: aiMessage } = await getSupabase()
       .from('messages')
       .insert({
         ticket_id: ticket.id,
@@ -214,7 +226,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
         metadata: {
           routing_decision: routingDecision,
           auto_responded: true,
-        },
+        } as any,
       })
       .select()
       .single();
@@ -234,7 +246,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     };
 
     // Mark ticket as AI handled if auto-responded
-    await supabase
+    await getSupabase()
       .from('tickets')
       .update({
         ai_handled: true,
@@ -268,13 +280,13 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
   }
 
   // Log the inbound message
-  await supabase
+  await getSupabase()
     .from('channel_inbound_logs')
     .insert({
       channel: request.channel,
       external_id: request.external_id,
       from_identifier: request.customer_identifier,
-      raw_payload: request as unknown as Record<string, unknown>,
+      raw_payload: request as any,
       processed: true,
       ticket_id: ticket.id,
       message_id: message.id,
@@ -333,10 +345,10 @@ export async function sendChannelResponse(
 async function getChannelConfig(channel: ChannelType): Promise<ChannelConfig | null> {
   const normalizedChannel = channel === 'widget' || channel === 'portal' ? 'widget' : channel;
 
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from('channel_config')
     .select('*')
-    .eq('channel', normalizedChannel)
+    .eq('channel', normalizedChannel as any)
     .single();
 
   return data;
