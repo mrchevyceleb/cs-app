@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -95,31 +95,23 @@ interface MetricsBarProps {
 }
 
 export function MetricsBar({ className }: MetricsBarProps) {
-  const [metrics, setMetrics] = useState<MetricsData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    async function fetchMetrics() {
-      try {
-        const response = await fetch('/api/metrics')
-        if (response.ok) {
-          const data = await response.json()
-          setMetrics({
-            openTickets: data.openTickets,
-            avgResponseTime: data.avgResponseTime,
-            aiResolutionRate: data.aiResolutionRate,
-            customerSatisfaction: data.customerSatisfaction,
-          })
-        }
-      } catch (error) {
-        console.error('Failed to fetch metrics:', error)
-      } finally {
-        setIsLoading(false)
+  const { data: metrics, isPending: isLoading } = useQuery({
+    queryKey: ['metrics-bar'],
+    queryFn: async (): Promise<MetricsData> => {
+      const response = await fetch('/api/metrics')
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics')
       }
-    }
-
-    fetchMetrics()
-  }, [])
+      const data = await response.json()
+      return {
+        openTickets: data.openTickets,
+        avgResponseTime: data.avgResponseTime,
+        aiResolutionRate: data.aiResolutionRate,
+        customerSatisfaction: data.customerSatisfaction,
+      }
+    },
+    staleTime: 30 * 1000, // 30 seconds - metrics can be slightly stale
+  })
 
   const displayValue = (value: number | string | null | undefined, suffix?: string): string => {
     if (value === null || value === undefined) return '--'

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@source "../**/*.{ts,tsx,js,jsx,mdx}";
 
 :root {
   /* --- Base Colors (Palette) --- */
@@ -258,3 +259,16 @@
   to { opacity: 1; }
 }
 .animate-fade-in { animation: fade-in 0.2s ease-out; }
+
+/* Page transition animation */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-page-enter { animation: page-enter 0.15s ease-out; }

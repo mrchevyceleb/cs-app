@@ -15,6 +15,10 @@ export const metadata: Metadata = {
   title: 'R-Link Support Hub',
   description: 'AI-powered customer service platform for R-Link - Live Social Selling',
   keywords: ['customer service', 'AI support', 'live streaming', 'social selling'],
+  icons: {
+    icon: '/r-link-logo.png',
+    apple: '/r-link-logo.png',
+  },
 }
 
 export default function RootLayout({

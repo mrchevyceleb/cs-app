@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -23,12 +24,10 @@ interface TicketQueueProps {
 }
 
 export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }: TicketQueueProps) {
-  const [tickets, setTickets] = useState<TicketWithCustomer[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [bulkUpdateMessage, setBulkUpdateMessage] = useState<string | null>(null)
   const supabase = createClient()
+  const queryClient = useQueryClient()
 
   // Use the ticket selection hook
   const {
@@ -41,10 +40,10 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
     hasSelection,
   } = useTicketSelection()
 
-  const fetchTickets = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
+  // Fetch tickets with React Query for caching across navigation
+  const { data: tickets = [], isPending: isLoading, error, refetch: fetchTickets } = useQuery({
+    queryKey: ['dashboard-tickets'],
+    queryFn: async (): Promise<TicketWithCustomer[]> => {
       const { data, error: fetchError } = await supabase
         .from('tickets')
         .select(`
@@ -55,30 +54,20 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
         .limit(50)
 
       if (fetchError) {
-        console.error('Error fetching tickets:', fetchError)
-        setError('Unable to load tickets. Please try again.')
-        return
+        throw new Error('Unable to load tickets. Please try again.')
       }
 
       // Transform data to match TicketWithCustomer type
-      const transformedTickets = (data || []).map((ticket) => ({
+      return (data || []).map((ticket) => ({
         ...ticket,
         customer: ticket.customer as Customer,
       })) as TicketWithCustomer[]
+    },
+    staleTime: 30 * 1000, // 30 seconds - allow slightly stale data for instant navigation
+  })
 
-      setTickets(transformedTickets)
-    } catch (err) {
-      console.error('Error fetching tickets:', err)
-      setError('Network error. Please check your connection.')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [supabase])
-
+  // Set up real-time subscription (updates React Query cache)
   useEffect(() => {
-    fetchTickets()
-
-    // Set up real-time subscription
     const channel = supabase
       .channel('tickets-realtime')
       .on(
@@ -103,25 +92,25 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
               .single()
 
             if (newTicket) {
-              setTickets((prev) => [
+              queryClient.setQueryData(['dashboard-tickets'], (old: TicketWithCustomer[] | undefined) => [
                 {
                   ...newTicket,
                   customer: newTicket.customer as Customer,
                 } as TicketWithCustomer,
-                ...prev,
+                ...(old || []),
               ])
             }
           } else if (payload.eventType === 'UPDATE') {
-            setTickets((prev) =>
-              prev.map((ticket) =>
+            queryClient.setQueryData(['dashboard-tickets'], (old: TicketWithCustomer[] | undefined) =>
+              (old || []).map((ticket) =>
                 ticket.id === payload.new.id
                   ? { ...ticket, ...(payload.new as Ticket) }
                   : ticket
               )
             )
           } else if (payload.eventType === 'DELETE') {
-            setTickets((prev) =>
-              prev.filter((ticket) => ticket.id !== payload.old.id)
+            queryClient.setQueryData(['dashboard-tickets'], (old: TicketWithCustomer[] | undefined) =>
+              (old || []).filter((ticket) => ticket.id !== payload.old.id)
             )
           }
         }
@@ -131,7 +120,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [supabase, fetchTickets])
+  }, [supabase, queryClient])
 
   // Filter tickets based on active tab
   const filteredTickets = useMemo(() => {
@@ -204,7 +193,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
       clearSelection()
 
       // Refresh tickets to get updated data
-      await fetchTickets()
+      await queryClient.invalidateQueries({ queryKey: ['dashboard-tickets'] })
     } catch (err) {
       console.error('Bulk update error:', err)
       setBulkUpdateMessage(`Error: ${err instanceof Error ? err.message : 'Failed to update tickets'}`)
@@ -319,7 +308,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
               ))
             ) : error ? (
               // Error State
-              <ErrorStateComponent message={error} onRetry={fetchTickets} />
+              <ErrorStateComponent message={error instanceof Error ? error.message : 'Failed to load tickets'} onRetry={() => fetchTickets()} />
             ) : filteredTickets.length > 0 ? (
               filteredTickets.map((ticket) => (
                 <TicketCard

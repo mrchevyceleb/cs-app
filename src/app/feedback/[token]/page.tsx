@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Star, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/shared/Logo'
 
 interface TicketInfo {
   ticketId: string
@@ -311,11 +312,9 @@ function FeedbackLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
         {/* Logo/Brand header */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-            R-Link Support
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <div className="flex flex-col items-center mb-8">
+          <Logo size="lg" />
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
             Customer Satisfaction Survey
           </p>
         </div>

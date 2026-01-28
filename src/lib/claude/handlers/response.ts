@@ -4,7 +4,7 @@ import type {
   GenerateResponseInput,
   GeneratedResponse,
 } from '../types'
-import { anthropic, COPILOT_MODEL } from '../client'
+import { getAnthropicClient, COPILOT_MODEL } from '../client'
 import { RESPONSE_GENERATION_PROMPT } from '../prompts'
 import { searchKnowledgeBase } from './knowledge'
 
@@ -96,7 +96,7 @@ export async function generateResponse(
       .replace('{tone}', tone)
 
     // Generate responses using Claude
-    const response = await anthropic.messages.create({
+    const response = await getAnthropicClient().messages.create({
       model: COPILOT_MODEL,
       max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }],

@@ -50,7 +50,7 @@ export default function DashboardLayout({
 
               {/* Main content area */}
             <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 bg-background">
-              <div className="p-4 lg:p-6">
+              <div className="p-4 lg:p-6 animate-page-enter">
                 {children}
               </div>
             </main>

@@ -4,7 +4,7 @@ import type {
   AnalyzeSentimentInput,
   SentimentAnalysis,
 } from '../types'
-import { anthropic, COPILOT_MODEL } from '../client'
+import { getAnthropicClient, COPILOT_MODEL } from '../client'
 import { SENTIMENT_ANALYSIS_PROMPT } from '../prompts'
 
 /**
@@ -61,7 +61,7 @@ export async function analyzeSentiment(
     // Generate sentiment analysis using Claude
     const prompt = SENTIMENT_ANALYSIS_PROMPT.replace('{messages}', messagesText)
 
-    const response = await anthropic.messages.create({
+    const response = await getAnthropicClient().messages.create({
       model: COPILOT_MODEL,
       max_tokens: 500,
       messages: [{ role: 'user', content: prompt }],
