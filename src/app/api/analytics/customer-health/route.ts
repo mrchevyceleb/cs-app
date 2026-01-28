@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import type { CustomerHealthScore, Customer, HealthRiskLevel, HealthTrend } from '@/types/database'
 
 // Get admin Supabase client
@@ -11,7 +12,7 @@ function getServiceClient() {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   }
 
-  return createClient(supabaseUrl, serviceKey)
+  return createAdminClient(supabaseUrl, serviceKey)
 }
 
 interface HealthScoreWithCustomer extends CustomerHealthScore {
@@ -42,6 +43,17 @@ interface HealthMetrics {
  */
 export async function GET(request: NextRequest) {
   try {
+    const authClient = await createServerClient()
+    const { data: { user }, error: authError } = await authClient.auth.getUser()
+
+    if (authError || !user) {
+      console.error('[CustomerHealth] Auth error:', authError || 'No user session')
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const supabase = getServiceClient()
     const { searchParams } = new URL(request.url)
 
@@ -196,6 +208,17 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const authClient = await createServerClient()
+    const { data: { user }, error: authError } = await authClient.auth.getUser()
+
+    if (authError || !user) {
+      console.error('[CustomerHealth] Auth error:', authError || 'No user session')
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const supabase = getServiceClient()
     const body = await request.json()
     const { customerId } = body

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import type {
   Ticket,
   Customer,
@@ -18,7 +19,7 @@ function getServiceClient() {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   }
 
-  return createClient(supabaseUrl, serviceKey)
+  return createAdminClient(supabaseUrl, serviceKey)
 }
 
 // Scoring weights
@@ -238,6 +239,17 @@ function calculateCompositeScore(
  */
 export async function GET(request: NextRequest) {
   try {
+    const authClient = await createServerClient()
+    const { data: { user }, error: authError } = await authClient.auth.getUser()
+
+    if (authError || !user) {
+      console.error('[SmartQueue] Auth error:', authError || 'No user session')
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const supabase = getServiceClient()
     const { searchParams } = new URL(request.url)
 
@@ -255,6 +267,7 @@ export async function GET(request: NextRequest) {
       `, { count: 'exact' })
       .in('status', ['open', 'pending', 'escalated'])
       .order('created_at', { ascending: true })
+      .order('created_at', { ascending: true, foreignTable: 'messages' })
 
     if (ticketsError) {
       console.error('[SmartQueue] Error fetching tickets:', ticketsError)
@@ -381,6 +394,17 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const authClient = await createServerClient()
+    const { data: { user }, error: authError } = await authClient.auth.getUser()
+
+    if (authError || !user) {
+      console.error('[SmartQueue] Auth error:', authError || 'No user session')
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const supabase = getServiceClient()
 
     // Get all open tickets
@@ -392,6 +416,7 @@ export async function POST(request: NextRequest) {
         messages(id, content, created_at, sender_type)
       `)
       .in('status', ['open', 'pending', 'escalated'])
+      .order('created_at', { ascending: true, foreignTable: 'messages' })
 
     if (error) {
       return NextResponse.json(
