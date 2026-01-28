@@ -6,13 +6,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processIngest } from '@/lib/ai-router';
 import { validateTwilioSignature, parseTwilioWebhook } from '@/lib/twilio/client';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { TwilioInboundSms } from '@/types/channels';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return _supabase;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the inbound message
-    const { data: logEntry } = await supabase
+    const { data: logEntry } = await getSupabase()
       .from('channel_inbound_logs')
       .insert({
         channel: 'sms',
@@ -61,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     // Update log entry
     if (logEntry) {
-      await supabase
+      await getSupabase()
         .from('channel_inbound_logs')
         .update({
           processed: true,

@@ -4,13 +4,20 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { processRetries, getWebhookStats } from '@/lib/webhooks/service';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return _supabase;
+}
 
 // List webhook deliveries
 export async function GET(request: NextRequest) {
@@ -23,7 +30,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
-    let query = supabase
+    let query = getSupabase()
       .from('webhook_deliveries')
       .select('*, webhook_endpoints(name)', { count: 'exact' })
       .order('created_at', { ascending: false })
@@ -90,7 +97,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Get the delivery
-      const { data: delivery, error: fetchError } = await supabase
+      const { data: delivery, error: fetchError } = await getSupabase()
         .from('webhook_deliveries')
         .select('*, webhook_endpoints(*)')
         .eq('id', deliveryId)
@@ -101,7 +108,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Reset for retry
-      await supabase
+      await getSupabase()
         .from('webhook_deliveries')
         .update({
           status: 'retrying',

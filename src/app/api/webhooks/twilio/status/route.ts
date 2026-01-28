@@ -5,12 +5,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { parseTwilioWebhook, twilioStatusToDeliveryStatus, validateTwilioSignature } from '@/lib/twilio/client';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return _supabase;
+}
 
 interface TwilioStatusCallback {
   MessageSid: string;
@@ -45,7 +52,7 @@ export async function POST(request: NextRequest) {
     const deliveryStatus = twilioStatusToDeliveryStatus(params.MessageStatus);
 
     // Find and update the message by external_id (Twilio MessageSid)
-    const { data: message, error: findError } = await supabase
+    const { data: message, error: findError } = await getSupabase()
       .from('messages')
       .select('id, ticket_id')
       .eq('external_id', params.MessageSid)
@@ -54,7 +61,7 @@ export async function POST(request: NextRequest) {
     if (!message && !findError) {
       // Try finding by ticket_id if provided
       if (ticketId) {
-        const { data: recentMessage } = await supabase
+        const { data: recentMessage } = await getSupabase()
           .from('messages')
           .select('id')
           .eq('ticket_id', ticketId)
@@ -67,7 +74,7 @@ export async function POST(request: NextRequest) {
 
         if (recentMessage) {
           // Update this message with the external_id
-          await supabase
+          await getSupabase()
             .from('messages')
             .update({
               external_id: params.MessageSid,
@@ -95,7 +102,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (params.ErrorCode || params.ErrorMessage) {
-        updateData.metadata = supabase.rpc('jsonb_set', {
+        updateData.metadata = getSupabase().rpc('jsonb_set', {
           target: 'metadata',
           path: ['delivery_error'],
           value: {
@@ -105,7 +112,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      await supabase
+      await getSupabase()
         .from('messages')
         .update(updateData)
         .eq('id', message.id);

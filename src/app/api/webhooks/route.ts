@@ -4,19 +4,26 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { generateWebhookSecret } from '@/lib/webhooks/signatures';
 import type { WebhookEndpointInsert } from '@/types/webhooks';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return _supabase;
+}
 
 // List all webhook endpoints
 export async function GET() {
   try {
-    const { data: endpoints, error } = await supabase
+    const { data: endpoints, error } = await getSupabase()
       .from('webhook_endpoints')
       .select('*')
       .order('created_at', { ascending: false });
@@ -64,7 +71,7 @@ export async function POST(request: NextRequest) {
     const secret = body.secret || generateWebhookSecret();
 
     // Create endpoint
-    const { data: endpoint, error } = await supabase
+    const { data: endpoint, error } = await getSupabase()
       .from('webhook_endpoints')
       .insert({
         name: body.name,

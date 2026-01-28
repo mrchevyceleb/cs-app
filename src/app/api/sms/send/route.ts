@@ -4,14 +4,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { sendSupportSms, isTwilioConfigured, normalizePhoneNumber } from '@/lib/twilio/client';
 import { dispatchWebhook } from '@/lib/webhooks/service';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return _supabase;
+}
 
 interface SendSmsRequest {
   ticket_id: string;
@@ -52,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify ticket exists
-    const { data: ticket, error: ticketError } = await supabase
+    const { data: ticket, error: ticketError } = await getSupabase()
       .from('tickets')
       .select('*, customers(*)')
       .eq('id', body.ticket_id)
@@ -63,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create message record first (pending status)
-    const { data: message, error: msgError } = await supabase
+    const { data: message, error: msgError } = await getSupabase()
       .from('messages')
       .insert({
         ticket_id: body.ticket_id,
@@ -84,7 +91,7 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       // Update message status to failed
-      await supabase
+      await getSupabase()
         .from('messages')
         .update({
           delivery_status: 'failed',
@@ -99,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update message with external_id and status
-    await supabase
+    await getSupabase()
       .from('messages')
       .update({
         external_id: result.messageSid,
@@ -108,7 +115,7 @@ export async function POST(request: NextRequest) {
       .eq('id', message.id);
 
     // Update ticket
-    await supabase
+    await getSupabase()
       .from('tickets')
       .update({ updated_at: new Date().toISOString() })
       .eq('id', body.ticket_id);

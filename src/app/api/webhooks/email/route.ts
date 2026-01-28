@@ -6,14 +6,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processInboundEmail } from '@/lib/email/inbound';
 import { processIngest } from '@/lib/ai-router';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { ResendInboundEmail } from '@/types/channels';
 import crypto from 'crypto';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return _supabase;
+}
 
 const WEBHOOK_SECRET = process.env.INBOUND_EMAIL_WEBHOOK_SECRET;
 
@@ -56,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the inbound email
-    const { data: logEntry } = await supabase
+    const { data: logEntry } = await getSupabase()
       .from('channel_inbound_logs')
       .insert({
         channel: 'email',
@@ -74,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Update log entry
     if (logEntry) {
-      await supabase
+      await getSupabase()
         .from('channel_inbound_logs')
         .update({
           processed: true,

@@ -3,13 +3,20 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { WebhookEndpointUpdate } from '@/types/webhooks';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return _supabase;
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -20,7 +27,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    const { data: endpoint, error } = await supabase
+    const { data: endpoint, error } = await getSupabase()
       .from('webhook_endpoints')
       .select('*')
       .eq('id', id)
@@ -73,7 +80,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (body.timeout_seconds !== undefined) updates.timeout_seconds = body.timeout_seconds;
     if (body.headers !== undefined) updates.headers = body.headers;
 
-    const { data: endpoint, error } = await supabase
+    const { data: endpoint, error } = await getSupabase()
       .from('webhook_endpoints')
       .update(updates)
       .eq('id', id)
@@ -104,7 +111,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('webhook_endpoints')
       .delete()
       .eq('id', id);

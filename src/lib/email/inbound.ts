@@ -3,15 +3,22 @@
  * Handle inbound emails and convert them to tickets/messages
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { ResendInboundEmail } from '@/types/channels';
 import type { Ticket, Message, EmailThread } from '@/types/database';
 import { findOrCreateCustomerByEmail } from '@/lib/channels/customer';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return _supabase;
+}
 
 interface ProcessEmailResult {
   ticket_id: string;
@@ -54,7 +61,7 @@ export async function processInboundEmail(
   if (!ticket) {
     const ticketIdMatch = email.subject.match(/\[Ticket #([a-f0-9-]+)\]/i);
     if (ticketIdMatch) {
-      const { data } = await supabase
+      const { data } = await getSupabase()
         .from('tickets')
         .select('*')
         .eq('id', ticketIdMatch[1])
@@ -65,7 +72,7 @@ export async function processInboundEmail(
 
   // Also check for recent open tickets from this customer
   if (!ticket) {
-    const { data: recentTicket } = await supabase
+    const { data: recentTicket } = await getSupabase()
       .from('tickets')
       .select('*')
       .eq('customer_id', customer.id)
@@ -84,7 +91,7 @@ export async function processInboundEmail(
     isNewTicket = false;
   } else {
     // Create new ticket
-    const { data: newTicket, error } = await supabase
+    const { data: newTicket, error } = await getSupabase()
       .from('tickets')
       .insert({
         customer_id: customer.id,
@@ -110,7 +117,7 @@ export async function processInboundEmail(
 
   // Store email thread info
   if (messageId) {
-    await supabase
+    await getSupabase()
       .from('email_threads')
       .upsert({
         ticket_id: ticket.id,
@@ -128,7 +135,7 @@ export async function processInboundEmail(
   // Create message
   const content = email.text || stripHtml(email.html || '') || '(No content)';
 
-  const { data: message, error: msgError } = await supabase
+  const { data: message, error: msgError } = await getSupabase()
     .from('messages')
     .insert({
       ticket_id: ticket.id,
@@ -151,7 +158,7 @@ export async function processInboundEmail(
   }
 
   // Update ticket updated_at
-  await supabase
+  await getSupabase()
     .from('tickets')
     .update({ updated_at: new Date().toISOString() })
     .eq('id', ticket.id);
@@ -164,7 +171,7 @@ export async function processInboundEmail(
   }
 
   // Log inbound email
-  await supabase
+  await getSupabase()
     .from('channel_inbound_logs')
     .insert({
       channel: 'email',
@@ -196,14 +203,14 @@ async function findTicketByEmailThread(
 ): Promise<Ticket | null> {
   // Check In-Reply-To header first
   if (inReplyTo) {
-    const { data: thread } = await supabase
+    const { data: thread } = await getSupabase()
       .from('email_threads')
       .select('ticket_id')
       .eq('message_id_header', inReplyTo)
       .single();
 
     if (thread) {
-      const { data: ticket } = await supabase
+      const { data: ticket } = await getSupabase()
         .from('tickets')
         .select('*')
         .eq('id', thread.ticket_id)
@@ -218,14 +225,14 @@ async function findTicketByEmailThread(
     const refIds = references.split(/\s+/).map(r => r.trim()).filter(Boolean);
 
     for (const refId of refIds) {
-      const { data: thread } = await supabase
+      const { data: thread } = await getSupabase()
         .from('email_threads')
         .select('ticket_id')
         .eq('message_id_header', refId)
         .single();
 
       if (thread) {
-        const { data: ticket } = await supabase
+        const { data: ticket } = await getSupabase()
           .from('tickets')
           .select('*')
           .eq('id', thread.ticket_id)
@@ -254,7 +261,7 @@ async function processEmailAttachment(
   const storagePath = `attachments/${messageId}/${filename}`;
 
   // Upload to Supabase Storage
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await getSupabase().storage
     .from('attachments')
     .upload(storagePath, buffer, {
       contentType: attachment.content_type,
@@ -266,12 +273,12 @@ async function processEmailAttachment(
   }
 
   // Get public URL
-  const { data: { publicUrl } } = supabase.storage
+  const { data: { publicUrl } } = getSupabase().storage
     .from('attachments')
     .getPublicUrl(storagePath);
 
   // Create attachment record
-  await supabase
+  await getSupabase()
     .from('message_attachments')
     .insert({
       message_id: messageId,
@@ -295,7 +302,7 @@ export function generateMessageId(ticketId: string, messageId: string): string {
  * Get References header for threading
  */
 export async function getEmailReferences(ticketId: string): Promise<string | null> {
-  const { data: threads } = await supabase
+  const { data: threads } = await getSupabase()
     .from('email_threads')
     .select('message_id_header')
     .eq('ticket_id', ticketId)

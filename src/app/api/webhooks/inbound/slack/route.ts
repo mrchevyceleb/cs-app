@@ -6,13 +6,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processIngest } from '@/lib/ai-router';
 import { verifySlackSignature } from '@/lib/webhooks/signatures';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { SlackEvent } from '@/types/channels';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return _supabase;
+}
 
 const SLACK_SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET;
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
@@ -85,7 +92,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Log inbound message
-      const { data: logEntry } = await supabase
+      const { data: logEntry } = await getSupabase()
         .from('channel_inbound_logs')
         .insert({
           channel: 'slack',
@@ -117,7 +124,7 @@ export async function POST(request: NextRequest) {
 
       // Update log entry
       if (logEntry) {
-        await supabase
+        await getSupabase()
           .from('channel_inbound_logs')
           .update({
             processed: true,
@@ -150,7 +157,7 @@ export async function POST(request: NextRequest) {
 
 // Find ticket by Slack thread timestamp
 async function findTicketBySlackThread(threadTs: string): Promise<string | undefined> {
-  const { data: message } = await supabase
+  const { data: message } = await getSupabase()
     .from('messages')
     .select('ticket_id')
     .eq('source', 'slack')
