@@ -8,6 +8,8 @@ import { CommandPaletteProvider } from '@/components/dashboard/CommandPalette'
 import { KeyboardShortcutsProvider } from '@/contexts/KeyboardShortcutsContext'
 import { KeyboardShortcutsManager } from '@/components/dashboard/KeyboardShortcutsManager'
 import { ToastProvider } from '@/components/ui/toast'
+import { NovaCopilotProvider } from '@/contexts/NovaCopilotContext'
+import { NovaCopilot } from '@/components/dashboard/NovaCopilot'
 
 export default function DashboardLayout({
   children,
@@ -23,36 +25,41 @@ export default function DashboardLayout({
     <ToastProvider>
       <KeyboardShortcutsProvider>
         <CommandPaletteProvider>
-          <div className="flex h-screen overflow-hidden bg-transparent">
-            {/* Animated background */}
-            <AnimatedBackground intensity="subtle" />
+          <NovaCopilotProvider>
+            <div className="flex h-screen overflow-hidden bg-transparent">
+              {/* Animated background */}
+              <AnimatedBackground intensity="subtle" />
 
-            {/* Mobile header */}
-            <MobileHeader
-              onMenuClick={toggleMobileMenu}
-              isMenuOpen={isMobileMenuOpen}
-            />
+              {/* Mobile header */}
+              <MobileHeader
+                onMenuClick={toggleMobileMenu}
+                isMenuOpen={isMobileMenuOpen}
+              />
 
-            {/* Desktop sidebar - hidden on mobile */}
-            <div className="hidden lg:block">
-              <Sidebar />
-            </div>
+              {/* Desktop sidebar - hidden on mobile */}
+              <div className="hidden lg:block">
+                <Sidebar />
+              </div>
 
-            {/* Mobile sidebar overlay */}
-            <MobileSidebarOverlay isOpen={isMobileMenuOpen} onClose={closeMobileMenu}>
-              <Sidebar className="h-full" onNavigate={closeMobileMenu} />
-            </MobileSidebarOverlay>
+              {/* Mobile sidebar overlay */}
+              <MobileSidebarOverlay isOpen={isMobileMenuOpen} onClose={closeMobileMenu}>
+                <Sidebar className="h-full" onNavigate={closeMobileMenu} />
+              </MobileSidebarOverlay>
 
-            {/* Main content area */}
-            <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 bg-transparent">
+              {/* Main content area */}
+            <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 bg-background">
               <div className="p-4 lg:p-6">
                 {children}
               </div>
             </main>
 
-            {/* Keyboard Shortcuts Manager - handles global shortcuts and help modal */}
-            <KeyboardShortcutsManager />
-          </div>
+              {/* Keyboard Shortcuts Manager - handles global shortcuts and help modal */}
+              <KeyboardShortcutsManager />
+
+              {/* Nova Copilot UI */}
+              <NovaCopilot />
+            </div>
+          </NovaCopilotProvider>
         </CommandPaletteProvider>
       </KeyboardShortcutsProvider>
     </ToastProvider>

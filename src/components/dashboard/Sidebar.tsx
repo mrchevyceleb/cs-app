@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -9,10 +10,7 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { signOut } from '@/lib/supabase/actions'
 import { useCommandPalette } from '@/components/dashboard/CommandPalette'
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -27,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { NotificationBell } from '@/components/dashboard/NotificationBell'
+import { useNovaCopilot } from '@/contexts/NovaCopilotContext'
 
 // Icons as simple SVG components for clean design
 const Icons = {
@@ -93,13 +92,6 @@ const Icons = {
   ),
 }
 
-const navItems = [
-  { href: '/', icon: Icons.inbox, label: 'Dashboard', badge: null },
-  { href: '/tickets', icon: Icons.tickets, label: 'Tickets', badge: '12' },
-  { href: '/knowledge', icon: Icons.knowledge, label: 'Knowledge Base', badge: null },
-  { href: '/analytics', icon: Icons.analytics, label: 'Analytics', badge: null },
-]
-
 interface SidebarProps {
   className?: string
   onNavigate?: () => void
@@ -109,6 +101,31 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const { agent, user, isLoading } = useAuth()
   const { setOpen: openCommandPalette } = useCommandPalette()
+  const { open: openNova } = useNovaCopilot()
+  const [ticketCount, setTicketCount] = useState<number | null>(null)
+
+  // Fetch ticket count
+  useEffect(() => {
+    const fetchTicketCount = async () => {
+      try {
+        const response = await fetch('/api/tickets?limit=1')
+        if (response.ok) {
+          const data = await response.json()
+          setTicketCount(data.total || 0)
+        }
+      } catch (error) {
+        console.error('Failed to fetch ticket count:', error)
+      }
+    }
+    fetchTicketCount()
+  }, [])
+
+  const navItems = [
+    { href: '/', icon: Icons.inbox, label: 'Dashboard', badge: null },
+    { href: '/tickets', icon: Icons.tickets, label: 'Tickets', badge: ticketCount !== null ? String(ticketCount) : null },
+    { href: '/knowledge', icon: Icons.knowledge, label: 'Knowledge Base', badge: null },
+    { href: '/analytics', icon: Icons.analytics, label: 'Analytics', badge: null },
+  ]
 
   const getInitials = (name: string) => {
     return name
@@ -134,7 +151,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'flex flex-col h-screen w-64 border-r bg-sidebar/80 backdrop-blur-xl border-sidebar-border shadow-xl shadow-indigo-500/5 transition-all duration-300',
+          'flex flex-col h-screen w-64 border-r bg-sidebar backdrop-blur-lg border-sidebar-border shadow-xl shadow-indigo-500/5 transition-all duration-300',
           className
         )}
       >
@@ -216,6 +233,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
             <Button
               size="sm"
               className="w-full shadow-sm"
+              onClick={openNova}
             >
               Ask Nova
             </Button>

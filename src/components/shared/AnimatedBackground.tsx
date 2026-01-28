@@ -12,9 +12,9 @@ export function AnimatedBackground({
   intensity = 'subtle'
 }: AnimatedBackgroundProps) {
   const opacityMap = {
-    subtle: 'opacity-30',
-    medium: 'opacity-50',
-    strong: 'opacity-70',
+    subtle: 'opacity-[0.18]',
+    medium: 'opacity-[0.28]',
+    strong: 'opacity-[0.4]',
   }
 
   return (
@@ -23,19 +23,19 @@ export function AnimatedBackground({
       <div className={cn('absolute inset-0', opacityMap[intensity])}>
         {/* Blob 1 - Top left - Softer Indigo */}
         <div
-          className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-indigo-300/50 dark:bg-primary-900/30 rounded-full blur-[100px] animate-gradient-shift mix-blend-multiply dark:mix-blend-screen"
+          className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-indigo-300/35 dark:bg-primary-900/25 rounded-full blur-[100px] motion-safe:animate-gradient-shift"
           style={{ animationDelay: '0s' }}
         />
 
         {/* Blob 2 - Top right - Subtle Purple */}
         <div
-          className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-300/40 dark:bg-purple-900/30 rounded-full blur-[120px] animate-gradient-shift mix-blend-multiply dark:mix-blend-screen"
+          className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-300/30 dark:bg-purple-900/25 rounded-full blur-[120px] motion-safe:animate-gradient-shift"
           style={{ animationDelay: '-5s' }}
         />
 
         {/* Blob 3 - Bottom left - Warm Slate */}
         <div
-          className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-slate-300/60 dark:bg-slate-800/30 rounded-full blur-[100px] animate-gradient-shift mix-blend-multiply dark:mix-blend-screen"
+          className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-slate-200/45 dark:bg-slate-800/25 rounded-full blur-[100px] motion-safe:animate-gradient-shift"
           style={{ animationDelay: '-10s' }}
         />
       </div>

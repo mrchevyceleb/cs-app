@@ -30,14 +30,14 @@
   --slate-950: #020617;
 
   /* Semantic Colors - Light Mode (Modern Glass) */
-  --background: var(--slate-50);
+  --background: #F5F7FB;
   --foreground: var(--slate-900);
 
   /* Glass Effects */
-  --card: rgba(255, 255, 255, 0.8);
+  --card: #FFFFFF;
   --card-foreground: var(--slate-900);
 
-  --popover: rgba(255, 255, 255, 0.95);
+  --popover: #FFFFFF;
   --popover-foreground: var(--slate-900);
 
   --primary: var(--primary-600);
@@ -47,7 +47,7 @@
   --secondary-foreground: var(--slate-900);
 
   --muted: var(--slate-100);
-  --muted-foreground: var(--slate-600); /* Darkened from slate-500 for better contrast */
+  --muted-foreground: var(--slate-700); /* Darkened for better contrast */
 
   --accent: var(--slate-100);
   --accent-foreground: var(--slate-900);
@@ -55,18 +55,18 @@
   --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
 
-  --border: rgba(226, 232, 240, 0.8);
+  --border: var(--slate-200);
   --input: var(--slate-200);
   --ring: var(--primary-600);
 
   /* Sidebar - Modern Glass */
-  --sidebar: rgba(255, 255, 255, 0.75);
+  --sidebar: #F8FAFC;
   --sidebar-foreground: var(--slate-700);
   --sidebar-primary: var(--primary-600);
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: rgba(241, 245, 249, 0.8);
+  --sidebar-accent: var(--slate-100);
   --sidebar-accent-foreground: var(--slate-900);
-  --sidebar-border: rgba(226, 232, 240, 0.6);
+  --sidebar-border: var(--slate-200);
   --sidebar-ring: var(--primary-600);
 
   /* Radius */
@@ -86,7 +86,7 @@
   --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
 
   /* Nova Gradient */
-  --nova-gradient-bg: linear-gradient(135deg, rgba(238, 242, 255, 0.5) 0%, rgba(255, 255, 255, 0.8) 100%);
+  --nova-gradient-bg: linear-gradient(135deg, rgba(224, 231, 255, 0.35) 0%, rgba(248, 250, 252, 0.98) 100%);
   --nova-border: var(--primary-200);
 }
 
@@ -95,10 +95,10 @@
   --background: var(--slate-950);
   --foreground: var(--slate-50);
 
-  --card: rgba(15, 23, 42, 0.6);
+  --card: #0F172A;
   --card-foreground: var(--slate-50);
 
-  --popover: var(--slate-900);
+  --popover: #0F172A;
   --popover-foreground: var(--slate-50);
 
   --primary: var(--primary-500);
@@ -108,7 +108,7 @@
   --secondary-foreground: var(--slate-50);
 
   --muted: var(--slate-800);
-  --muted-foreground: var(--slate-400);
+  --muted-foreground: var(--slate-300);
 
   --accent: var(--slate-800);
   --accent-foreground: var(--slate-50);
@@ -121,7 +121,7 @@
   --ring: var(--primary-500);
 
   /* Sidebar - Dark Mode */
-  --sidebar: rgba(2, 6, 23, 0.8);
+  --sidebar: #0B1220;
   --sidebar-foreground: var(--slate-300);
   --sidebar-primary: var(--primary-500);
   --sidebar-primary-foreground: #FFFFFF;
@@ -140,7 +140,7 @@
 
    /* Nova Gradient - Dark */
   /* Increased opacity and darker base for better contrast */
-  --nova-gradient-bg: linear-gradient(135deg, rgba(49, 46, 129, 0.4) 0%, rgba(15, 23, 42, 0.95) 100%);
+  --nova-gradient-bg: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(2, 6, 23, 0.96) 100%);
   --nova-border: var(--primary-900);
 }
 
@@ -231,17 +231,16 @@
   body {
     @apply bg-background text-foreground;
     background-image: var(--nova-gradient-bg);
-    background-attachment: fixed;
     min-height: 100vh;
   }
   
   /* Modern Glass Utility */
   .glass {
-    @apply bg-white/70 backdrop-blur-md border border-white/40 shadow-lg shadow-indigo-500/10;
+    @apply bg-card/95 backdrop-blur-md border border-border/70 shadow-lg;
   }
   
   .dark .glass {
-    @apply bg-slate-900/60 border-slate-700/50 shadow-none;
+    @apply bg-card/90 border-border/60 shadow-none;
   }
 }
 
