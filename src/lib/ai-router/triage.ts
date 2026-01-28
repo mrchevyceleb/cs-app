@@ -4,17 +4,26 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { ChannelType, RoutingDecision } from '@/types/channels';
 import type { Ticket, Customer } from '@/types/database';
 import { TRIAGE_PROMPT, RESPONSE_PROMPT } from './prompts';
 
 const anthropic = new Anthropic();
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      throw new Error('Missing required Supabase environment variables');
+    }
+    _supabase = createClient(url, key);
+  }
+  return _supabase;
+}
 
 interface TriageInput {
   message: string;
@@ -173,7 +182,7 @@ async function searchKnowledgeBase(query: string): Promise<{ id: string; title: 
 
     if (!embeddingResponse.ok) {
       // Fallback to simple text search
-      const { data } = await supabase
+      const { data } = await getSupabase()
         .from('knowledge_articles')
         .select('id, title, content')
         .textSearch('content', query)
@@ -185,7 +194,7 @@ async function searchKnowledgeBase(query: string): Promise<{ id: string; title: 
     const { embedding } = await embeddingResponse.json();
 
     // Search with embedding
-    const { data } = await supabase.rpc('match_knowledge', {
+    const { data } = await getSupabase().rpc('match_knowledge', {
       query_embedding: embedding,
       match_threshold: 0.7,
       match_count: 3,
