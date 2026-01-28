@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import { MobileHeader, MobileSidebarOverlay } from '@/components/dashboard/MobileHeader'
-import { AnimatedBackground } from '@/components/shared/AnimatedBackground'
 import { CommandPaletteProvider } from '@/components/dashboard/CommandPalette'
 import { KeyboardShortcutsProvider } from '@/contexts/KeyboardShortcutsContext'
 import { KeyboardShortcutsManager } from '@/components/dashboard/KeyboardShortcutsManager'
@@ -29,8 +28,6 @@ export default function DashboardLayout({
           <RealtimeProvider>
           <NovaCopilotProvider>
             <div className="flex h-screen overflow-hidden bg-transparent">
-              {/* Animated background */}
-              <AnimatedBackground intensity="subtle" />
 
               {/* Mobile header */}
               <MobileHeader

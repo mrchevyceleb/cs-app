@@ -231,7 +231,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-image: var(--nova-gradient-bg);
+    background-image: none;
     min-height: 100vh;
   }
 }

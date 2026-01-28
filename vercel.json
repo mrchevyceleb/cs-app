@@ -1,0 +1,44 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/health-scores",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/stalled-conversations",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/post-resolution-checkin",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/sla-prediction",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/pattern-detection",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/volume-forecast",
+      "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/cron/article-effectiveness",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/confidence-calibration",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/knowledge-gaps",
+      "schedule": "0 0 * * 0"
+    },
+    {
+      "path": "/api/cron/article-retirement",
+      "schedule": "0 0 1 * *"
+    }
+  ]
+}

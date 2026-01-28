@@ -23,10 +23,10 @@ function MetricCard({ label, value, icon, variant = 'default', isLoading = false
   }
 
   const iconStyles = {
-    default: 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
-    success: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-    warning: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-    danger: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+    default: 'bg-slate-100 text-slate-800 ring-1 ring-slate-200/70 shadow-sm dark:bg-slate-800/60 dark:text-slate-100 dark:ring-slate-700/60',
+    success: 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/70 shadow-sm dark:bg-emerald-900/50 dark:text-emerald-100 dark:ring-emerald-700/60',
+    warning: 'bg-amber-50 text-amber-900 ring-1 ring-amber-200/70 shadow-sm dark:bg-amber-900/50 dark:text-amber-100 dark:ring-amber-700/60',
+    danger: 'bg-rose-50 text-rose-800 ring-1 ring-rose-200/70 shadow-sm dark:bg-rose-900/50 dark:text-rose-100 dark:ring-rose-700/60',
   }
 
   return (
@@ -45,8 +45,13 @@ function MetricCard({ label, value, icon, variant = 'default', isLoading = false
             <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
           )}
         </div>
-        <div className={cn('p-3 rounded-lg', iconStyles[variant])}>
-          {icon}
+        <div
+          className={cn('flex items-center justify-center rounded-lg', iconStyles[variant])}
+          style={{ width: 44, height: 44 }}
+        >
+          <span style={{ transform: 'scale(1.3)', transformOrigin: 'center' }}>
+            {icon}
+          </span>
         </div>
       </div>
     </Card>
@@ -54,10 +59,10 @@ function MetricCard({ label, value, icon, variant = 'default', isLoading = false
 }
 
 const Icons = {
-  ticket: <Ticket size={28} strokeWidth={2.5} />,
-  clock: <Clock size={28} strokeWidth={2.5} />,
-  robot: <Bot size={28} strokeWidth={2.5} />,
-  happy: <Smile size={28} strokeWidth={2.5} />,
+  ticket: <Ticket strokeWidth={2.5} style={{ width: 26, height: 26 }} />,
+  clock: <Clock strokeWidth={2.5} style={{ width: 26, height: 26 }} />,
+  robot: <Bot strokeWidth={2.5} style={{ width: 26, height: 26 }} />,
+  happy: <Smile strokeWidth={2.5} style={{ width: 26, height: 26 }} />,
 }
 
 interface MetricsData {

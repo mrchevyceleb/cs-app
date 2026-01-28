@@ -7,6 +7,7 @@ import { NovaAvatar } from '@/components/shared/NovaAvatar'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import ReactMarkdown from 'react-markdown'
 
 interface Message {
   id: string
@@ -114,8 +115,8 @@ export function NovaCopilot() {
               if (data.type === 'text' && data.content) {
                 assistantContent += data.content
               } else if (data.type === 'tool_start' && data.tool) {
-                // Show tool usage in italics
-                assistantContent += `\n_Using tool: ${data.tool.name}._\n`
+                // Intentionally hide tool usage details from UI.
+                // Keep streaming flow intact without altering content.
               } else if (data.type === 'error' && data.error) {
                 assistantContent += `\n**Error:** ${data.error}\n`
               }
@@ -205,7 +206,16 @@ export function NovaCopilot() {
                   ? "bg-primary text-primary-foreground" 
                   : "bg-muted text-foreground"
               )}>
-                <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                <div
+                  className={cn(
+                    "whitespace-pre-wrap leading-relaxed prose prose-sm max-w-none",
+                    message.role === 'user'
+                      ? "prose-invert text-primary-foreground prose-p:text-primary-foreground prose-strong:text-primary-foreground prose-headings:text-primary-foreground prose-a:text-primary-foreground"
+                      : "dark:prose-invert"
+                  )}
+                >
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                </div>
                 {message.role === 'assistant' && message.content === '' && (
                    <span className="flex gap-1 items-center mt-1 h-4">
                      <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></span>

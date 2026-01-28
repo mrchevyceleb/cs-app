@@ -1,4 +1,3 @@
-import { AnimatedBackground } from '@/components/shared/AnimatedBackground'
 
 export default function AuthLayout({
   children,
@@ -7,7 +6,6 @@ export default function AuthLayout({
 }) {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <AnimatedBackground intensity="medium" />
       {children}
     </div>
   )

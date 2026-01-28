@@ -265,12 +265,13 @@ export async function sendAgentReplyEmail(
   }
 
   // Generate email content
+  const translatedPreview = message.content_translated?.trim()
   const emailData: TicketEmailData = {
     ticketId: ticket.id,
     ticketSubject: ticket.subject,
     customerName: customer.name || 'there',
     portalToken,
-    messagePreview: message.content,
+    messagePreview: translatedPreview || message.content,
   }
 
   const { html, text } = agentReplyTemplate(emailData)
