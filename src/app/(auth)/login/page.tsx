@@ -90,7 +90,7 @@ export default function LoginPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 border-gray-300 dark:border-gray-600"
+              className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-300 border-gray-300 dark:border-gray-600"
               required
             />
           </div>
@@ -105,7 +105,7 @@ export default function LoginPage() {
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 border-gray-300 dark:border-gray-600"
+              className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-300 border-gray-300 dark:border-gray-600"
               required
             />
           </div>
@@ -121,7 +121,7 @@ export default function LoginPage() {
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 border-gray-300 dark:border-gray-600"
+                className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-300 border-gray-300 dark:border-gray-600"
                 required
               />
             </div>
