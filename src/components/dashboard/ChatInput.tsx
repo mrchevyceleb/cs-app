@@ -408,10 +408,10 @@ export function ChatInput({
 
       {/* Shortcut Suggestions Dropdown */}
       {showSuggestions && shortcutSuggestions.length > 0 && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden z-50">
-          <div className="p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Canned responses matching <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-[10px]">/{currentShortcut}</kbd>
+        <div className="absolute bottom-full left-0 right-0 mb-1 bg-card border border-border/60 rounded-lg shadow-[var(--shadow-md)] overflow-hidden z-50">
+          <div className="p-2 border-b border-border/60 bg-muted/60">
+            <span className="text-xs text-muted-foreground">
+              Canned responses matching <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">/{currentShortcut}</kbd>
             </span>
           </div>
           <div className="max-h-48 overflow-y-auto">
@@ -421,32 +421,32 @@ export function ChatInput({
                 onClick={() => selectSuggestion(suggestion)}
                 className={cn(
                   'w-full text-left px-3 py-2 transition-colors',
-                  'hover:bg-gray-100 dark:hover:bg-gray-700',
-                  index === clampedSuggestionIndex && 'bg-primary-50 dark:bg-primary-900/20'
+                  'hover:bg-muted',
+                  index === clampedSuggestionIndex && 'bg-primary-50'
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                  <span className="font-medium text-sm text-foreground truncate">
                     {suggestion.title}
                   </span>
                   {suggestion.shortcut && (
-                    <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-gray-600 dark:text-gray-400 shrink-0">
+                    <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono bg-muted border border-border/60 rounded text-muted-foreground shrink-0">
                       <Hash className="h-2.5 w-2.5" />
                       {suggestion.shortcut}
                     </kbd>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
                   {suggestion.content}
                 </p>
               </button>
             ))}
           </div>
-          <div className="p-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-            <span className="text-[10px] text-gray-400">
-              <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">Tab</kbd> or{' '}
-              <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">Enter</kbd> to select,{' '}
-              <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">Esc</kbd> to dismiss
+          <div className="p-1.5 border-t border-border/60 bg-muted/60">
+            <span className="text-[10px] text-muted-foreground">
+              <kbd className="px-1 py-0.5 bg-muted rounded">Tab</kbd> or{' '}
+              <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> to select,{' '}
+              <kbd className="px-1 py-0.5 bg-muted rounded">Esc</kbd> to dismiss
             </span>
           </div>
         </div>
@@ -468,13 +468,13 @@ export function ChatInput({
 
       <div
         className={cn(
-          'flex items-end gap-2 p-2 rounded-xl transition-all duration-200 border shadow-sm',
+          'flex items-end gap-2 p-2 rounded-xl transition-all duration-200 border shadow-[var(--shadow-sm)] bg-card',
           isInternalNote
-            ? 'border-amber-200 bg-amber-50/80 dark:bg-amber-900/20 dark:border-amber-800'
-            : 'border-indigo-100 dark:border-slate-700 bg-gradient-to-r from-white via-indigo-50/30 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-900',
+            ? 'border-amber-200 bg-amber-50'
+            : 'border-border/60',
           isInternalNote
             ? 'focus-within:ring-2 focus-within:ring-amber-500/20'
-            : 'focus-within:ring-2 focus-within:ring-primary-500/10 focus-within:border-primary-400/50',
+            : 'focus-within:ring-2 focus-within:ring-primary-500/15 focus-within:border-primary-400/50',
           (disabled || isSending) && 'opacity-50 cursor-not-allowed'
         )}
       >
@@ -488,8 +488,8 @@ export function ChatInput({
                 className={cn(
                   'h-8 w-8 shrink-0 transition-colors',
                   attachments.length > 0
-                    ? 'text-primary-600 dark:text-primary-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    ? 'text-primary-600'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
                 disabled={disabled || isSending || !attachmentsEnabled || hasReachedFileLimit}
                 onClick={handleAttachClick}
@@ -548,7 +548,7 @@ export function ChatInput({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
                 disabled={disabled || isSending}
               >
                 <Smile className="h-4 w-4" />
@@ -569,7 +569,7 @@ export function ChatInput({
                   'h-8 w-8 shrink-0 transition-colors',
                   isInternalNote
                     ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-amber-50'
                 )}
                 disabled={disabled || isSending}
                 onClick={() => setIsInternalNote(!isInternalNote)}
@@ -601,9 +601,9 @@ export function ChatInput({
                     'h-8 w-8 rounded-r-none',
                     canSend
                       ? sendMode === 'ai'
-                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                        ? 'bg-primary-600 hover:bg-primary-700 text-white'
                         : 'bg-primary-600 hover:bg-primary-700 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-muted text-muted-foreground cursor-not-allowed'
                   )}
                 >
                   {isSending ? (
@@ -632,9 +632,9 @@ export function ChatInput({
                   'h-8 w-6 rounded-l-none border-l-0 px-1',
                   canSend
                     ? sendMode === 'ai'
-                      ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600'
+                      ? 'bg-primary-600 hover:bg-primary-700 text-white border-primary-600'
                       : 'bg-primary-600 hover:bg-primary-700 text-white border-primary-600'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-200 dark:border-gray-600'
+                    : 'bg-muted text-muted-foreground border-border/60'
                 )}
               >
                 <ChevronDown className="h-3 w-3" />
@@ -655,7 +655,7 @@ export function ChatInput({
               >
                 <Sparkles className="h-4 w-4" />
                 <span className="flex-1">Send as AI</span>
-                {sendMode === 'ai' && <Check className="h-4 w-4 text-purple-600" />}
+                {sendMode === 'ai' && <Check className="h-4 w-4 text-primary-600" />}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -664,13 +664,13 @@ export function ChatInput({
 
       {/* Error Display */}
       {error && (
-        <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
+        <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-red-700 bg-rose-50 rounded-lg border border-rose-200">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="flex-1">{error}</span>
           {onRetry && (
             <button
               onClick={onRetry}
-              className="text-red-700 dark:text-red-300 hover:underline font-medium"
+              className="text-red-700 hover:underline font-medium"
             >
               Retry
             </button>
@@ -678,7 +678,7 @@ export function ChatInput({
           {onClearError && (
             <button
               onClick={onClearError}
-              className="text-red-500 hover:text-red-700 dark:hover:text-red-300"
+              className="text-red-500 hover:text-red-700"
             >
               <X className="h-4 w-4" />
             </button>
@@ -688,11 +688,11 @@ export function ChatInput({
 
       {/* Typing Indicator */}
       {typingIndicatorText && (
-        <div className="flex items-center gap-2 px-2 py-1 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
           <div className="flex gap-1">
-            <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-            <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-            <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
           <span>{typingIndicatorText}</span>
         </div>
@@ -700,7 +700,7 @@ export function ChatInput({
 
       {/* Keyboard shortcut hint */}
       {isExpanded && !error && (
-        <div className="flex items-center justify-between text-xs text-gray-400">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             {isInternalNote ? (
               <>
@@ -709,8 +709,8 @@ export function ChatInput({
               </>
             ) : sendMode === 'ai' ? (
               <>
-                <Sparkles className="h-3 w-3 text-purple-500" />
-                <span className="text-purple-500">Sending as AI</span>
+                <Sparkles className="h-3 w-3 text-primary-600" />
+                <span className="text-primary-600">Sending as AI</span>
               </>
             ) : (
               <>
@@ -722,8 +722,8 @@ export function ChatInput({
           <div className="flex items-center gap-2">
             <Keyboard className="h-3 w-3" />
             <span>
-              <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px]">Enter</kbd> to send,{' '}
-              <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px]">Shift+Enter</kbd> for new line
+              <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">Enter</kbd> to send,{' '}
+              <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">Shift+Enter</kbd> for new line
             </span>
           </div>
         </div>

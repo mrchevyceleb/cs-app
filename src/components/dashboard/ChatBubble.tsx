@@ -305,10 +305,10 @@ export function ChatBubbleSkeleton({ align = 'left' }: { align?: 'left' | 'right
         align === 'right' ? 'flex-row-reverse' : 'flex-row'
       )}
     >
-      <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700" />
+      <div className="h-8 w-8 rounded-full bg-muted" />
       <div className={cn('flex flex-col max-w-[70%]', align === 'right' ? 'items-end' : 'items-start')}>
-        <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-        <div className="h-16 w-48 bg-gray-200 dark:bg-gray-700 rounded-2xl" />
+        <div className="h-3 w-24 bg-muted rounded mb-2" />
+        <div className="h-16 w-48 bg-muted rounded-2xl" />
       </div>
     </div>
   )

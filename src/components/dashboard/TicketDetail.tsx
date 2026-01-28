@@ -77,10 +77,10 @@ interface TicketDetailProps {
 }
 
 const statusOptions = [
-  { value: 'open', label: 'Open', icon: Clock, color: 'text-blue-500' },
-  { value: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-500' },
-  { value: 'resolved', label: 'Resolved', icon: CheckCircle, color: 'text-green-500' },
-  { value: 'escalated', label: 'Escalated', icon: AlertTriangle, color: 'text-red-500' },
+  { value: 'open', label: 'Open', icon: Clock, color: 'text-primary-600' },
+  { value: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },
+  { value: 'resolved', label: 'Resolved', icon: CheckCircle, color: 'text-emerald-600' },
+  { value: 'escalated', label: 'Escalated', icon: AlertTriangle, color: 'text-rose-600' },
 ]
 
 const priorityOptions = [
