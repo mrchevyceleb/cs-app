@@ -162,7 +162,7 @@ export function NovaCopilot() {
   return (
     <div className="fixed inset-y-0 right-0 w-[400px] bg-background border-l border-border shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out slide-in-from-right">
       {/* Header */}
-      <div className="p-4 border-b border-border bg-sidebar/50 backdrop-blur-sm flex items-center justify-between">
+      <div className="p-4 border-b border-border/60 bg-sidebar flex items-center justify-between">
         <div className="flex items-center gap-3">
           <NovaAvatar size="sm" />
           <div>

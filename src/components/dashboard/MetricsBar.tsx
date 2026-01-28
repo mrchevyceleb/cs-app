@@ -32,7 +32,7 @@ function MetricCard({ label, value, icon, variant = 'default', isLoading = false
   return (
     <Card
       className={cn(
-        'p-4 border transition-shadow duration-200 shadow-sm hover:shadow-md',
+        'p-4 border transition-shadow duration-200 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]',
         variantStyles[variant]
       )}
     >

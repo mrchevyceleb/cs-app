@@ -151,7 +151,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'flex flex-col h-screen w-64 border-r bg-sidebar backdrop-blur-lg border-sidebar-border shadow-xl shadow-indigo-500/5 transition-all duration-300',
+          'flex flex-col h-screen w-64 border-r bg-sidebar border-sidebar-border/70 shadow-[var(--shadow-lg)] transition-all duration-300',
           className
         )}
       >
@@ -164,7 +164,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         <div className="px-3 pt-4">
           <Button
             variant="outline"
-            className="w-full justify-start gap-2 h-9 text-muted-foreground"
+            className="w-full justify-start gap-2 h-9 text-muted-foreground bg-card"
             onClick={() => openCommandPalette(true)}
           >
             <Icons.command className="w-4 h-4" />
@@ -190,8 +190,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                     isActive
-                      ? 'bg-sidebar-accent text-sidebar-primary shadow-sm border border-sidebar-border'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                      ? 'bg-sidebar-accent text-sidebar-primary shadow-[var(--shadow-xs)] border border-sidebar-border/60'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
                   )}
                 >
                   <item.icon className={cn(

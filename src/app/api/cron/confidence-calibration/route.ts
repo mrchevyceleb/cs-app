@@ -64,6 +64,18 @@ export async function POST(request: NextRequest) {
 
     const feedbackMap = new Map(feedback?.map((f) => [f.ticket_id, f.rating]) || [])
 
+    // Avoid inserting duplicate calibration rows for tickets already analyzed
+    const { data: existingCalibrations } = await supabase
+      .from('ai_calibration_data')
+      .select('ticket_id, intent_category')
+      .in('ticket_id', ticketIds)
+
+    const existingCalibrationKeys = new Set(
+      (existingCalibrations || []).map(
+        (row) => `${row.ticket_id}:${row.intent_category || 'general'}`
+      )
+    )
+
     // Check which tickets were escalated (had status change to escalated at some point)
     const { data: escalationEvents } = await supabase
       .from('ticket_events')
@@ -77,6 +89,9 @@ export async function POST(request: NextRequest) {
     const intentGroups = new Map<string, {
       samples: { confidence: number; escalated: boolean; csat: number | null }[]
     }>()
+
+    let insertedCount = 0
+    let skippedCount = 0
 
     for (const ticket of tickets) {
       // Use first tag as intent category, or 'general' if none
@@ -107,15 +122,23 @@ export async function POST(request: NextRequest) {
           ? (new Date(ticket.updated_at).getTime() - new Date(ticket.created_at).getTime()) / (60 * 60 * 1000)
           : null
 
-        await supabase.from('ai_calibration_data').insert({
-          ticket_id: ticket.id,
-          initial_confidence: ticket.ai_confidence,
-          final_outcome: outcome,
-          csat_score: csat,
-          resolution_time_hours: resolutionTime,
-          intent_category: intent,
-          metadata: { analyzed_at: now.toISOString() },
-        })
+        const calibrationKey = `${ticket.id}:${intent}`
+
+        if (!existingCalibrationKeys.has(calibrationKey)) {
+          await supabase.from('ai_calibration_data').insert({
+            ticket_id: ticket.id,
+            initial_confidence: ticket.ai_confidence,
+            final_outcome: outcome,
+            csat_score: csat,
+            resolution_time_hours: resolutionTime,
+            intent_category: intent,
+            metadata: { analyzed_at: now.toISOString() },
+          })
+          existingCalibrationKeys.add(calibrationKey)
+          insertedCount++
+        } else {
+          skippedCount++
+        }
 
         intentGroups.get(intent)!.samples.push({
           confidence: ticket.ai_confidence,
@@ -183,6 +206,8 @@ export async function POST(request: NextRequest) {
     logCronExecution(JOB_NAME, 'completed', {
       ticketsAnalyzed: tickets.length,
       intentsCalibrated: calibrationStats.length,
+      calibrationsInserted: insertedCount,
+      calibrationsSkipped: skippedCount,
       calibrationStats,
     })
 
@@ -190,6 +215,8 @@ export async function POST(request: NextRequest) {
       success: true,
       ticketsAnalyzed: tickets.length,
       intentsCalibrated: calibrationStats.length,
+      calibrationsInserted: insertedCount,
+      calibrationsSkipped: skippedCount,
       calibrationStats,
     })
   } catch (error) {

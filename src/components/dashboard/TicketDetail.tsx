@@ -373,7 +373,7 @@ export function TicketDetail({
 
       {/* SLA Status Section - shown when SLA info is available */}
       {hasSlaInfo && (
-        <div className="px-4 py-3 border-b border-border/40 bg-slate-50/40 dark:bg-slate-900/20 backdrop-blur-sm">
+              <div className="px-4 py-3 border-b border-border/50 bg-card">
           <div className="flex items-center gap-2 mb-3">
             <Timer className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-medium text-foreground">

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+import { verifyCronRequest, unauthorizedResponse } from '@/lib/cron/auth'
 import type { ProactiveOutreachLogInsert } from '@/types/database'
 
 // Get admin Supabase client
@@ -38,6 +40,17 @@ interface BroadcastResult {
  */
 export async function POST(request: NextRequest) {
   try {
+    const isCronRequest = verifyCronRequest(request)
+
+    if (!isCronRequest) {
+      const authClient = await createServerClient()
+      const { data: { user }, error: authError } = await authClient.auth.getUser()
+
+      if (authError || !user) {
+        return unauthorizedResponse()
+      }
+    }
+
     const supabase = getServiceClient()
     const body: BroadcastRequest = await request.json()
 
@@ -315,6 +328,17 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const isCronRequest = verifyCronRequest(request)
+
+    if (!isCronRequest) {
+      const authClient = await createServerClient()
+      const { data: { user }, error: authError } = await authClient.auth.getUser()
+
+      if (authError || !user) {
+        return unauthorizedResponse()
+      }
+    }
+
     const supabase = getServiceClient()
     const { searchParams } = new URL(request.url)
 

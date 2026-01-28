@@ -46,7 +46,7 @@ export default function DashboardLayout({
               </MobileSidebarOverlay>
 
               {/* Main content area */}
-            <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 bg-background">
+            <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 bg-transparent">
               <div className="p-4 lg:p-6 animate-page-enter">
                 {children}
               </div>
