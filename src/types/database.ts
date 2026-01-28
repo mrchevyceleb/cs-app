@@ -1856,3 +1856,382 @@ export interface TicketWithChannel extends Ticket {
     preferred_channel: PreferredChannel
   }
 }
+
+// ==========================================
+// Proactive AI Types (Migration 020)
+// ==========================================
+
+// AI Calibration - learning from outcomes
+export type AICalibrationOutcome = 'resolved_by_ai' | 'escalated_helpful' | 'escalated_unnecessary' | 'reopened'
+
+export interface AICalibrationData {
+  id: string
+  ticket_id: string | null
+  initial_confidence: number | null
+  final_outcome: AICalibrationOutcome | null
+  csat_score: number | null
+  resolution_time_hours: number | null
+  intent_category: string | null
+  metadata: Json
+  created_at: string
+}
+
+export interface AICalibrationDataInsert {
+  id?: string
+  ticket_id?: string | null
+  initial_confidence?: number | null
+  final_outcome?: AICalibrationOutcome | null
+  csat_score?: number | null
+  resolution_time_hours?: number | null
+  intent_category?: string | null
+  metadata?: Json
+  created_at?: string
+}
+
+// Customer Health Scores
+export type HealthRiskLevel = 'healthy' | 'at_risk' | 'critical'
+export type HealthTrend = 'improving' | 'stable' | 'declining'
+
+export interface CustomerHealthFactors {
+  ticket_count?: number
+  open_tickets?: number
+  escalation_count?: number
+  avg_csat?: number | null
+  days_since_last_ticket?: number
+  resolution_rate?: number
+}
+
+export interface CustomerHealthScore {
+  customer_id: string
+  score: number
+  risk_level: HealthRiskLevel
+  factors: CustomerHealthFactors
+  trend: HealthTrend
+  previous_score: number | null
+  score_change: number | null
+  last_calculated_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomerHealthScoreInsert {
+  customer_id: string
+  score: number
+  risk_level: HealthRiskLevel
+  factors?: CustomerHealthFactors
+  trend?: HealthTrend
+  previous_score?: number | null
+  score_change?: number | null
+  last_calculated_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+// Customer Health Score with customer info
+export interface CustomerHealthScoreWithCustomer extends CustomerHealthScore {
+  customer: Pick<Customer, 'id' | 'name' | 'email'>
+}
+
+// Knowledge Article Metrics
+export interface KnowledgeArticleMetrics {
+  id: string
+  article_id: string
+  period_start: string
+  period_end: string
+  times_matched: number
+  times_used_in_response: number
+  auto_resolved_count: number
+  escalated_count: number
+  avg_csat_when_used: number | null
+  csat_sample_size: number
+  effectiveness_score: number | null
+  created_at: string
+}
+
+export interface KnowledgeArticleMetricsInsert {
+  id?: string
+  article_id: string
+  period_start: string
+  period_end: string
+  times_matched?: number
+  times_used_in_response?: number
+  auto_resolved_count?: number
+  escalated_count?: number
+  avg_csat_when_used?: number | null
+  csat_sample_size?: number
+  effectiveness_score?: number | null
+  created_at?: string
+}
+
+// Knowledge Article Drafts
+export type ArticleDraftStatus = 'pending' | 'approved' | 'rejected' | 'published'
+export type ArticleGenerationReason = 'high_csat_response' | 'repeated_question' | 'gap_detected'
+
+export interface KnowledgeArticleDraft {
+  id: string
+  title: string
+  content: string
+  suggested_category: string | null
+  source_ticket_ids: string[] | null
+  source_message_ids: string[] | null
+  generation_reason: ArticleGenerationReason | null
+  confidence_score: number | null
+  status: ArticleDraftStatus
+  reviewed_by: string | null
+  reviewed_at: string | null
+  rejection_reason: string | null
+  published_article_id: string | null
+  metadata: Json
+  created_at: string
+}
+
+export interface KnowledgeArticleDraftInsert {
+  id?: string
+  title: string
+  content: string
+  suggested_category?: string | null
+  source_ticket_ids?: string[] | null
+  source_message_ids?: string[] | null
+  generation_reason?: ArticleGenerationReason | null
+  confidence_score?: number | null
+  status?: ArticleDraftStatus
+  reviewed_by?: string | null
+  reviewed_at?: string | null
+  rejection_reason?: string | null
+  published_article_id?: string | null
+  metadata?: Json
+  created_at?: string
+}
+
+// Proactive Outreach
+export type ProactiveOutreachType =
+  | 'stalled_revival'
+  | 'post_resolution_checkin'
+  | 'sla_warning'
+  | 'health_score_intervention'
+  | 'issue_broadcast'
+  | 'milestone_celebration'
+  | 'at_risk_alert'
+
+export type OutreachChannel = 'email' | 'sms' | 'widget' | 'slack' | 'internal'
+export type OutreachDeliveryStatus = 'pending' | 'sent' | 'delivered' | 'failed' | 'opened' | 'clicked'
+
+export interface ProactiveOutreachLog {
+  id: string
+  customer_id: string | null
+  ticket_id: string | null
+  outreach_type: ProactiveOutreachType
+  channel: OutreachChannel
+  message_content: string | null
+  message_subject: string | null
+  trigger_reason: string | null
+  trigger_data: Json
+  delivery_status: OutreachDeliveryStatus
+  delivered_at: string | null
+  opened_at: string | null
+  clicked_at: string | null
+  response_received: boolean
+  response_ticket_id: string | null
+  error_message: string | null
+  created_at: string
+}
+
+export interface ProactiveOutreachLogInsert {
+  id?: string
+  customer_id?: string | null
+  ticket_id?: string | null
+  outreach_type: ProactiveOutreachType
+  channel: OutreachChannel
+  message_content?: string | null
+  message_subject?: string | null
+  trigger_reason?: string | null
+  trigger_data?: Json
+  delivery_status?: OutreachDeliveryStatus
+  delivered_at?: string | null
+  opened_at?: string | null
+  clicked_at?: string | null
+  response_received?: boolean
+  response_ticket_id?: string | null
+  error_message?: string | null
+  created_at?: string
+}
+
+// SLA Predictions
+export type SLAPredictionType = 'first_response' | 'resolution'
+export type SLAPredictionOutcome = 'met' | 'breached' | 'cancelled'
+
+export interface SLAPredictionFactors {
+  queue_depth?: number
+  agent_workload?: number
+  ticket_complexity?: number
+  historical_breach_rate?: number
+  time_of_day?: string
+  day_of_week?: string
+}
+
+export interface SLAPrediction {
+  id: string
+  ticket_id: string
+  prediction_type: SLAPredictionType
+  predicted_breach_probability: number
+  predicted_breach_at: string | null
+  hours_until_breach: number | null
+  contributing_factors: SLAPredictionFactors
+  recommendation: string | null
+  notification_sent: boolean
+  notification_sent_at: string | null
+  actual_outcome: SLAPredictionOutcome | null
+  created_at: string
+}
+
+export interface SLAPredictionInsert {
+  id?: string
+  ticket_id: string
+  prediction_type: SLAPredictionType
+  predicted_breach_probability: number
+  predicted_breach_at?: string | null
+  hours_until_breach?: number | null
+  contributing_factors?: SLAPredictionFactors
+  recommendation?: string | null
+  notification_sent?: boolean
+  notification_sent_at?: string | null
+  actual_outcome?: SLAPredictionOutcome | null
+  created_at?: string
+}
+
+// Issue Patterns
+export type IssueSeverity = 'low' | 'medium' | 'high' | 'critical'
+export type IssuePatternStatus = 'detected' | 'acknowledged' | 'investigating' | 'resolved' | 'false_positive'
+
+export interface IssuePattern {
+  id: string
+  pattern_hash: string | null
+  pattern_keywords: string[] | null
+  pattern_embedding: number[] | null
+  sample_message: string | null
+  occurrence_count: number
+  affected_customer_count: number
+  affected_customer_ids: string[] | null
+  affected_ticket_ids: string[] | null
+  severity: IssueSeverity | null
+  status: IssuePatternStatus
+  resolution_notes: string | null
+  first_detected_at: string
+  last_seen_at: string
+  resolved_at: string | null
+  broadcast_sent: boolean
+  metadata: Json
+}
+
+export interface IssuePatternInsert {
+  id?: string
+  pattern_hash?: string | null
+  pattern_keywords?: string[] | null
+  pattern_embedding?: number[] | null
+  sample_message?: string | null
+  occurrence_count?: number
+  affected_customer_count?: number
+  affected_customer_ids?: string[] | null
+  affected_ticket_ids?: string[] | null
+  severity?: IssueSeverity | null
+  status?: IssuePatternStatus
+  resolution_notes?: string | null
+  first_detected_at?: string
+  last_seen_at?: string
+  resolved_at?: string | null
+  broadcast_sent?: boolean
+  metadata?: Json
+}
+
+// Volume Forecasts
+export interface VolumeForecastFactors {
+  day_of_week?: string
+  seasonality?: number
+  trend?: number
+  recent_average?: number
+}
+
+export interface VolumeForecast {
+  id: string
+  forecast_for: string
+  forecast_hours: number
+  predicted_volume: number
+  confidence_lower: number | null
+  confidence_upper: number | null
+  contributing_factors: VolumeForecastFactors
+  actual_volume: number | null
+  accuracy_percentage: number | null
+  created_at: string
+}
+
+export interface VolumeForecastInsert {
+  id?: string
+  forecast_for: string
+  forecast_hours: number
+  predicted_volume: number
+  confidence_lower?: number | null
+  confidence_upper?: number | null
+  contributing_factors?: VolumeForecastFactors
+  actual_volume?: number | null
+  accuracy_percentage?: number | null
+  created_at?: string
+}
+
+// Ticket Queue Scores (Smart Queue)
+export interface QueueScoringFactors {
+  sla_hours_remaining?: number
+  customer_lifetime_value?: number
+  message_count?: number
+  sentiment_analysis?: string
+  similar_patterns?: string[]
+}
+
+export interface TicketQueueScore {
+  ticket_id: string
+  composite_score: number
+  sla_urgency_score: number
+  customer_value_score: number
+  complexity_score: number
+  wait_time_score: number
+  sentiment_score: number
+  similar_ticket_count: number
+  similar_ticket_ids: string[] | null
+  scoring_factors: QueueScoringFactors
+  last_calculated_at: string
+}
+
+export interface TicketQueueScoreInsert {
+  ticket_id: string
+  composite_score: number
+  sla_urgency_score?: number
+  customer_value_score?: number
+  complexity_score?: number
+  wait_time_score?: number
+  sentiment_score?: number
+  similar_ticket_count?: number
+  similar_ticket_ids?: string[] | null
+  scoring_factors?: QueueScoringFactors
+  last_calculated_at?: string
+}
+
+// Smart Queue Item with full ticket data
+export interface SmartQueueItem extends TicketQueueScore {
+  ticket: TicketWithCustomer
+  health_score?: CustomerHealthScore
+}
+
+// Extended Workflow Trigger Events (for proactive features)
+export type ProactiveWorkflowTriggerEvent =
+  | WorkflowTriggerEvent
+  | 'health_score_critical'
+  | 'health_score_declining'
+  | 'pattern_detected'
+  | 'stalled_conversation'
+
+// Proactive Email Types (extends EmailLogType)
+export type ProactiveEmailType =
+  | EmailLogType
+  | 'stalled_revival'
+  | 'post_resolution_checkin'
+  | 'health_intervention'
+  | 'issue_broadcast'
