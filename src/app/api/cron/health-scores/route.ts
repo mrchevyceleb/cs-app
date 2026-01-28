@@ -137,6 +137,96 @@ async function calculateHealthScore(
 }
 
 /**
+ * Trigger intervention for at-risk customers
+ */
+async function triggerAtRiskIntervention(
+  supabase: ReturnType<typeof getServiceClient>,
+  result: HealthScoreResult,
+  now: Date
+): Promise<void> {
+  // Check if we've already sent an intervention recently (within 7 days)
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+  const { data: recentOutreach } = await supabase
+    .from('proactive_outreach_log')
+    .select('id')
+    .eq('customer_id', result.customerId)
+    .in('outreach_type', ['health_score_intervention', 'at_risk_alert'])
+    .gte('created_at', sevenDaysAgo.toISOString())
+    .limit(1)
+
+  if (recentOutreach && recentOutreach.length > 0) {
+    return // Already sent recent intervention
+  }
+
+  // Get customer info
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('id, name, email')
+    .eq('id', result.customerId)
+    .single()
+
+  if (!customer) return
+
+  // Get any open tickets for this customer
+  const { data: openTickets } = await supabase
+    .from('tickets')
+    .select('id, subject, status')
+    .eq('customer_id', result.customerId)
+    .in('status', ['open', 'pending', 'escalated'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  // Create internal notification for operators
+  const { data: onlineAgents } = await supabase
+    .from('agents')
+    .select('id')
+    .eq('status', 'online')
+    .limit(1)
+
+  if (onlineAgents && onlineAgents.length > 0) {
+    const alertType = result.riskLevel === 'critical' ? 'CRITICAL' : 'WARNING'
+    const trendInfo = result.trend === 'declining' ? ' (declining)' : ''
+
+    await supabase
+      .from('agent_notifications')
+      .insert({
+        agent_id: onlineAgents[0].id,
+        type: 'escalation',
+        title: `${alertType}: Customer Health Alert${trendInfo}`,
+        message: `Customer ${customer.name || customer.email} has a health score of ${result.score} (${result.riskLevel}). ${openTickets && openTickets.length > 0 ? `Open ticket: ${openTickets[0].subject}` : 'No open tickets.'}`,
+        ticket_id: openTickets?.[0]?.id || null,
+      })
+  }
+
+  // Log the intervention
+  await supabase
+    .from('proactive_outreach_log')
+    .insert({
+      customer_id: result.customerId,
+      ticket_id: openTickets?.[0]?.id || null,
+      outreach_type: result.riskLevel === 'critical' ? 'at_risk_alert' : 'health_score_intervention',
+      channel: 'internal',
+      message_content: `Health score alert: ${result.score} (${result.riskLevel}, ${result.trend})`,
+      trigger_reason: `Health score ${result.riskLevel}, trend ${result.trend}`,
+      trigger_data: {
+        score: result.score,
+        risk_level: result.riskLevel,
+        trend: result.trend,
+        factors: result.factors,
+      },
+      delivery_status: 'sent',
+      delivered_at: now.toISOString(),
+    })
+
+  // For critical customers with email, consider sending a proactive outreach
+  if (result.riskLevel === 'critical' && customer.email) {
+    // This could trigger an email, but we'll leave that as a manual action
+    // to avoid over-automation. The operator notification above will alert staff.
+  }
+}
+
+/**
  * POST /api/cron/health-scores
  * Calculate and update health scores for all active customers
  */
@@ -211,9 +301,14 @@ export async function POST(request: NextRequest) {
 
         updated++
 
-        // Track critical customers for potential notifications
+        // Track critical and declining customers for interventions
         if (result.riskLevel === 'critical') {
           criticalAlerts.push(result.customerId)
+        }
+
+        // Trigger intervention for newly critical or rapidly declining customers
+        if (result.riskLevel === 'critical' || result.trend === 'declining') {
+          await triggerAtRiskIntervention(supabase, result, now)
         }
 
         processed++

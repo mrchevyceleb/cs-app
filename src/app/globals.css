@@ -91,6 +91,67 @@
   --nova-border: var(--primary-200);
 }
 
+/* Debug: flatten visual styling to remove washed overlays */
+:root {
+  --background: #FFFFFF;
+  --card: #FFFFFF;
+  --popover: #FFFFFF;
+  --secondary: #FFFFFF;
+  --muted: #FFFFFF;
+  --accent: #FFFFFF;
+  --border: #D1D9E6;
+  --input: #D1D9E6;
+  --sidebar: #FFFFFF;
+  --sidebar-accent: #FFFFFF;
+  --sidebar-border: #D1D9E6;
+  --nova-gradient-bg: none;
+}
+
+/* Debug: remove translucent backgrounds and glass effects */
+body.debug-flat [class*="bg-"][class*="/"] {
+  background-color: #FFFFFF !important;
+}
+
+body.debug-flat [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.debug-flat .glass {
+  background: #FFFFFF !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.debug-flat [class*="shadow"] {
+  box-shadow: none !important;
+}
+
+body.debug-flat,
+body.debug-flat * {
+  background-image: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.debug-flat * {
+  background-color: #FFFFFF !important;
+  color: #111827 !important;
+}
+
+body.debug-flat .bg-background,
+body.debug-flat .bg-card,
+body.debug-flat .bg-muted,
+body.debug-flat .bg-secondary,
+body.debug-flat .bg-accent,
+body.debug-flat .bg-popover,
+body.debug-flat .bg-sidebar,
+body.debug-flat .bg-input {
+  background-color: #FFFFFF !important;
+}
+
 .dark {
   /* Semantic Colors - Dark Mode */
   --background: var(--slate-950);
