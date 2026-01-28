@@ -48,7 +48,7 @@
   --secondary-foreground: #14213D;
 
   --muted: #EEF3F8;
-  --muted-foreground: #5B6A7A;
+  --muted-foreground: #445366;
 
   --accent: #E6F7F0;
   --accent-foreground: #0B1220;
@@ -62,7 +62,7 @@
 
   /* Sidebar - Light Depth */
   --sidebar: #F7FAFF;
-  --sidebar-foreground: #1E2A3A;
+  --sidebar-foreground: #1B2838;
   --sidebar-primary: var(--primary-600);
   --sidebar-primary-foreground: #0B1220;
   --sidebar-accent: #EAF2FF;
@@ -270,5 +270,4 @@
   to { opacity: 1; }
 }
 .animate-fade-in { animation: fade-in 0.2s ease-out; }
-
 
