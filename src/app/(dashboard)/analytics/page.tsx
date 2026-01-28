@@ -93,12 +93,12 @@ function StatBar({ label, value, total, color }: { label: string; value: number;
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-sm">
-        <span className="text-gray-600 dark:text-gray-400">{label}</span>
-        <span className="font-medium text-gray-900 dark:text-white">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-medium text-foreground">
           {value} ({percentage.toFixed(0)}%)
         </span>
       </div>
-      <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full ${color}`}
           style={{ width: `${percentage}%` }}
@@ -116,7 +116,7 @@ function TimePeriodSelector({
   onChange: (value: TimePeriod) => void
 }) {
   return (
-    <div className="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-1">
+    <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/70 p-1">
       {timePeriods.map((period) => (
         <button
           key={period.value}
@@ -124,8 +124,8 @@ function TimePeriodSelector({
           className={cn(
             'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
             value === period.value
-              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
-              : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
           )}
         >
           {period.label}
@@ -139,7 +139,7 @@ function AgentLeaderboard({ agents }: { agents: AgentPerformance[] }) {
   if (agents.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-sm text-gray-500 dark:text-gray-400">No agent data available</p>
+        <p className="text-sm text-muted-foreground">No agent data available</p>
       </div>
     )
   }
@@ -178,20 +178,20 @@ function AgentLeaderboard({ agents }: { agents: AgentPerformance[] }) {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <p className="text-sm font-medium text-foreground truncate">
               {agent.name}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-muted-foreground">
               {agent.ticketsHandled} tickets, {agent.ticketsResolved} resolved
             </p>
           </div>
           <div className="flex items-center gap-4">
             {agent.avgRating !== null && (
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                <p className="text-sm font-medium text-foreground">
                   {agent.avgRating.toFixed(1)}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">CSAT</p>
+                <p className="text-xs text-muted-foreground">CSAT</p>
               </div>
             )}
             {agent.slaComplianceRate !== null && (
@@ -208,7 +208,7 @@ function AgentLeaderboard({ agents }: { agents: AgentPerformance[] }) {
                 >
                   {agent.slaComplianceRate}%
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">SLA</p>
+                <p className="text-xs text-muted-foreground">SLA</p>
               </div>
             )}
           </div>
@@ -247,10 +247,10 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-foreground">
             Analytics
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             Track support performance and AI efficiency
           </p>
         </div>
@@ -302,12 +302,12 @@ export default function AnalyticsPage() {
           <>
             <Card className="bg-card border-border/70">
               <CardContent className="py-8 text-center">
-                <p className="text-gray-500 dark:text-gray-400">Failed to load CSAT data</p>
+                <p className="text-muted-foreground">Failed to load CSAT data</p>
               </CardContent>
             </Card>
             <Card className="bg-card border-border/70">
               <CardContent className="py-8 text-center">
-                <p className="text-gray-500 dark:text-gray-400">Failed to load SLA data</p>
+                <p className="text-muted-foreground">Failed to load SLA data</p>
               </CardContent>
             </Card>
           </>
@@ -356,7 +356,7 @@ export default function AnalyticsPage() {
                 />
               </div>
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No data available</p>
+              <p className="text-sm text-muted-foreground text-center py-8">No data available</p>
             )}
           </CardContent>
         </Card>
@@ -402,7 +402,7 @@ export default function AnalyticsPage() {
                 />
               </div>
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No data available</p>
+              <p className="text-sm text-muted-foreground text-center py-8">No data available</p>
             )}
           </CardContent>
         </Card>
@@ -434,7 +434,7 @@ export default function AnalyticsPage() {
                 />
                 <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">AI Efficiency</span>
+                    <span className="text-muted-foreground">AI Efficiency</span>
                     <span className="font-semibold text-primary-600 dark:text-primary-400">
                       {metrics.totalTickets > 0
                         ? `${((metrics.aiHandledCount / metrics.totalTickets) * 100).toFixed(0)}%`
@@ -444,7 +444,7 @@ export default function AnalyticsPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No data available</p>
+              <p className="text-sm text-muted-foreground text-center py-8">No data available</p>
             )}
           </CardContent>
         </Card>
@@ -481,7 +481,7 @@ export default function AnalyticsPage() {
             ) : metrics ? (
               <AgentLeaderboard agents={metrics.agentPerformance} />
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No data available</p>
+              <p className="text-sm text-muted-foreground text-center py-8">No data available</p>
             )}
           </CardContent>
         </Card>
@@ -495,41 +495,41 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="text-center p-4 bg-muted/60 border border-border/60 rounded-lg">
+                <p className="text-2xl font-bold text-foreground">
                   {metrics.totalTickets}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total Tickets</p>
+                <p className="text-sm text-muted-foreground">Total Tickets</p>
               </div>
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+              <div className="text-center p-4 bg-muted/60 border border-border/60 rounded-lg">
                 <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                   {metrics.byStatus.resolved}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Resolved</p>
+                <p className="text-sm text-muted-foreground">Resolved</p>
               </div>
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+              <div className="text-center p-4 bg-muted/60 border border-border/60 rounded-lg">
                 <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">
                   {metrics.aiHandledCount}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">AI Handled</p>
+                <p className="text-sm text-muted-foreground">AI Handled</p>
               </div>
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+              <div className="text-center p-4 bg-muted/60 border border-border/60 rounded-lg">
                 <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
                   {metrics.csat.average?.toFixed(1) || '--'}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Avg CSAT</p>
+                <p className="text-sm text-muted-foreground">Avg CSAT</p>
               </div>
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+              <div className="text-center p-4 bg-muted/60 border border-border/60 rounded-lg">
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {metrics.sla.firstResponse.compliance ?? '--'}%
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">First Response SLA</p>
+                <p className="text-sm text-muted-foreground">First Response SLA</p>
               </div>
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+              <div className="text-center p-4 bg-muted/60 border border-border/60 rounded-lg">
                 <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                   {metrics.byPriority.urgent + metrics.byStatus.escalated}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Needs Attention</p>
+                <p className="text-sm text-muted-foreground">Needs Attention</p>
               </div>
             </div>
           </CardContent>

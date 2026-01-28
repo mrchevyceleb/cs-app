@@ -41,20 +41,20 @@ function ComplianceBar({ compliance, label }: { compliance: number | null; label
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-center">
-        <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+        <span className="text-sm text-muted-foreground">{label}</span>
         <span
           className={cn(
             'text-sm font-semibold',
             hasData && compliance! >= 90 && 'text-emerald-600 dark:text-emerald-400',
             hasData && compliance! >= 70 && compliance! < 90 && 'text-amber-600 dark:text-amber-400',
             hasData && compliance! < 70 && 'text-red-600 dark:text-red-400',
-            !hasData && 'text-gray-400'
+            !hasData && 'text-muted-foreground'
           )}
         >
           {hasData ? `${compliance}%` : '--'}
         </span>
       </div>
-      <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
         {hasData && (
           <div
             className={cn('h-full rounded-full transition-all', getColor(compliance!))}
@@ -79,20 +79,20 @@ function MetricBreakdown({
   total: number
 }) {
   return (
-    <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{label}</p>
+    <div className="p-4 bg-muted/60 border border-border/60 rounded-lg">
+      <p className="text-sm font-medium text-foreground mb-3">{label}</p>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div>
           <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{met}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Met</p>
+          <p className="text-xs text-muted-foreground">Met</p>
         </div>
         <div>
           <p className="text-lg font-bold text-red-600 dark:text-red-400">{breached}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Breached</p>
+          <p className="text-xs text-muted-foreground">Breached</p>
         </div>
         <div>
-          <p className="text-lg font-bold text-gray-600 dark:text-gray-300">{total}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Total</p>
+          <p className="text-lg font-bold text-foreground">{total}</p>
+          <p className="text-xs text-muted-foreground">Total</p>
         </div>
       </div>
     </div>
@@ -162,27 +162,27 @@ export function SlaMetrics({ data, className }: SlaMetricsProps) {
       </CardHeader>
       <CardContent>
         {!hasData ? (
-          <div className="text-center py-8">
-            <div className="mx-auto w-12 h-12 mb-3 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6 text-gray-400"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+      <div className="text-center py-8">
+        <div className="mx-auto w-12 h-12 mb-3 rounded-full bg-muted flex items-center justify-center">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-6 h-6 text-muted-foreground"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
             </div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">No SLA data</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              SLA metrics will appear once tickets have SLA policies
-            </p>
-          </div>
+        <p className="text-sm font-medium text-foreground mb-1">No SLA data</p>
+        <p className="text-xs text-muted-foreground">
+          SLA metrics will appear once tickets have SLA policies
+        </p>
+      </div>
         ) : (
           <div className="space-y-6">
             {/* Compliance Overview */}
@@ -217,22 +217,22 @@ export function SlaMetrics({ data, className }: SlaMetricsProps) {
             </div>
 
             {/* Overall Stats */}
-            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {data.firstResponse.met + data.resolution.met}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Total SLAs Met</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                    {data.firstResponse.breached + data.resolution.breached}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Total Breaches</p>
-                </div>
+          <div className="pt-4 border-t border-border/70">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-foreground">
+                  {data.firstResponse.met + data.resolution.met}
+                </p>
+                <p className="text-xs text-muted-foreground">Total SLAs Met</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                  {data.firstResponse.breached + data.resolution.breached}
+                </p>
+                <p className="text-xs text-muted-foreground">Total Breaches</p>
               </div>
             </div>
+          </div>
           </div>
         )}
       </CardContent>

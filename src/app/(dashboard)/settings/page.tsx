@@ -109,10 +109,10 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-foreground">
           Settings
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-muted-foreground mt-1">
           Manage your account and preferences
         </p>
       </div>
@@ -178,7 +178,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Dark Mode</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Switch between light and dark themes</p>
+              <p className="text-sm text-muted-foreground">Switch between light and dark themes</p>
             </div>
             <ThemeToggle />
           </div>
@@ -186,7 +186,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Sounds</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Enable notification sounds</p>
+              <p className="text-sm text-muted-foreground">Enable notification sounds</p>
             </div>
             <Button
               variant="outline"
@@ -266,7 +266,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Auto-suggestions</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Show response suggestions automatically</p>
+              <p className="text-sm text-muted-foreground">Show response suggestions automatically</p>
             </div>
             <Button
               variant="outline"
@@ -280,7 +280,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Confidence threshold</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Minimum AI confidence for auto-responses</p>
+              <p className="text-sm text-muted-foreground">Minimum AI confidence for auto-responses</p>
             </div>
             <Input
               type="number"

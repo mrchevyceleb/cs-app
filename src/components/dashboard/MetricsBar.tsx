@@ -15,29 +15,29 @@ interface MetricCardProps {
 
 function MetricCard({ label, value, icon, variant = 'default', isLoading = false }: MetricCardProps) {
   const variantStyles = {
-    default: 'bg-card border-gray-200 dark:border-gray-700',
-    success: 'bg-card border-emerald-300 dark:border-emerald-800/60',
-    warning: 'bg-card border-amber-300 dark:border-amber-800/60',
-    danger: 'bg-card border-red-300 dark:border-red-800/60',
+    default: 'bg-card border-border/70',
+    success: 'bg-card border-emerald-200/80 dark:border-emerald-800/60',
+    warning: 'bg-card border-amber-200/80 dark:border-amber-800/60',
+    danger: 'bg-card border-red-200/80 dark:border-red-800/60',
   }
 
   const iconStyles = {
-    default: 'bg-primary-200/70 text-primary-800 dark:bg-primary-900/50 dark:text-primary-300',
-    success: 'bg-emerald-200/70 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
-    warning: 'bg-amber-200/70 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
-    danger: 'bg-red-200/70 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+    default: 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
+    success: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    warning: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    danger: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
   }
 
   return (
     <Card
       className={cn(
-        'p-4 border-2 transition-all duration-200 hover:-translate-y-1 shadow-lg shadow-indigo-100/40 dark:shadow-none',
+        'p-4 border transition-shadow duration-200 shadow-sm hover:shadow-md',
         variantStyles[variant]
       )}
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-dark">{label}</p>
+          <p className="text-sm font-medium text-muted-foreground">{label}</p>
           {isLoading ? (
             <Skeleton className="h-8 w-16 mt-1" />
           ) : (

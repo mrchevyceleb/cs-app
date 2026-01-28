@@ -59,7 +59,7 @@ function StarRating({ rating, size = 'md' }: { rating: number; size?: 'sm' | 'md
 // Trend indicator component
 function TrendIndicator({ trend }: { trend: number | null }) {
   if (trend === null) {
-    return <span className="text-xs text-gray-400">No previous data</span>
+    return <span className="text-xs text-muted-foreground">No previous data</span>
   }
 
   const isPositive = trend >= 0
@@ -105,14 +105,14 @@ function DistributionBar({ distribution, total }: { distribution: Record<number,
 
         return (
           <div key={rating} className="flex items-center gap-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400 w-12">{rating} star</span>
-            <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <span className="text-sm text-muted-foreground w-12">{rating} star</span>
+            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
               <div
                 className={cn('h-full rounded-full transition-all', colors[rating as keyof typeof colors])}
                 style={{ width: `${percentage}%` }}
               />
             </div>
-            <span className="text-sm text-gray-600 dark:text-gray-300 w-8 text-right">{count}</span>
+            <span className="text-sm text-muted-foreground w-8 text-right">{count}</span>
           </div>
         )
       })}
@@ -149,41 +149,41 @@ export function CsatMetrics({ data, className }: CsatMetricsProps) {
       </CardHeader>
       <CardContent>
         {!hasData ? (
-          <div className="text-center py-8">
-            <div className="mx-auto w-12 h-12 mb-3 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6 text-gray-400"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+        <div className="text-center py-8">
+          <div className="mx-auto w-12 h-12 mb-3 rounded-full bg-muted flex items-center justify-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-6 h-6 text-muted-foreground"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
                 <circle cx="12" cy="12" r="10" />
                 <path d="M8 14s1.5 2 4 2 4-2 4-2" />
                 <line x1="9" x2="9.01" y1="9" y2="9" />
                 <line x1="15" x2="15.01" y1="9" y2="9" />
               </svg>
             </div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">No feedback yet</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Feedback will appear here once customers submit ratings
-            </p>
-          </div>
+          <p className="text-sm font-medium text-foreground mb-1">No feedback yet</p>
+          <p className="text-xs text-muted-foreground">
+            Feedback will appear here once customers submit ratings
+          </p>
+        </div>
         ) : (
           <div className="space-y-6">
             {/* Average Score */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                <p className="text-3xl font-bold text-foreground">
                   {data.average?.toFixed(1) ?? '--'}
                 </p>
                 <StarRating rating={Math.round(data.average || 0)} size="md" />
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   {data.total} {data.total === 1 ? 'response' : 'responses'}
                 </p>
               </div>
@@ -191,28 +191,28 @@ export function CsatMetrics({ data, className }: CsatMetricsProps) {
 
             {/* Distribution */}
             <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Rating Distribution</p>
+              <p className="text-sm font-medium text-foreground mb-3">Rating Distribution</p>
               <DistributionBar distribution={data.distribution} total={data.total} />
             </div>
 
             {/* Recent Feedback */}
             {data.recentFeedback.length > 0 && (
               <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Recent Feedback</p>
+                <p className="text-sm font-medium text-foreground mb-3">Recent Feedback</p>
                 <div className="space-y-3">
                   {data.recentFeedback.slice(0, 3).map((fb) => (
                     <div
                       key={fb.id}
-                      className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
+                      className="p-3 bg-muted/60 border border-border/60 rounded-lg"
                     >
                       <div className="flex items-center justify-between mb-1">
                         <StarRating rating={fb.rating} size="sm" />
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-muted-foreground">
                           {formatRelativeTime(fb.submitted_at)}
                         </span>
                       </div>
                       {fb.comment && (
-                        <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+                        <p className="text-sm text-foreground/80 line-clamp-2">
                           "{fb.comment}"
                         </p>
                       )}
