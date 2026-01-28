@@ -75,10 +75,10 @@ function getRelativeTime(date: string): string {
 }
 
 const statusColors: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-700',
-  pending: 'bg-amber-100 text-amber-700',
-  resolved: 'bg-green-100 text-green-700',
-  escalated: 'bg-red-100 text-red-700',
+  open: 'bg-sky-50 text-sky-700 border-sky-100',
+  pending: 'bg-amber-50 text-amber-700 border-amber-100',
+  resolved: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  escalated: 'bg-rose-50 text-rose-700 border-rose-100',
 }
 
 export function CustomerContext({
@@ -126,9 +126,9 @@ export function CustomerContext({
 
   if (!customer) {
     return (
-      <Card className="h-full bg-card border-border/70">
+      <Card className="h-full bg-card border-border/60">
         <CardContent className="flex items-center justify-center h-full">
-          <div className="text-center text-gray-500 dark:text-gray-400">
+          <div className="text-center text-muted-foreground">
             <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">Customer information unavailable</p>
           </div>
@@ -142,8 +142,8 @@ export function CustomerContext({
   )
 
   return (
-    <div className="h-full flex flex-col glass border-0 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/10">
-      <div className="p-4 border-b border-border/40 bg-white/30 dark:bg-slate-900/30">
+    <div className="h-full flex flex-col bg-card border border-border/60 rounded-2xl overflow-hidden shadow-[var(--shadow-lg)]">
+      <div className="p-4 border-b border-border/60 bg-card">
         <h2 className="font-semibold flex items-center gap-2 text-foreground">
           <User className="h-4 w-4" />
           Customer Context
@@ -154,15 +154,15 @@ export function CustomerContext({
         {/* Customer Profile */}
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
-            <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300">
-              {getInitials(customer.name || 'CU')}
-            </AvatarFallback>
+          <AvatarFallback className="bg-primary-100 text-primary-700">
+            {getInitials(customer.name || 'CU')}
+          </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-gray-900 dark:text-white truncate">
+            <h3 className="font-medium text-foreground truncate">
               {customer.name || 'Unknown Customer'}
             </h3>
-            <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Mail className="h-3 w-3" />
               <span className="truncate">{customer.email || 'No email'}</span>
             </div>
@@ -173,13 +173,13 @@ export function CustomerContext({
 
         {/* Customer Details */}
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Details
           </h4>
 
           {/* Preferred Language */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Globe className="h-4 w-4" />
               Language
             </div>
@@ -193,7 +193,7 @@ export function CustomerContext({
 
           {/* Customer Since */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />
               Customer since
             </div>
@@ -208,10 +208,10 @@ export function CustomerContext({
           {/* AI Confidence */}
           {ticket.ai_confidence !== null && (
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <Sparkles className="h-4 w-4" />
-                AI Confidence
-              </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Sparkles className="h-4 w-4" />
+              AI Confidence
+            </div>
               <ConfidenceScore value={ticket.ai_confidence} size="sm" showLabel />
             </div>
           )}
@@ -222,7 +222,7 @@ export function CustomerContext({
         {/* Tags */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
               <Tag className="h-3 w-3" />
               Tags
             </h4>
@@ -237,14 +237,14 @@ export function CustomerContext({
                 <Badge
                   key={tag}
                   variant="secondary"
-                  className="text-xs cursor-pointer hover:bg-gray-200"
+                  className="text-xs cursor-pointer hover:bg-muted"
                   onClick={() => handleTagRemove(tag)}
                 >
                   {tag} ×
                 </Badge>
               ))
             ) : (
-              <p className="text-xs text-gray-400">No tags assigned</p>
+              <p className="text-xs text-muted-foreground">No tags assigned</p>
             )}
           </div>
 
@@ -254,7 +254,7 @@ export function CustomerContext({
               <button
                 key={tag}
                 onClick={() => handleTagAdd(tag)}
-                className="text-[10px] px-2 py-0.5 bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-slate-400 rounded hover:bg-indigo-100 dark:hover:bg-slate-700 border border-indigo-100 dark:border-slate-700 transition-colors"
+                className="text-[10px] px-2 py-0.5 bg-card text-foreground rounded hover:bg-muted border border-border/60 transition-colors shadow-[var(--shadow-xs)]"
               >
                 + {tag}
               </button>
@@ -266,7 +266,7 @@ export function CustomerContext({
 
         {/* Ticket History */}
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
             <History className="h-3 w-3" />
             Recent Tickets
           </h4>
@@ -274,7 +274,7 @@ export function CustomerContext({
           {isLoadingHistory ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                <div key={i} className="h-12 bg-muted rounded animate-pulse" />
               ))}
             </div>
           ) : ticketHistory.length > 0 ? (
@@ -282,27 +282,27 @@ export function CustomerContext({
               {ticketHistory.map((historyTicket) => (
                 <div
                   key={historyTicket.id}
-                  className="p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                  className="p-2 rounded-lg bg-muted/60 hover:bg-muted cursor-pointer transition-colors border border-border/40"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300 line-clamp-1">
+                    <p className="text-xs font-medium text-foreground line-clamp-1">
                       {historyTicket.subject}
                     </p>
                     <Badge
                       variant="secondary"
-                      className={`text-[10px] shrink-0 ${statusColors[historyTicket.status] || ''}`}
+                      className={`text-[10px] shrink-0 border ${statusColors[historyTicket.status] || ''}`}
                     >
                       {historyTicket.status}
                     </Badge>
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-0.5">
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
                     {getRelativeTime(historyTicket.created_at)}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-gray-400 text-center py-2">
+            <p className="text-xs text-muted-foreground text-center py-2">
               No previous tickets
             </p>
           )}
@@ -312,7 +312,7 @@ export function CustomerContext({
 
         {/* Quick Actions */}
         <div className="space-y-2">
-          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Quick Actions
           </h4>
           <div className="grid grid-cols-2 gap-2">

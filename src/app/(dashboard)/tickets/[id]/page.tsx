@@ -33,54 +33,60 @@ export default function TicketDetailPage() {
 
   const supabase = createClient()
 
-  const fetchTicketAndMessages = async () => {
+  const fetchTicketAndMessages = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      // Fetch ticket with customer and assigned agent
-      const { data: ticketData, error: ticketError } = await supabase
-        .from('tickets')
-        .select(`
-          *,
-          customer:customers(*),
-          assigned_agent:agents!assigned_agent_id(id, name, avatar_url)
-        `)
-        .eq('id', ticketId)
-        .single()
+      // Fetch ticket and messages in parallel
+      const [ticketResult, messagesResult] = await Promise.all([
+        supabase
+          .from('tickets')
+          .select(`
+            *,
+            customer:customers(*),
+            assigned_agent:agents!assigned_agent_id(id, name, avatar_url)
+          `)
+          .eq('id', ticketId)
+          .single(),
+        supabase
+          .from('messages')
+          .select('*, message_attachments(*)')
+          .eq('ticket_id', ticketId)
+          .order('created_at', { ascending: true }),
+      ])
 
-      if (ticketError) {
-        if (ticketError.code === 'PGRST116') {
+      // Check if this fetch was aborted (component unmounted or ticketId changed)
+      if (signal?.aborted) return
+
+      if (ticketResult.error) {
+        if (ticketResult.error.code === 'PGRST116') {
           setError('not_found')
         } else {
-          console.error('Error fetching ticket:', ticketError)
+          console.error('Error fetching ticket:', ticketResult.error)
           setError('Failed to load ticket. Please try again.')
         }
         setIsLoading(false)
         return
       }
 
-      setTicket(ticketData as TicketWithCustomer)
+      setTicket(ticketResult.data as TicketWithCustomer)
 
-      // Fetch messages with attachments
-      const { data: messagesData, error: messagesError } = await supabase
-        .from('messages')
-        .select('*, message_attachments(*)')
-        .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: true })
-
-      if (messagesError) {
-        console.error('Error fetching messages:', messagesError)
+      if (messagesResult.error) {
+        console.error('Error fetching messages:', messagesResult.error)
       } else {
-        setMessages(messagesData || [])
+        setMessages(messagesResult.data || [])
       }
     } catch (err) {
+      if (signal?.aborted) return
       console.error('Error fetching ticket:', err)
       setError('Network error. Please check your connection.')
     } finally {
-      setIsLoading(false)
+      if (!signal?.aborted) {
+        setIsLoading(false)
+      }
     }
-  }
+  }, [ticketId, supabase])
 
   // Fetch current agent on mount
   useEffect(() => {
@@ -94,7 +100,8 @@ export default function TicketDetailPage() {
   }, [supabase])
 
   useEffect(() => {
-    fetchTicketAndMessages()
+    const abortController = new AbortController()
+    fetchTicketAndMessages(abortController.signal)
 
     // Subscribe to real-time message updates
     const messagesChannel = supabase
@@ -149,10 +156,11 @@ export default function TicketDetailPage() {
       .subscribe()
 
     return () => {
+      abortController.abort()
       supabase.removeChannel(messagesChannel)
       supabase.removeChannel(ticketChannel)
     }
-  }, [ticketId, supabase])
+  }, [ticketId, supabase, fetchTicketAndMessages])
 
   const handleSendMessage = useCallback(async (content: string, senderType: 'agent' | 'ai' = 'agent', isInternal: boolean = false, attachmentIds?: string[]) => {
     if (!ticket) return
@@ -347,7 +355,7 @@ export default function TicketDetailPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-          <Button onClick={fetchTicketAndMessages} className="gap-2">
+          <Button onClick={() => fetchTicketAndMessages()} className="gap-2">
             <RefreshCw className="w-4 h-4" />
             Try again
           </Button>

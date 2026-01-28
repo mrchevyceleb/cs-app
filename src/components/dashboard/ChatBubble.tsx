@@ -42,38 +42,38 @@ const channelLabels: Record<MessageSource, string> = {
 const senderConfig = {
   customer: {
     align: 'left' as const,
-    bgColor: 'bg-gradient-to-br from-white to-indigo-50/50 dark:from-slate-800 dark:to-slate-800/50 border border-indigo-100 dark:border-slate-700 shadow-sm',
-    textColor: 'text-slate-900 dark:text-slate-100',
+    bgColor: 'bg-card border border-border/60 shadow-[var(--shadow-xs)]',
+    textColor: 'text-foreground',
     icon: User,
     label: 'Customer',
-    avatarBg: 'bg-indigo-100 text-indigo-600 dark:bg-slate-700 dark:text-slate-300',
+    avatarBg: 'bg-muted text-muted-foreground',
   },
   agent: {
     align: 'right' as const,
-    bgColor: 'bg-primary-600 dark:bg-primary-700 shadow-md shadow-primary-500/10 text-white',
+    bgColor: 'bg-primary-600 shadow-[var(--shadow-sm)] text-white',
     textColor: 'text-white',
     icon: Headphones,
     label: 'Agent',
-    avatarBg: 'bg-primary-100 dark:bg-primary-900',
+    avatarBg: 'bg-primary-100',
   },
   ai: {
     align: 'left' as const,
-    bgColor: 'bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800 shadow-sm shadow-purple-500/5',
-    textColor: 'text-slate-900 dark:text-slate-100',
+    bgColor: 'bg-secondary border border-primary-100 shadow-[var(--shadow-xs)]',
+    textColor: 'text-foreground',
     icon: Sparkles,
     label: 'Nova AI',
-    avatarBg: 'bg-gradient-to-br from-primary-400 to-purple-500',
+    avatarBg: 'bg-gradient-to-br from-primary-400 to-primary-600',
   },
 }
 
 // Internal note styling (overrides agent styling)
 const internalNoteConfig = {
   align: 'right' as const,
-  bgColor: 'bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-600',
-  textColor: 'text-amber-900 dark:text-amber-100',
+  bgColor: 'bg-amber-50 border border-amber-200',
+  textColor: 'text-amber-900',
   icon: Lock,
   label: 'Internal Note',
-  avatarBg: 'bg-amber-200 dark:bg-amber-800',
+  avatarBg: 'bg-amber-100',
 }
 
 // Language flag mapping
@@ -178,7 +178,7 @@ export function ChatBubble({ message, customerName, isPending = false, showReadS
         >
           <span className={cn(
             'text-xs font-medium',
-            isInternal ? 'text-amber-700 dark:text-amber-400' : 'text-gray-600 dark:text-gray-400'
+            isInternal ? 'text-amber-700' : 'text-muted-foreground'
           )}>
             {displayName}
           </span>
@@ -187,14 +187,14 @@ export function ChatBubble({ message, customerName, isPending = false, showReadS
           {isInternal && (
             <Badge
               variant="outline"
-              className="text-[10px] px-1.5 py-0 h-4 gap-1 border-amber-400 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+              className="text-[10px] px-1.5 py-0 h-4 gap-1 border-amber-200 bg-amber-50 text-amber-700"
             >
               <Lock className="h-2.5 w-2.5" />
               Private
             </Badge>
           )}
 
-          <span className="text-xs text-gray-400 flex items-center gap-1">
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
             {isPending ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -221,9 +221,9 @@ export function ChatBubble({ message, customerName, isPending = false, showReadS
 
           {/* Read status for agent/AI messages */}
           {showReadStatus && message.sender_type !== 'customer' && !isPending && (
-            <span className="text-xs text-gray-400 flex items-center">
+            <span className="text-xs text-muted-foreground flex items-center">
               {isRead ? (
-                <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
+                <CheckCheck className="h-3.5 w-3.5 text-primary-600" />
               ) : (
                 <Check className="h-3.5 w-3.5" />
               )}
@@ -250,7 +250,7 @@ export function ChatBubble({ message, customerName, isPending = false, showReadS
         {/* Bubble */}
         <div
           className={cn(
-            'px-4 py-2.5 rounded-2xl shadow-sm',
+            'px-4 py-2.5 rounded-2xl shadow-[var(--shadow-xs)]',
             config.bgColor,
             config.textColor,
             isRight ? 'rounded-br-md' : 'rounded-bl-md'
@@ -281,8 +281,8 @@ export function ChatBubble({ message, customerName, isPending = false, showReadS
           {/* Show translated content if different from original */}
           {message.content_translated &&
             message.content_translated !== message.content && (
-              <div className="mt-2 pt-2 border-t border-gray-200/30 dark:border-gray-600/30">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
+              <div className="mt-2 pt-2 border-t border-border/60">
+                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                   <Globe className="h-3 w-3" />
                   Translated:
                 </p>

@@ -167,9 +167,9 @@ export function TicketDetail({
   const hasSlaInfo = firstResponseSla || resolutionSla
 
   return (
-    <div className="h-full flex flex-col glass border-0 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/10">
+    <div className="h-full flex flex-col bg-card border border-border/60 rounded-2xl overflow-hidden shadow-[var(--shadow-lg)]">
       {/* Ticket Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-b border-border/40 gap-2 sm:gap-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-b border-border/60 bg-card gap-2 sm:gap-0">
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Status Select */}
           <Select value={ticket.status} onValueChange={handleStatusChange}>
@@ -204,25 +204,25 @@ export function TicketDetail({
 
           {/* AI Confidence - hidden on small screens */}
           {ticket.ai_confidence !== null && (
-            <div className="hidden sm:flex items-center gap-2 px-2 py-1 bg-primary-50 dark:bg-primary-900/20 rounded-md">
-              <Sparkles className="h-3.5 w-3.5 text-primary-500" />
+            <div className="hidden sm:flex items-center gap-2 px-2 py-1 bg-primary-50 rounded-md border border-primary-100">
+              <Sparkles className="h-3.5 w-3.5 text-primary-600" />
               <ConfidenceScore value={ticket.ai_confidence} size="sm" />
             </div>
           )}
 
           {/* AI Handled Badge - hidden on small screens */}
           {ticket.ai_handled && (
-            <Badge variant="secondary" className="hidden sm:inline-flex bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+            <Badge variant="secondary" className="hidden sm:inline-flex bg-primary-50 text-primary-700 border-primary-100">
               AI Handling
             </Badge>
           )}
 
           {/* Assigned Agent Badge - hidden on small screens */}
           {ticket.assigned_agent && (
-            <Badge variant="secondary" className="hidden sm:inline-flex gap-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+            <Badge variant="secondary" className="hidden sm:inline-flex gap-1.5 bg-muted text-foreground border-border/60">
               <Avatar className="h-4 w-4">
                 <AvatarImage src={ticket.assigned_agent.avatar_url || undefined} />
-                <AvatarFallback className="text-[8px] bg-blue-200 dark:bg-blue-800">
+                <AvatarFallback className="text-[8px] bg-primary-100 text-primary-700">
                   {getInitials(ticket.assigned_agent.name || 'AG')}
                 </AvatarFallback>
               </Avatar>
@@ -239,7 +239,7 @@ export function TicketDetail({
                 variant="outline"
                 size="sm"
                 onClick={handleUnassign}
-                className="text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/60 flex-1 sm:flex-none"
+                className="text-muted-foreground border-border/70 hover:bg-muted flex-1 sm:flex-none"
               >
                 <UserMinus className="h-3.5 w-3.5 sm:mr-1" />
                 <span className="hidden sm:inline">Unassign</span>
@@ -249,7 +249,7 @@ export function TicketDetail({
                 variant="outline"
                 size="sm"
                 onClick={handleAssignToMe}
-                className="text-blue-600 border-blue-300 hover:bg-blue-50 flex-1 sm:flex-none"
+                className="text-primary-700 border-primary-200 hover:bg-primary-50 flex-1 sm:flex-none"
               >
                 <UserPlus className="h-3.5 w-3.5 sm:mr-1" />
                 <span className="hidden sm:inline">{isAssigned ? 'Reassign to Me' : 'Assign to Me'}</span>
@@ -263,7 +263,7 @@ export function TicketDetail({
               <Button
                 variant="outline"
                 size="sm"
-                className="text-amber-600 border-amber-300 hover:bg-amber-50 flex-1 sm:flex-none"
+                className="text-amber-700 border-amber-200 hover:bg-amber-50 flex-1 sm:flex-none"
               >
                 <AlertTriangle className="h-3.5 w-3.5 sm:mr-1" />
                 <span className="hidden sm:inline">Escalate</span>
@@ -293,7 +293,7 @@ export function TicketDetail({
             <AlertDialogTrigger asChild>
               <Button
                 size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none"
+                className="bg-primary-600 hover:bg-primary-700 text-white flex-1 sm:flex-none"
               >
                 <CheckCircle className="h-3.5 w-3.5 sm:mr-1" />
                 <span className="hidden sm:inline">Resolve</span>
@@ -373,7 +373,7 @@ export function TicketDetail({
 
       {/* SLA Status Section - shown when SLA info is available */}
       {hasSlaInfo && (
-              <div className="px-4 py-3 border-b border-border/50 bg-card">
+        <div className="px-4 py-3 border-b border-border/60 bg-card">
           <div className="flex items-center gap-2 mb-3">
             <Timer className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-medium text-foreground">
@@ -409,7 +409,7 @@ export function TicketDetail({
         className="flex-1 flex flex-col min-h-0"
       >
         {/* Tab Navigation */}
-        <div className="px-4 pt-2 border-b border-gray-200/50 dark:border-gray-700/50">
+        <div className="px-4 pt-2 border-b border-border/60 bg-card">
           <TabsList className="w-auto">
             <TabsTrigger value="messages" className="gap-1.5">
               <MessageSquare className="h-4 w-4" />
@@ -461,7 +461,7 @@ export function TicketDetail({
           <QuickSuggestions onSelect={(text) => onSendMessage(text, 'agent')} />
 
           {/* Chat Input */}
-          <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50">
+          <div className="p-4 border-t border-border/60 bg-card">
             <ChatInput
               ticketId={ticket.id}
               onSend={onSendMessage}
@@ -485,13 +485,13 @@ export function TicketDetail({
 function EmptyMessages() {
   return (
     <div className="flex flex-col items-center justify-center h-full text-center py-12">
-      <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-        <Sparkles className="h-8 w-8 text-gray-400" />
+      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4 shadow-[var(--shadow-xs)]">
+        <Sparkles className="h-8 w-8 text-muted-foreground" />
       </div>
-      <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">
+      <h3 className="text-lg font-medium text-foreground">
         No messages yet
       </h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+      <p className="text-sm text-muted-foreground mt-1">
         Start the conversation or wait for the customer to respond
       </p>
     </div>
@@ -507,14 +507,14 @@ function QuickSuggestions({ onSelect }: { onSelect: (text: string) => void }) {
   ]
 
   return (
-    <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800">
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Quick replies:</p>
+    <div className="px-4 py-2 border-t border-border/60 bg-card">
+      <p className="text-xs text-muted-foreground mb-2">Quick replies:</p>
       <div className="flex flex-wrap gap-2">
         {suggestions.map((suggestion, index) => (
           <button
             key={index}
             onClick={() => onSelect(suggestion)}
-            className="px-3 py-1.5 text-xs bg-white border border-indigo-100 text-indigo-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 rounded-full hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+            className="px-3 py-1.5 text-xs bg-card border border-border/60 text-foreground rounded-full hover:bg-muted transition-colors shadow-[var(--shadow-xs)]"
           >
             {suggestion}
           </button>
