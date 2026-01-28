@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendAgentReplyEmail } from '@/lib/email'
 import { generatePortalToken } from '@/lib/portal/auth'
+import { detectLanguage, translateText } from '@/lib/openai/chat'
 import type { MessageInsert, Customer, Ticket, Message, MessageWithAttachments } from '@/types/database'
 
 interface RouteParams {
@@ -100,12 +101,37 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
+    // Handle translation for agent messages (not internal notes)
+    let contentTranslated = null
+    let originalLanguage = null
+
+    if (content && senderType === 'agent' && !isInternal) {
+      try {
+        const customer = ticket.customer as Customer
+        const customerLanguage = customer?.preferred_language || 'en'
+        
+        // Detect the language the agent is typing in
+        const detectedLanguage = await detectLanguage(content)
+        
+        // If agent is not typing in customer's language, translate it
+        if (detectedLanguage !== customerLanguage) {
+          originalLanguage = detectedLanguage
+          contentTranslated = await translateText(content, detectedLanguage, customerLanguage)
+        }
+      } catch (err) {
+        console.error('Translation error:', err)
+        // Continue without translation on error
+      }
+    }
+
     // Create the message with metadata
     const messageData: MessageInsert = {
       ticket_id: id,
       sender_type: senderType,
       content: content || '', // Allow empty content if there are attachments
       metadata: isInternal ? { is_internal: true } : {},
+      content_translated: contentTranslated,
+      original_language: originalLanguage,
     }
 
     const { data: message, error: messageError } = await supabase

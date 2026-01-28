@@ -3,14 +3,23 @@
  * Find or create customers based on channel identifiers (email, phone, etc.)
  */
 
-import { createClient } from '@supabase/supabase-js';
-import type { Customer, CustomerInsert, ChannelType, PreferredChannel, Json } from '@/types/database';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { Database, Customer, CustomerInsert, ChannelType, PreferredChannel, Json } from '@/types/database';
 import { normalizePhoneNumber } from '@/lib/twilio/client';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient<Database> | null = null;
+function getSupabase(): SupabaseClient<Database> {
+  if (!_supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      throw new Error('Missing required Supabase environment variables');
+    }
+    _supabase = createClient<Database>(url, key);
+  }
+  return _supabase;
+}
 
 interface FindOrCreateResult {
   customer: Customer;
@@ -27,7 +36,7 @@ export async function findOrCreateCustomerByEmail(
   const normalizedEmail = email.toLowerCase().trim();
 
   // Try to find existing customer
-  const { data: existing } = await supabase
+  const { data: existing } = await getSupabase()
     .from('customers')
     .select('*')
     .eq('email', normalizedEmail)
@@ -36,7 +45,7 @@ export async function findOrCreateCustomerByEmail(
   if (existing) {
     // Update name if provided and not set
     if (name && !existing.name) {
-      await supabase
+      await getSupabase()
         .from('customers')
         .update({ name })
         .eq('id', existing.id);
@@ -46,7 +55,7 @@ export async function findOrCreateCustomerByEmail(
   }
 
   // Create new customer
-  const { data: created, error } = await supabase
+  const { data: created, error } = await getSupabase()
     .from('customers')
     .insert({
       email: normalizedEmail,
@@ -76,7 +85,7 @@ export async function findOrCreateCustomerByPhone(
   }
 
   // Try to find existing customer
-  const { data: existing } = await supabase
+  const { data: existing } = await getSupabase()
     .from('customers')
     .select('*')
     .eq('phone_number', normalizedPhone)
@@ -85,7 +94,7 @@ export async function findOrCreateCustomerByPhone(
   if (existing) {
     // Update name if provided and not set
     if (name && !existing.name) {
-      await supabase
+      await getSupabase()
         .from('customers')
         .update({ name })
         .eq('id', existing.id);
@@ -95,7 +104,7 @@ export async function findOrCreateCustomerByPhone(
   }
 
   // Create new customer
-  const { data: created, error } = await supabase
+  const { data: created, error } = await getSupabase()
     .from('customers')
     .insert({
       phone_number: normalizedPhone,
@@ -133,7 +142,7 @@ export async function findOrCreateCustomer(
   }
 
   // For other channels (Slack, etc.), try to find by metadata
-  const { data: existing } = await supabase
+  const { data: existing } = await getSupabase()
     .from('customers')
     .select('*')
     .contains('metadata', { [`${channel}_id`]: identifier })
@@ -144,7 +153,7 @@ export async function findOrCreateCustomer(
   }
 
   // Create with the identifier stored in metadata
-  const { data: created, error } = await supabase
+  const { data: created, error } = await getSupabase()
     .from('customers')
     .insert({
       name: name || identifier,
@@ -168,7 +177,7 @@ export async function updatePreferredChannel(
   customerId: string,
   channel: PreferredChannel
 ): Promise<void> {
-  await supabase
+  await getSupabase()
     .from('customers')
     .update({ preferred_channel: channel })
     .eq('id', customerId);
@@ -203,7 +212,7 @@ export async function updateCustomerContact(
   }
 
   if (Object.keys(updateData).length > 0) {
-    await supabase
+    await getSupabase()
       .from('customers')
       .update(updateData)
       .eq('id', customerId);
@@ -237,13 +246,13 @@ export async function mergeCustomers(
   secondaryId: string
 ): Promise<void> {
   // Get both customers
-  const { data: primary } = await supabase
+  const { data: primary } = await getSupabase()
     .from('customers')
     .select('*')
     .eq('id', primaryId)
     .single();
 
-  const { data: secondary } = await supabase
+  const { data: secondary } = await getSupabase()
     .from('customers')
     .select('*')
     .eq('id', secondaryId)
@@ -266,19 +275,19 @@ export async function mergeCustomers(
     metadata: mergedMetadata as Json,
   };
 
-  await supabase
+  await getSupabase()
     .from('customers')
     .update(updates)
     .eq('id', primaryId);
 
   // Move tickets to primary customer
-  await supabase
+  await getSupabase()
     .from('tickets')
     .update({ customer_id: primaryId })
     .eq('customer_id', secondaryId);
 
   // Delete secondary customer
-  await supabase
+  await getSupabase()
     .from('customers')
     .delete()
     .eq('id', secondaryId);

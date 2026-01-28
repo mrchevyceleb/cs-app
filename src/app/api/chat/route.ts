@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { generateChatResponse, type ConversationContext } from '@/lib/openai/chat'
+import { generateChatResponse, type ConversationContext, detectLanguage, translateText } from '@/lib/openai/chat'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,12 +17,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Fetch ticket with customer info
+    // Fetch ticket with customer info and assigned agent
     const { data: ticket, error: ticketError } = await supabase
       .from('tickets')
       .select(`
         *,
-        customer:customers(*)
+        customer:customers(*),
+        assigned_agent:agents!assigned_agent_id(preferred_language)
       `)
       .eq('id', ticketId)
       .single()
@@ -34,6 +35,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Detect language and translate for agent if needed
+    let detectedLanguage = 'en'
+    let contentTranslated = null
+    
+    try {
+      detectedLanguage = await detectLanguage(message)
+      const agentLanguage = ticket.assigned_agent?.preferred_language || 'en'
+      
+      if (detectedLanguage !== agentLanguage) {
+        contentTranslated = await translateText(message, detectedLanguage, agentLanguage)
+      }
+    } catch (err) {
+      console.error('Language detection/translation error:', err)
+      // Fallback to defaults
+    }
+
     // Save customer message to database
     const { error: saveError } = await supabase
       .from('messages')
@@ -41,7 +58,8 @@ export async function POST(request: NextRequest) {
         ticket_id: ticketId,
         sender_type: 'customer',
         content: message,
-        original_language: null, // Will be detected by AI
+        original_language: detectedLanguage !== 'en' ? detectedLanguage : null,
+        content_translated: contentTranslated,
       })
 
     if (saveError) {

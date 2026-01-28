@@ -3,7 +3,7 @@
  * Handles outbound webhook dispatch with retry logic
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type {
   WebhookEndpoint,
   WebhookDelivery,
@@ -13,10 +13,19 @@ import type {
 } from '@/types/webhooks';
 import { createSignature, SIGNATURE_HEADER } from './signatures';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      throw new Error('Missing required Supabase environment variables');
+    }
+    _supabase = createClient(url, key);
+  }
+  return _supabase;
+}
 
 /**
  * Dispatch a webhook event to all matching endpoints
@@ -29,7 +38,7 @@ export async function dispatchWebhook(
   const errors: string[] = [];
 
   // Get all enabled endpoints subscribed to this event
-  const { data: endpoints, error } = await supabase
+  const { data: endpoints, error } = await getSupabase()
     .from('webhook_endpoints')
     .select('*')
     .eq('enabled', true)
@@ -62,7 +71,7 @@ export async function dispatchWebhook(
 
     try {
       // Create delivery record
-      const { data: delivery, error: insertError } = await supabase
+      const { data: delivery, error: insertError } = await getSupabase()
         .from('webhook_deliveries')
         .insert({
           webhook_endpoint_id: endpoint.id,
@@ -173,7 +182,7 @@ async function updateDeliverySuccess(
   const now = new Date().toISOString();
 
   // Update delivery
-  await supabase
+  await getSupabase()
     .from('webhook_deliveries')
     .update({
       status: 'success',
@@ -187,13 +196,13 @@ async function updateDeliverySuccess(
     .eq('id', deliveryId);
 
   // Update endpoint stats
-  await supabase
+  await getSupabase()
     .from('webhook_endpoints')
     .update({
       last_triggered_at: now,
       last_success_at: now,
-      total_deliveries: supabase.rpc('increment_counter', { row_id: endpointId, column_name: 'total_deliveries' }),
-      successful_deliveries: supabase.rpc('increment_counter', { row_id: endpointId, column_name: 'successful_deliveries' }),
+      total_deliveries: getSupabase().rpc('increment_counter', { row_id: endpointId, column_name: 'total_deliveries' }),
+      successful_deliveries: getSupabase().rpc('increment_counter', { row_id: endpointId, column_name: 'successful_deliveries' }),
     })
     .eq('id', endpointId);
 }
@@ -214,7 +223,7 @@ async function updateDeliveryFailure(
   const now = new Date().toISOString();
 
   // Get current delivery to check attempts
-  const { data: delivery } = await supabase
+  const { data: delivery } = await getSupabase()
     .from('webhook_deliveries')
     .select('attempts')
     .eq('id', deliveryId)
@@ -229,7 +238,7 @@ async function updateDeliveryFailure(
     : null;
 
   // Update delivery
-  await supabase
+  await getSupabase()
     .from('webhook_deliveries')
     .update({
       status: shouldRetry ? 'retrying' : 'failed',
@@ -245,7 +254,7 @@ async function updateDeliveryFailure(
 
   // Update endpoint stats
   if (!shouldRetry) {
-    await supabase
+    await getSupabase()
       .from('webhook_endpoints')
       .update({
         last_triggered_at: now,
@@ -254,7 +263,7 @@ async function updateDeliveryFailure(
       .eq('id', endpoint.id);
 
     // Increment counters separately to avoid race conditions
-    await supabase.rpc('increment_webhook_counters', {
+    await getSupabase().rpc('increment_webhook_counters', {
       p_endpoint_id: endpoint.id,
       p_total: 1,
       p_failed: 1,
@@ -305,7 +314,7 @@ export async function processRetries(): Promise<{ processed: number; errors: str
   let processed = 0;
 
   // Get deliveries ready for retry
-  const { data: deliveries, error } = await supabase
+  const { data: deliveries, error } = await getSupabase()
     .from('webhook_deliveries')
     .select('*, webhook_endpoints(*)')
     .eq('status', 'retrying')
@@ -346,7 +355,7 @@ export async function getWebhookStats(endpointId?: string): Promise<{
   pending: number;
   retrying: number;
 }> {
-  let query = supabase
+  let query = getSupabase()
     .from('webhook_deliveries')
     .select('status', { count: 'exact' });
 

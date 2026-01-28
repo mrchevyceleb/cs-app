@@ -22,6 +22,7 @@ export type Database = {
           status: 'online' | 'away' | 'offline'
           last_seen_at: string | null
           current_ticket_id: string | null
+          preferred_language: string
         }
         Insert: {
           avatar_url?: string | null
@@ -32,6 +33,7 @@ export type Database = {
           status?: 'online' | 'away' | 'offline'
           last_seen_at?: string | null
           current_ticket_id?: string | null
+          preferred_language?: string
         }
         Update: {
           avatar_url?: string | null
@@ -42,6 +44,7 @@ export type Database = {
           status?: 'online' | 'away' | 'offline'
           last_seen_at?: string | null
           current_ticket_id?: string | null
+          preferred_language?: string
         }
         Relationships: []
       }

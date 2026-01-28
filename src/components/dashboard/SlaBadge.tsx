@@ -126,11 +126,9 @@ function SingleSlaBadge({
       )}
     >
       <Icon
-        className={cn(
-          'flex-shrink-0',
-          colors.icon,
-          variant === 'compact' ? 'h-3 w-3' : 'h-4 w-4'
-        )}
+        strokeWidth={2.25}
+        size={variant === 'compact' ? 16 : 20}
+        className={cn('flex-shrink-0', colors.icon)}
       />
       <span className="font-medium">
         {slaInfo.status === 'breached'
@@ -383,12 +381,14 @@ export function SlaIndicator({ ticket, className }: SlaIndicatorProps) {
       <TooltipTrigger asChild>
         <div
           className={cn(
-            'flex items-center justify-center rounded-full p-1',
+            'flex items-center justify-center rounded-full border p-1.5 shadow-sm',
+            colors.bg,
+            colors.border,
             activeSla.status === 'breached' && 'animate-pulse',
             className
           )}
         >
-          <Icon className={cn('h-3.5 w-3.5', colors.icon)} />
+          <Icon size={16} className={cn(colors.icon)} strokeWidth={2.25} />
         </div>
       </TooltipTrigger>
       <TooltipContent

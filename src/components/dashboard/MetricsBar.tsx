@@ -45,7 +45,7 @@ function MetricCard({ label, value, icon, variant = 'default', isLoading = false
             <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
           )}
         </div>
-        <div className={cn('p-2.5 rounded-lg', iconStyles[variant])}>
+        <div className={cn('p-3 rounded-lg', iconStyles[variant])}>
           {icon}
         </div>
       </div>
@@ -54,10 +54,10 @@ function MetricCard({ label, value, icon, variant = 'default', isLoading = false
 }
 
 const Icons = {
-  ticket: <Ticket className="h-6 w-6" strokeWidth={2.25} />,
-  clock: <Clock className="h-6 w-6" strokeWidth={2.25} />,
-  robot: <Bot className="h-6 w-6" strokeWidth={2.25} />,
-  happy: <Smile className="h-6 w-6" strokeWidth={2.25} />,
+  ticket: <Ticket size={28} strokeWidth={2.5} />,
+  clock: <Clock size={28} strokeWidth={2.5} />,
+  robot: <Bot size={28} strokeWidth={2.5} />,
+  happy: <Smile size={28} strokeWidth={2.5} />,
 }
 
 interface MetricsData {
