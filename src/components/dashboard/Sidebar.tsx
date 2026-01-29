@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -102,23 +102,20 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
   const { agent, user, isLoading } = useAuth()
   const { setOpen: openCommandPalette } = useCommandPalette()
   const { open: openNova } = useNovaCopilot()
-  const [ticketCount, setTicketCount] = useState<number | null>(null)
-
-  // Fetch ticket count
-  useEffect(() => {
-    const fetchTicketCount = async () => {
-      try {
-        const response = await fetch('/api/tickets?limit=1')
-        if (response.ok) {
-          const data = await response.json()
-          setTicketCount(data.total || 0)
-        }
-      } catch (error) {
-        console.error('Failed to fetch ticket count:', error)
+  const ticketCountQuery = useQuery({
+    queryKey: ['ticket-count'],
+    queryFn: async () => {
+      const response = await fetch('/api/tickets?limit=1')
+      if (!response.ok) {
+        throw new Error('Failed to fetch ticket count')
       }
-    }
-    fetchTicketCount()
-  }, [])
+      const data = await response.json()
+      return data.total || 0
+    },
+    staleTime: 60 * 1000,
+  })
+
+  const ticketCount = ticketCountQuery.data ?? null
 
   const navItems = [
     { href: '/', icon: Icons.inbox, label: 'Dashboard', badge: null },

@@ -31,7 +31,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ChatBubble } from './ChatBubble'
+import { ChatBubble, ChatBubbleSkeleton } from './ChatBubble'
 import { ChatInput } from './ChatInput'
 import { TypingIndicator } from './TypingIndicator'
 import { ConfidenceScore } from './ConfidenceScore'
@@ -74,6 +74,7 @@ interface TicketDetailProps {
   sendError?: string | null
   onRetry?: () => void
   onClearError?: () => void
+  isMessagesLoading?: boolean
 }
 
 const statusOptions = [
@@ -109,6 +110,7 @@ export function TicketDetail({
   sendError,
   onRetry,
   onClearError,
+  isMessagesLoading = false,
 }: TicketDetailProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isAiTyping, setIsAiTyping] = useState(false)
@@ -431,7 +433,13 @@ export function TicketDetail({
         <TabsContent value="messages" className="flex-1 flex flex-col min-h-0 m-0">
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length === 0 ? (
+            {isMessagesLoading ? (
+              <div className="space-y-4">
+                <ChatBubbleSkeleton />
+                <ChatBubbleSkeleton align="right" />
+                <ChatBubbleSkeleton />
+              </div>
+            ) : messages.length === 0 ? (
               <EmptyMessages />
             ) : (
               messages.map((message) => (

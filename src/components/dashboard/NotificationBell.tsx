@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,7 +13,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Bell,
-  Check,
   CheckCheck,
   ArrowRightLeft,
   UserPlus,
@@ -30,6 +30,14 @@ interface NotificationBellProps {
   className?: string
   onNavigateToTicket?: (ticketId: string) => void
 }
+
+type NotificationData = {
+  notifications: AgentNotificationWithDetails[]
+  unreadCount: number
+}
+
+const NOTIFICATIONS_LIMIT = 20
+const notificationsQueryKey = ['notifications', NOTIFICATIONS_LIMIT] as const
 
 const notificationIcons: Record<NotificationType, React.ElementType> = {
   mention: AtSign,
@@ -71,99 +79,152 @@ export function NotificationBell({
   className,
   onNavigateToTicket,
 }: NotificationBellProps) {
-  const [notifications, setNotifications] = useState<AgentNotificationWithDetails[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [isMarkingAllRead, setIsMarkingAllRead] = useState(false)
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const response = await fetch('/api/notifications?limit=20')
-      if (!response.ok) return
-
-      const data = await response.json()
-      setNotifications(data.notifications || [])
-      setUnreadCount(data.unreadCount || 0)
-    } catch (err) {
-      console.error('Failed to fetch notifications:', err)
-    }
-  }, [])
-
-  // Initial fetch and polling
-  useEffect(() => {
-    fetchNotifications()
-
-    // Poll every 30 seconds
-    pollIntervalRef.current = setInterval(fetchNotifications, 30000)
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
+  const notificationsQuery = useQuery({
+    queryKey: notificationsQueryKey,
+    queryFn: async () => {
+      const response = await fetch(`/api/notifications?limit=${NOTIFICATIONS_LIMIT}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch notifications')
       }
-    }
-  }, [fetchNotifications])
+      return response.json() as Promise<NotificationData>
+    },
+    refetchInterval: 30000,
+    refetchIntervalInBackground: true,
+    staleTime: 15 * 1000,
+  })
 
-  // Refresh when popover opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchNotifications()
-    }
-  }, [isOpen, fetchNotifications])
+  const updateNotifications = useCallback((updater: (current: NotificationData) => NotificationData) => {
+    queryClient.setQueryData<NotificationData>(notificationsQueryKey, (old) => {
+      if (!old) {
+        return updater({ notifications: [], unreadCount: 0 })
+      }
+      return updater(old)
+    })
+  }, [queryClient])
 
-  const handleMarkAsRead = async (notification: AgentNotificationWithDetails) => {
-    if (notification.read_at) return
-
-    try {
-      await fetch(`/api/notifications/${notification.id}`, {
+  const markAsReadMutation = useMutation({
+    mutationFn: async (notification: AgentNotificationWithDetails) => {
+      const response = await fetch(`/api/notifications/${notification.id}`, {
         method: 'PATCH',
       })
 
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notification.id
-            ? { ...n, read_at: new Date().toISOString() }
-            : n
-        )
-      )
-      setUnreadCount((prev) => Math.max(0, prev - 1))
-    } catch (err) {
-      console.error('Failed to mark notification as read:', err)
-    }
-  }
+      if (!response.ok) {
+        throw new Error('Failed to mark notification as read')
+      }
+    },
+    onMutate: (notification) => {
+      const previous = queryClient.getQueryData<NotificationData>(notificationsQueryKey)
 
-  const handleMarkAllAsRead = async () => {
-    setIsMarkingAllRead(true)
-    try {
-      await fetch('/api/notifications/read-all', {
+      updateNotifications((current) => {
+        const alreadyRead = Boolean(notification.read_at)
+        const notifications = current.notifications.map((item) =>
+          item.id === notification.id
+            ? { ...item, read_at: item.read_at || new Date().toISOString() }
+            : item
+        )
+
+        return {
+          notifications,
+          unreadCount: alreadyRead ? current.unreadCount : Math.max(0, current.unreadCount - 1),
+        }
+      })
+
+      return { previous }
+    },
+    onError: (error, _notification, context) => {
+      console.error('Failed to mark notification as read:', error)
+      if (context?.previous) {
+        queryClient.setQueryData(notificationsQueryKey, context.previous)
+      }
+    },
+  })
+
+  const markAllReadMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/notifications/read-all', {
         method: 'POST',
       })
 
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() }))
-      )
-      setUnreadCount(0)
-    } catch (err) {
-      console.error('Failed to mark all as read:', err)
-    } finally {
-      setIsMarkingAllRead(false)
-    }
-  }
+      if (!response.ok) {
+        throw new Error('Failed to mark all notifications as read')
+      }
+    },
+    onMutate: () => {
+      const previous = queryClient.getQueryData<NotificationData>(notificationsQueryKey)
 
-  const handleDismiss = async (notification: AgentNotificationWithDetails) => {
-    try {
-      await fetch(`/api/notifications/${notification.id}`, {
+      updateNotifications((current) => ({
+        notifications: current.notifications.map((item) => ({
+          ...item,
+          read_at: item.read_at || new Date().toISOString(),
+        })),
+        unreadCount: 0,
+      }))
+
+      return { previous }
+    },
+    onError: (error, _vars, context) => {
+      console.error('Failed to mark all notifications as read:', error)
+      if (context?.previous) {
+        queryClient.setQueryData(notificationsQueryKey, context.previous)
+      }
+    },
+  })
+
+  const dismissMutation = useMutation({
+    mutationFn: async (notification: AgentNotificationWithDetails) => {
+      const response = await fetch(`/api/notifications/${notification.id}`, {
         method: 'DELETE',
       })
 
-      setNotifications((prev) => prev.filter((n) => n.id !== notification.id))
-      if (!notification.read_at) {
-        setUnreadCount((prev) => Math.max(0, prev - 1))
+      if (!response.ok) {
+        throw new Error('Failed to dismiss notification')
       }
-    } catch (err) {
-      console.error('Failed to dismiss notification:', err)
+    },
+    onMutate: (notification) => {
+      const previous = queryClient.getQueryData<NotificationData>(notificationsQueryKey)
+
+      updateNotifications((current) => {
+        const notifications = current.notifications.filter((item) => item.id !== notification.id)
+        const unreadCount = notification.read_at
+          ? current.unreadCount
+          : Math.max(0, current.unreadCount - 1)
+
+        return { notifications, unreadCount }
+      })
+
+      return { previous }
+    },
+    onError: (error, _notification, context) => {
+      console.error('Failed to dismiss notification:', error)
+      if (context?.previous) {
+        queryClient.setQueryData(notificationsQueryKey, context.previous)
+      }
+    },
+  })
+
+  useEffect(() => {
+    if (isOpen) {
+      notificationsQuery.refetch()
     }
+  }, [isOpen, notificationsQuery.refetch])
+
+  const notifications = notificationsQuery.data?.notifications || []
+  const unreadCount = notificationsQuery.data?.unreadCount || 0
+
+  const handleMarkAsRead = (notification: AgentNotificationWithDetails) => {
+    if (notification.read_at) return
+    markAsReadMutation.mutate(notification)
+  }
+
+  const handleMarkAllAsRead = () => {
+    markAllReadMutation.mutate()
+  }
+
+  const handleDismiss = (notification: AgentNotificationWithDetails) => {
+    dismissMutation.mutate(notification)
   }
 
   const handleNotificationClick = (notification: AgentNotificationWithDetails) => {
@@ -229,10 +290,10 @@ export function NotificationBell({
               variant="ghost"
               size="sm"
               onClick={handleMarkAllAsRead}
-              disabled={isMarkingAllRead}
+              disabled={markAllReadMutation.isPending}
               className="text-xs h-7"
             >
-              {isMarkingAllRead ? (
+              {markAllReadMutation.isPending ? (
                 <Loader2 className="h-3 w-3 animate-spin mr-1" />
               ) : (
                 <CheckCheck className="h-3 w-3 mr-1" />
@@ -357,7 +418,6 @@ export function NotificationBell({
               size="sm"
               className="w-full text-sm"
               onClick={() => {
-                // Navigate to notifications page if you have one
                 setIsOpen(false)
               }}
             >

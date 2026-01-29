@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -320,48 +321,42 @@ function EmptyTimeline() {
 }
 
 export function TicketTimeline({ ticketId, className }: TicketTimelineProps) {
-  const [events, setEvents] = useState<TicketEventWithAgent[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
-  const [hasMore, setHasMore] = useState(false)
-  const [total, setTotal] = useState(0)
 
   const INITIAL_LIMIT = 10
   const EXPANDED_LIMIT = 50
+  const limit = isExpanded ? EXPANDED_LIMIT : INITIAL_LIMIT
 
-  const fetchEvents = useCallback(async (limit: number = INITIAL_LIMIT) => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
+  const timelineQuery = useQuery({
+    queryKey: ['ticket-events', ticketId, limit],
+    queryFn: async () => {
       const response = await fetch(`/api/tickets/${ticketId}/events?limit=${limit}&offset=0`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch events')
       }
 
-      const data = await response.json()
-      setEvents(data.events)
-      setTotal(data.total)
-      setHasMore(data.hasMore)
-    } catch (err) {
-      console.error('Error fetching timeline events:', err)
-      setError('Failed to load timeline')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [ticketId])
+      return response.json() as Promise<{
+        events: TicketEventWithAgent[]
+        total: number
+        hasMore: boolean
+      }>
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+    enabled: Boolean(ticketId),
+    refetchOnMount: true,
+  })
 
-  useEffect(() => {
-    fetchEvents(isExpanded ? EXPANDED_LIMIT : INITIAL_LIMIT)
-  }, [fetchEvents, isExpanded])
+  const events = timelineQuery.data?.events ?? []
+  const total = timelineQuery.data?.total ?? 0
+  const hasMore = timelineQuery.data?.hasMore ?? false
 
   const handleToggleExpand = () => {
     setIsExpanded(!isExpanded)
   }
 
-  if (isLoading) {
+  if (timelineQuery.isPending) {
     return (
       <div className={cn('p-4', className)}>
         <TimelineSkeleton />
@@ -369,15 +364,17 @@ export function TicketTimeline({ ticketId, className }: TicketTimelineProps) {
     )
   }
 
-  if (error) {
+  if (timelineQuery.isError) {
     return (
       <div className={cn('p-4', className)}>
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>
+          <p className="text-sm text-red-600 dark:text-red-400 mb-3">
+            {timelineQuery.error instanceof Error ? timelineQuery.error.message : 'Failed to load timeline'}
+          </p>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchEvents()}
+            onClick={() => timelineQuery.refetch()}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Try Again

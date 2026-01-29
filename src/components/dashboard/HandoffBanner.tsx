@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -21,38 +22,35 @@ interface HandoffBannerProps {
   onNavigateToTicket?: (ticketId: string) => void
 }
 
+const handoffQueryKey = ['pending-handoffs'] as const
+
 export function HandoffBanner({
   className,
   onAccept,
   onDecline,
   onNavigateToTicket,
 }: HandoffBannerProps) {
-  const [pendingHandoffs, setPendingHandoffs] = useState<TicketHandoffWithDetails[]>([])
   const [isExpanded, setIsExpanded] = useState(true)
-  const [isLoading, setIsLoading] = useState(false)
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchPendingHandoffs = useCallback(async () => {
-    try {
-      // Fetch notifications of type 'handoff' that are unread
+  const pendingHandoffsQuery = useQuery({
+    queryKey: handoffQueryKey,
+    queryFn: async () => {
       const response = await fetch('/api/notifications?type=handoff&unread=true')
-      if (!response.ok) return
+      if (!response.ok) return [] as TicketHandoffWithDetails[]
 
       const { notifications } = await response.json()
 
-      // For each handoff notification, get the handoff details
-      // This is a simplified approach - in production, you'd want a dedicated endpoint
       const handoffIds = notifications
         .filter((n: { type: string }) => n.type === 'handoff')
         .map((n: { ticket_id: string | null }) => n.ticket_id)
         .filter(Boolean)
 
       if (handoffIds.length === 0) {
-        setPendingHandoffs([])
-        return
+        return []
       }
 
-      // Fetch handoff details for each ticket
       const handoffPromises = handoffIds.map(async (ticketId: string) => {
         const res = await fetch(`/api/tickets/${ticketId}/handoff?status=pending`)
         if (!res.ok) return null
@@ -61,58 +59,72 @@ export function HandoffBanner({
       })
 
       const handoffs = (await Promise.all(handoffPromises)).filter(Boolean)
-      setPendingHandoffs(handoffs)
-    } catch (err) {
-      console.error('Failed to fetch pending handoffs:', err)
-    }
-  }, [])
+      return handoffs as TicketHandoffWithDetails[]
+    },
+    refetchInterval: 30000,
+    refetchIntervalInBackground: true,
+    staleTime: 15 * 1000,
+  })
 
-  useEffect(() => {
-    fetchPendingHandoffs()
-
-    // Poll for new handoffs every 30 seconds
-    const interval = setInterval(fetchPendingHandoffs, 30000)
-    return () => clearInterval(interval)
-  }, [fetchPendingHandoffs])
-
-  const handleAccept = async (handoff: TicketHandoffWithDetails) => {
-    setProcessingId(handoff.id)
-    try {
-      const response = await fetch(`/api/handoffs/${handoff.id}`, {
+  const updateHandoffMutation = useMutation({
+    mutationFn: async ({ handoffId, status }: { handoffId: string; status: 'accepted' | 'declined' }) => {
+      const response = await fetch(`/api/handoffs/${handoffId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'accepted' }),
+        body: JSON.stringify({ status }),
       })
 
-      if (response.ok) {
-        setPendingHandoffs((prev) => prev.filter((h) => h.id !== handoff.id))
-        onAccept?.(handoff)
+      if (!response.ok) {
+        throw new Error('Failed to update handoff')
       }
-    } catch (err) {
-      console.error('Failed to accept handoff:', err)
-    } finally {
-      setProcessingId(null)
-    }
+    },
+    onMutate: ({ handoffId }) => {
+      const previous = queryClient.getQueryData<TicketHandoffWithDetails[]>(handoffQueryKey)
+
+      queryClient.setQueryData<TicketHandoffWithDetails[]>(handoffQueryKey, (old = []) =>
+        old.filter((handoff) => handoff.id !== handoffId)
+      )
+
+      return { previous }
+    },
+    onError: (error, _payload, context) => {
+      console.error('Failed to update handoff:', error)
+      if (context?.previous) {
+        queryClient.setQueryData(handoffQueryKey, context.previous)
+      }
+    },
+  })
+
+  const pendingHandoffs = pendingHandoffsQuery.data || []
+
+  const handleAccept = (handoff: TicketHandoffWithDetails) => {
+    setProcessingId(handoff.id)
+    updateHandoffMutation.mutate(
+      { handoffId: handoff.id, status: 'accepted' },
+      {
+        onSuccess: () => {
+          onAccept?.(handoff)
+        },
+        onSettled: () => {
+          setProcessingId(null)
+        },
+      }
+    )
   }
 
-  const handleDecline = async (handoff: TicketHandoffWithDetails) => {
+  const handleDecline = (handoff: TicketHandoffWithDetails) => {
     setProcessingId(handoff.id)
-    try {
-      const response = await fetch(`/api/handoffs/${handoff.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'declined' }),
-      })
-
-      if (response.ok) {
-        setPendingHandoffs((prev) => prev.filter((h) => h.id !== handoff.id))
-        onDecline?.(handoff)
+    updateHandoffMutation.mutate(
+      { handoffId: handoff.id, status: 'declined' },
+      {
+        onSuccess: () => {
+          onDecline?.(handoff)
+        },
+        onSettled: () => {
+          setProcessingId(null)
+        },
       }
-    } catch (err) {
-      console.error('Failed to decline handoff:', err)
-    } finally {
-      setProcessingId(null)
-    }
+    )
   }
 
   const getInitials = (name: string) => {

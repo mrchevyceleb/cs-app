@@ -21,6 +21,7 @@ interface TicketCardProps {
   selectionMode?: boolean
   onClick?: () => void
   onCheckboxChange?: (checked: boolean) => void
+  onHover?: () => void
 }
 
 const statusColors: Record<string, string> = {
@@ -101,6 +102,8 @@ export function TicketCard({
   return (
     <div
       onClick={onClick}
+      onMouseEnter={onHover}
+      onFocus={onHover}
       className={cn(
         'group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg transition-all duration-200 cursor-pointer border hover-lift',
         isSelected

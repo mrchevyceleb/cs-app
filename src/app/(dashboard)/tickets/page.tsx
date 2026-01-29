@@ -1,17 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { useQuery, keepPreviousData, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { FilterBar, defaultFilters, TicketCard, TicketCardSkeleton, GetNextTicketButton } from '@/components/dashboard'
 import type { FilterOptions, TicketWithCustomer } from '@/components/dashboard'
+import { fetchTicketById, fetchTicketMessages } from '@/lib/api/tickets'
 
 const PAGE_SIZE = 20
 
 export default function TicketsPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [filters, setFilters] = useState<FilterOptions>(defaultFilters)
   const [currentPage, setCurrentPage] = useState(0)
 
@@ -62,6 +64,22 @@ export default function TicketsPage() {
   const handleTicketClick = (ticket: TicketWithCustomer) => {
     router.push(`/tickets/${ticket.id}`)
   }
+
+  const prefetchTicket = useCallback((ticketId: string) => {
+    if (!queryClient.getQueryData(['ticket', ticketId])) {
+      queryClient.prefetchQuery({
+        queryKey: ['ticket', ticketId],
+        queryFn: () => fetchTicketById(ticketId),
+      })
+    }
+
+    if (!queryClient.getQueryData(['ticket-messages', ticketId])) {
+      queryClient.prefetchQuery({
+        queryKey: ['ticket-messages', ticketId],
+        queryFn: () => fetchTicketMessages(ticketId),
+      })
+    }
+  }, [queryClient])
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
   const hasNextPage = currentPage < totalPages - 1
@@ -133,6 +151,7 @@ export default function TicketsPage() {
                   key={ticket.id}
                   ticket={ticket}
                   onClick={() => handleTicketClick(ticket)}
+                  onHover={() => prefetchTicket(ticket.id)}
                 />
               ))}
             </div>

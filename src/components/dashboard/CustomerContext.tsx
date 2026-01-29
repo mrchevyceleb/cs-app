@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -86,15 +87,13 @@ export function CustomerContext({
   ticket,
   onUpdateTicket,
 }: CustomerContextProps) {
-  const [ticketHistory, setTicketHistory] = useState<TicketHistory[]>([])
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
-  useEffect(() => {
-    const fetchTicketHistory = async () => {
-      if (!customer?.id) return
+  const { data: ticketHistory = [], isPending: isLoadingHistory } = useQuery({
+    queryKey: ['customer-ticket-history', customer?.id, ticket.id],
+    queryFn: async () => {
+      if (!customer?.id) return [] as TicketHistory[]
 
-      setIsLoadingHistory(true)
       const { data, error } = await supabase
         .from('tickets')
         .select('id, subject, status, created_at')
@@ -103,14 +102,15 @@ export function CustomerContext({
         .order('created_at', { ascending: false })
         .limit(5)
 
-      if (!error && data) {
-        setTicketHistory(data)
+      if (error) {
+        throw error
       }
-      setIsLoadingHistory(false)
-    }
 
-    fetchTicketHistory()
-  }, [customer?.id, ticket.id, supabase])
+      return (data || []) as TicketHistory[]
+    },
+    enabled: Boolean(customer?.id),
+    staleTime: 5 * 60 * 1000,
+  })
 
   const handleTagAdd = (tag: string) => {
     const currentTags = ticket.tags || []
