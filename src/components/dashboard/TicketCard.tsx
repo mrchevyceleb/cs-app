@@ -83,6 +83,7 @@ export function TicketCard({
   selectionMode = false,
   onClick,
   onCheckboxChange,
+  onHover,
 }: TicketCardProps) {
   const priority = priorityIndicators[ticket.priority] || priorityIndicators.normal
   const customerLang = ticket.customer?.preferred_language || 'en'
