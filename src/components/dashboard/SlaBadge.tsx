@@ -120,7 +120,6 @@ function SingleSlaBadge({
         colors.bg,
         colors.text,
         colors.border,
-        slaInfo.status === 'breached' && 'animate-pulse',
         variant === 'compact' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm',
         className
       )}
@@ -273,11 +272,11 @@ export function SlaProgressBar({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className={cn('h-4 w-4', colors.icon)} />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <span className="text-sm font-medium text-foreground">
             {label}
           </span>
         </div>
-        <div className={cn('text-sm font-semibold', colors.text)}>
+        <div className={cn('text-sm font-bold', colors.text)}>
           {slaInfo.status === 'breached' ? 'Breached' : timeRemaining || 'N/A'}
         </div>
       </div>
@@ -289,14 +288,14 @@ export function SlaProgressBar({
             'h-full rounded-full transition-all duration-300',
             slaInfo.status === 'ok' && 'bg-emerald-500',
             slaInfo.status === 'warning' && 'bg-amber-500',
-            slaInfo.status === 'breached' && 'bg-red-500 animate-pulse'
+            slaInfo.status === 'breached' && 'bg-red-500'
           )}
           style={{ width: `${Math.min(100, slaInfo.percentageUsed)}%` }}
         />
       </div>
 
       {showDetails && slaInfo.dueAt && (
-        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{Math.round(slaInfo.percentageUsed)}% used</span>
           <span>
             Due: {slaInfo.dueAt.toLocaleString(undefined, {
@@ -335,17 +334,16 @@ export function SlaAlertBanner({ ticket, className }: SlaAlertBannerProps) {
   return (
     <div
       className={cn(
-        'flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-900/20',
-        'animate-pulse',
+        'flex items-center gap-3 rounded-lg border-l-4 border-l-red-500 border border-red-300 bg-red-100 px-4 py-3 dark:border-red-700 dark:border-l-red-500 dark:bg-red-900/40',
         className
       )}
     >
-      <XCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
+      <XCircle className="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
       <div className="flex-1">
-        <p className="text-sm font-medium text-red-700 dark:text-red-300">
+        <p className="text-sm font-semibold text-red-800 dark:text-red-200">
           SLA Breached
         </p>
-        <p className="text-xs text-red-600 dark:text-red-400">
+        <p className="text-xs text-red-700 dark:text-red-300 font-medium">
           {firstResponseSla?.status === 'breached' && 'First response '}
           {firstResponseSla?.status === 'breached' &&
             resolutionSla?.status === 'breached' &&
@@ -384,7 +382,6 @@ export function SlaIndicator({ ticket, className }: SlaIndicatorProps) {
             'flex items-center justify-center rounded-full border p-1.5 shadow-sm',
             colors.bg,
             colors.border,
-            activeSla.status === 'breached' && 'animate-pulse',
             className
           )}
         >

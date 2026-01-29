@@ -308,10 +308,10 @@ export function getSlaStatusColors(status: SlaStatus): {
       }
     case 'breached':
       return {
-        bg: 'bg-red-100 dark:bg-red-900/30',
-        text: 'text-red-700 dark:text-red-300',
-        border: 'border-red-200 dark:border-red-700',
-        icon: 'text-red-500 dark:text-red-400',
+        bg: 'bg-red-100 dark:bg-red-900/40',
+        text: 'text-red-800 dark:text-red-200',
+        border: 'border-red-300 dark:border-red-600',
+        icon: 'text-red-600 dark:text-red-400',
       }
   }
 }
