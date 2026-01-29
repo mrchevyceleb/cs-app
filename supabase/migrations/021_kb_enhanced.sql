@@ -166,8 +166,8 @@ create trigger knowledge_articles_updated_at
 
 alter table kb_search_logs enable row level security;
 
--- Allow service role full access (no restrictive policies needed for server-side table)
+-- Allow service role full access (block anon/auth)
 create policy "Service role full access to kb_search_logs"
   on kb_search_logs for all
-  using (true)
-  with check (true);
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');

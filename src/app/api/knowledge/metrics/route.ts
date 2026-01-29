@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
       searchLogsResult,
       topArticlesResult,
       coverageGapsResult,
+      coverageGapsCountResult,
       widgetDeflectionResult,
       totalArticlesResult,
     ] = await Promise.all([
@@ -42,23 +43,30 @@ export async function GET(request: NextRequest) {
       // Top matched articles (by article ID frequency in search logs)
       supabase
         .from('kb_search_logs')
-        .select('article_ids, query, max_similarity')
+        .select('article_ids, query, top_similarity')
         .gte('created_at', since)
         .not('article_ids', 'is', null),
 
-      // Coverage gaps: searches with low max_similarity
+      // Coverage gaps: searches with low top_similarity
       supabase
         .from('kb_search_logs')
-        .select('query, max_similarity, source, created_at')
+        .select('query, top_similarity, source, created_at')
         .gte('created_at', since)
-        .lt('max_similarity', 0.6)
+        .lt('top_similarity', 0.6)
         .order('created_at', { ascending: false })
         .limit(50),
+
+      // Coverage gaps total count (no limit)
+      supabase
+        .from('kb_search_logs')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', since)
+        .lt('top_similarity', 0.6),
 
       // Widget deflection: searches from widget source
       supabase
         .from('kb_search_logs')
-        .select('source, max_similarity')
+        .select('source, top_similarity')
         .gte('created_at', since)
         .eq('source', 'widget'),
 
@@ -119,17 +127,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Process coverage gaps - deduplicate by query
-    const gapQueries = new Map<string, { query: string; max_similarity: number; source: string; count: number }>()
+    const gapQueries = new Map<string, { query: string; top_similarity: number; source: string; count: number }>()
     for (const gap of coverageGapsResult.data || []) {
       const key = gap.query.toLowerCase().trim()
       const existing = gapQueries.get(key)
       if (existing) {
         existing.count++
-        existing.max_similarity = Math.max(existing.max_similarity, gap.max_similarity || 0)
+        existing.top_similarity = Math.max(existing.top_similarity, gap.top_similarity || 0)
       } else {
         gapQueries.set(key, {
           query: gap.query,
-          max_similarity: gap.max_similarity || 0,
+          top_similarity: gap.top_similarity || 0,
           source: gap.source,
           count: 1,
         })
@@ -144,7 +152,7 @@ export async function GET(request: NextRequest) {
     const widgetSearches = widgetDeflectionResult.data || []
     const totalWidgetSearches = widgetSearches.length
     const highConfidenceWidgetSearches = widgetSearches.filter(
-      s => (s.max_similarity || 0) > 0.7
+      s => (s.top_similarity || 0) > 0.7
     ).length
 
     // Calculate daily search trend
@@ -155,10 +163,11 @@ export async function GET(request: NextRequest) {
     // Summary stats
     const totalSearches = searchLogs.length
     const avgSimilarity = topArticleLogs.length > 0
-      ? topArticleLogs.reduce((sum, l) => sum + (l.max_similarity || 0), 0) / topArticleLogs.length
+      ? topArticleLogs.reduce((sum, l) => sum + (l.top_similarity || 0), 0) / topArticleLogs.length
       : 0
+    const coverageGapsCount = coverageGapsCountResult.count || 0
     const coverageRate = totalSearches > 0
-      ? ((totalSearches - (coverageGapsResult.data?.length || 0)) / totalSearches * 100)
+      ? ((totalSearches - coverageGapsCount) / totalSearches * 100)
       : 100
 
     return NextResponse.json({

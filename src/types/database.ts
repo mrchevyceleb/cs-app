@@ -133,34 +133,40 @@ export type Database = {
         Row: {
           id: string
           query: string
+          search_type: string
           source: string
           article_ids: string[] | null
-          max_similarity: number | null
+          top_similarity: number | null
           result_count: number
           ticket_id: string | null
           customer_id: string | null
+          was_helpful: boolean | null
           created_at: string
         }
         Insert: {
           id?: string
           query: string
+          search_type?: string
           source: string
           article_ids?: string[] | null
-          max_similarity?: number | null
+          top_similarity?: number | null
           result_count?: number
           ticket_id?: string | null
           customer_id?: string | null
+          was_helpful?: boolean | null
           created_at?: string
         }
         Update: {
           id?: string
           query?: string
+          search_type?: string
           source?: string
           article_ids?: string[] | null
-          max_similarity?: number | null
+          top_similarity?: number | null
           result_count?: number
           ticket_id?: string | null
           customer_id?: string | null
+          was_helpful?: boolean | null
           created_at?: string
         }
         Relationships: []

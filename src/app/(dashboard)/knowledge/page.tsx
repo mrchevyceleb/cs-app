@@ -46,7 +46,7 @@ interface KBMetrics {
   search_by_source: Record<string, number>
   search_trend: { date: string; count: number }[]
   top_articles: { id: string; title: string; category: string | null; source_file: string | null; match_count: number }[]
-  coverage_gaps: { query: string; max_similarity: number; source: string; count: number }[]
+  coverage_gaps: { query: string; top_similarity: number; source: string; count: number }[]
 }
 
 type TabType = 'articles' | 'effectiveness'
@@ -439,7 +439,7 @@ export default function KnowledgePage() {
                           <span className="text-sm text-foreground truncate flex-1">{gap.query}</span>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             <Badge variant="outline" className="text-[10px]">{gap.count}x</Badge>
-                            <span className="text-xs text-muted-foreground">{Math.round(gap.max_similarity * 100)}%</span>
+                            <span className="text-xs text-muted-foreground">{Math.round(gap.top_similarity * 100)}%</span>
                           </div>
                         </div>
                       ))}
