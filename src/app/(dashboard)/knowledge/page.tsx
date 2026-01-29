@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertCircle, RefreshCw } from 'lucide-react'
+import { AlertCircle, RefreshCw, BarChart3, BookOpen, Search, TrendingUp, AlertTriangle } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,24 @@ interface KnowledgeArticle {
   category: string | null
   created_at: string
 }
+
+interface KBMetrics {
+  period_days: number
+  summary: {
+    total_searches: number
+    total_kb_articles: number
+    avg_similarity: number
+    coverage_rate: number
+    widget_searches: number
+    widget_high_confidence: number
+  }
+  search_by_source: Record<string, number>
+  search_trend: { date: string; count: number }[]
+  top_articles: { id: string; title: string; category: string | null; source_file: string | null; match_count: number }[]
+  coverage_gaps: { query: string; max_similarity: number; source: string; count: number }[]
+}
+
+type TabType = 'articles' | 'effectiveness'
 
 const CATEGORIES = [
   'Live Streaming',
@@ -69,6 +87,14 @@ export default function KnowledgePage() {
   // Error state
   const [error, setError] = useState<string | null>(null)
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabType>('articles')
+
+  // Metrics state
+  const [metrics, setMetrics] = useState<KBMetrics | null>(null)
+  const [metricsLoading, setMetricsLoading] = useState(false)
+  const [metricsError, setMetricsError] = useState<string | null>(null)
+
   // Fetch articles
   const fetchArticles = useCallback(async () => {
     setLoading(true)
@@ -98,6 +124,31 @@ export default function KnowledgePage() {
   useEffect(() => {
     fetchArticles()
   }, [fetchArticles])
+
+  // Fetch metrics when effectiveness tab is active
+  const fetchMetrics = useCallback(async () => {
+    setMetricsLoading(true)
+    setMetricsError(null)
+    try {
+      const response = await fetch('/api/knowledge/metrics?days=30')
+      const data = await response.json()
+      if (response.ok) {
+        setMetrics(data)
+      } else {
+        setMetricsError('Failed to load metrics.')
+      }
+    } catch {
+      setMetricsError('Network error loading metrics.')
+    } finally {
+      setMetricsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'effectiveness') {
+      fetchMetrics()
+    }
+  }, [activeTab, fetchMetrics])
 
   // Debounced search
   useEffect(() => {
@@ -199,14 +250,211 @@ export default function KnowledgePage() {
             Manage help articles for AI-powered responses ({total} articles)
           </p>
         </div>
-        <Button
-          onClick={handleCreateNew}
-          className="bg-primary-600 hover:bg-primary-700 text-white w-full sm:w-auto"
-        >
-          + Add Article
-        </Button>
+        {activeTab === 'articles' && (
+          <Button
+            onClick={handleCreateNew}
+            className="bg-primary-600 hover:bg-primary-700 text-white w-full sm:w-auto"
+          >
+            + Add Article
+          </Button>
+        )}
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+        <button
+          onClick={() => setActiveTab('articles')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'articles'
+              ? 'bg-white dark:bg-gray-700 text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <BookOpen className="h-4 w-4" />
+          Articles
+        </button>
+        <button
+          onClick={() => setActiveTab('effectiveness')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'effectiveness'
+              ? 'bg-white dark:bg-gray-700 text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          Effectiveness
+        </button>
+      </div>
+
+      {activeTab === 'effectiveness' && (
+        <div className="space-y-6">
+          {metricsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i} className="glass border-0">
+                  <CardContent className="p-6">
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-8 w-16" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : metricsError ? (
+            <Card className="glass border-0">
+              <CardContent className="py-12 text-center">
+                <AlertCircle className="w-7 h-7 text-red-500 mx-auto mb-4" />
+                <p className="text-muted-foreground">{metricsError}</p>
+                <Button onClick={fetchMetrics} variant="outline" className="mt-4 gap-2">
+                  <RefreshCw className="w-4 h-4" />
+                  Try again
+                </Button>
+              </CardContent>
+            </Card>
+          ) : metrics ? (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="glass border-0">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Search className="h-4 w-4" />
+                      <span className="text-sm">Total Searches</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{metrics.summary.total_searches.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Last {metrics.period_days} days</p>
+                  </CardContent>
+                </Card>
+                <Card className="glass border-0">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <TrendingUp className="h-4 w-4" />
+                      <span className="text-sm">Coverage Rate</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{metrics.summary.coverage_rate}%</p>
+                    <p className="text-xs text-muted-foreground mt-1">Queries with relevant articles</p>
+                  </CardContent>
+                </Card>
+                <Card className="glass border-0">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <BookOpen className="h-4 w-4" />
+                      <span className="text-sm">KB Articles</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{metrics.summary.total_kb_articles}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Avg similarity: {metrics.summary.avg_similarity}%</p>
+                  </CardContent>
+                </Card>
+                <Card className="glass border-0">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <BarChart3 className="h-4 w-4" />
+                      <span className="text-sm">Widget Deflections</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{metrics.summary.widget_high_confidence}</p>
+                    <p className="text-xs text-muted-foreground mt-1">of {metrics.summary.widget_searches} widget searches</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Search by Source */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="glass border-0">
+                  <CardHeader>
+                    <CardTitle className="text-base">Searches by Source</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {Object.entries(metrics.search_by_source)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([source, count]) => {
+                          const pct = metrics.summary.total_searches > 0
+                            ? Math.round((count / metrics.summary.total_searches) * 100)
+                            : 0
+                          return (
+                            <div key={source}>
+                              <div className="flex items-center justify-between text-sm mb-1">
+                                <span className="text-foreground capitalize">{source.replace(/_/g, ' ')}</span>
+                                <span className="text-muted-foreground">{count} ({pct}%)</span>
+                              </div>
+                              <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-primary-500 rounded-full transition-all"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      {Object.keys(metrics.search_by_source).length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">No search data yet</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Top Articles */}
+                <Card className="glass border-0">
+                  <CardHeader>
+                    <CardTitle className="text-base">Most Matched Articles</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {metrics.top_articles.map((article, i) => (
+                        <div key={article.id} className="flex items-start gap-3 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                          <span className="text-sm font-medium text-muted-foreground w-6 text-right">{i + 1}.</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{article.title}</p>
+                            {article.category && (
+                              <Badge variant="secondary" className="text-[10px] mt-0.5">{article.category}</Badge>
+                            )}
+                          </div>
+                          <Badge variant="outline" className="text-xs flex-shrink-0">{article.match_count} matches</Badge>
+                        </div>
+                      ))}
+                      {metrics.top_articles.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">No article data yet</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Coverage Gaps */}
+              <Card className="glass border-0">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    Coverage Gaps
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Queries where no KB article matched above 60% similarity. Consider adding articles for these topics.
+                  </p>
+                  {metrics.coverage_gaps.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {metrics.coverage_gaps.map((gap, i) => (
+                        <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
+                          <Search className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                          <span className="text-sm text-foreground truncate flex-1">{gap.query}</span>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <Badge variant="outline" className="text-[10px]">{gap.count}x</Badge>
+                            <span className="text-xs text-muted-foreground">{Math.round(gap.max_similarity * 100)}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No coverage gaps detected</p>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      {activeTab === 'articles' && <>
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Search */}
@@ -445,6 +693,7 @@ export default function KnowledgePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>}
     </div>
   )
 }

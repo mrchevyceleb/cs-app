@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateEmbedding } from '@/lib/openai/chat'
+import { searchKnowledgeHybrid } from '@/lib/knowledge/search'
 
-// POST /api/knowledge/search - Vector similarity search
+// POST /api/knowledge/search - Vector similarity search (with optional hybrid mode)
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -12,6 +13,7 @@ export async function POST(request: NextRequest) {
       query,
       matchThreshold = 0.7,
       matchCount = 5,
+      hybrid = false,
     } = body
 
     if (!query) {
@@ -21,10 +23,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate embedding for the search query
+    // Use hybrid search if requested
+    if (hybrid) {
+      const results = await searchKnowledgeHybrid({
+        query,
+        limit: matchCount,
+        source: 'api',
+      })
+
+      return NextResponse.json({
+        results,
+        query,
+        search_type: 'hybrid',
+      })
+    }
+
+    // Legacy vector-only search
     const queryEmbedding = await generateEmbedding(query)
 
-    // Perform vector similarity search
     const { data: results, error } = await supabase.rpc('match_knowledge', {
       query_embedding: queryEmbedding,
       match_threshold: matchThreshold,
@@ -42,6 +58,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       results: results || [],
       query,
+      search_type: 'vector',
     })
   } catch (error) {
     console.error('Knowledge search API error:', error)

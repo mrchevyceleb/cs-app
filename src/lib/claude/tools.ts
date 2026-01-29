@@ -126,17 +126,18 @@ export const copilotTools: Tool[] = [
   },
   {
     name: 'search_knowledge_base',
-    description: 'Search the knowledge base for relevant articles. Returns matching articles with titles and content snippets.',
+    description: 'Search the R-Link knowledge base using hybrid vector + keyword search. Covers all R-Link features: session types (Meeting/Webinar/Live Stream), plans (Basic/Business), Studio features, integrations, troubleshooting, and more. Returns matching articles with source files, section paths, and similarity scores.',
     input_schema: {
       type: 'object' as const,
       properties: {
         query: {
           type: 'string',
-          description: 'Search query for knowledge base',
+          description: 'Search query for knowledge base. Use natural language questions or feature names.',
         },
         category: {
           type: 'string',
-          description: 'Filter by category',
+          enum: ['Foundation', 'Studio Core', 'Studio Features', 'Admin', 'General'],
+          description: 'Filter by KB category',
         },
         limit: {
           type: 'number',
@@ -144,6 +145,24 @@ export const copilotTools: Tool[] = [
         },
       },
       required: ['query'],
+    },
+  },
+  {
+    name: 'browse_kb_article',
+    description: 'Read the full content of a specific R-Link knowledge base article by its source file name. Use this when you found a relevant article via search and need the complete context, not just a snippet. Files are named like "02-plans-and-pricing.md", "31-troubleshooting.md", etc.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        source_file: {
+          type: 'string',
+          description: 'The KB source file name (e.g., "02-plans-and-pricing.md", "09-studio-media-controls.md")',
+        },
+        section: {
+          type: 'string',
+          description: 'Optional section name to filter to a specific part of the article',
+        },
+      },
+      required: ['source_file'],
     },
   },
   {

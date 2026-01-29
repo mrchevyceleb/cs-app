@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { openai } from '@/lib/openai/client'
-import { searchKnowledgeBase } from '@/lib/openai/chat'
+import { searchKnowledgeHybrid, formatKBResultsForPrompt } from '@/lib/knowledge/search'
 
-const SUGGESTIONS_SYSTEM_PROMPT = `You are an AI assistant helping customer service agents at R-Link, a live social selling platform.
+const SUGGESTIONS_SYSTEM_PROMPT = `You are an AI assistant helping customer service agents at R-Link, a live social selling platform with Meetings, Webinars, and Live Streams across Basic and Business plans.
 
 Your task is to generate 3 suggested responses for the agent to send to the customer. Each suggestion should:
 1. Be professional, warm, and helpful
-2. Address the customer's concern directly
-3. Vary in approach (empathetic, solution-focused, information-gathering)
+2. Address the customer's concern directly using knowledge base content
+3. Vary in approach: empathetic, solution-focused (with KB citations), and clarifying
+
+IMPORTANT:
+- When KB articles are available, include [Source: Article Title] citations in the solution-focused suggestion
+- If KB covers the topic, the solution suggestion should contain specific steps/information from the KB
+- If KB doesn't cover the topic well, the third suggestion should be a clarifying question to better understand the issue
+- Check for plan requirements -- if a feature requires Business plan, mention it
 
 KNOWLEDGE BASE CONTEXT:
 {knowledgeContext}
@@ -72,11 +78,14 @@ export async function POST(request: NextRequest) {
     const customerMessages = (messages || []).filter(m => m.sender_type === 'customer')
     const latestCustomerMessage = customerMessages[customerMessages.length - 1]?.content || ticket.subject
 
-    // Search knowledge base for relevant articles
-    const relevantArticles = await searchKnowledgeBase(latestCustomerMessage)
-    const kbContext = relevantArticles.length > 0
-      ? relevantArticles.map(a => `${a.title}: ${a.content.slice(0, 200)}...`).join('\n\n')
-      : 'No relevant articles found.'
+    // Search knowledge base using hybrid search
+    const relevantArticles = await searchKnowledgeHybrid({
+      query: latestCustomerMessage,
+      limit: 5,
+      source: 'suggestions',
+      ticketId,
+    })
+    const kbContext = formatKBResultsForPrompt(relevantArticles, 800)
 
     // Build conversation history
     const conversationHistory = (messages || [])

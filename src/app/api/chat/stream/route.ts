@@ -7,9 +7,9 @@ import {
 import {
   detectLanguage,
   translateText,
-  searchKnowledgeBase,
   type ConversationContext,
 } from '@/lib/openai/chat'
+import { searchKnowledgeHybrid, formatKBResultsForPrompt } from '@/lib/knowledge/search'
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,11 +49,15 @@ export async function POST(request: NextRequest) {
       processedMessage = await translateText(message, detectedLanguage, 'en')
     }
 
-    // Search knowledge base
-    const relevantArticles = await searchKnowledgeBase(processedMessage)
-    const kbContext = relevantArticles.length > 0
-      ? relevantArticles.map(a => `**${a.title}**\n${a.content}`).join('\n\n---\n\n')
-      : 'No relevant articles found in knowledge base.'
+    // Search knowledge base using hybrid search
+    const relevantArticles = await searchKnowledgeHybrid({
+      query: processedMessage,
+      limit: 5,
+      source: 'customer_chat',
+      ticketId,
+      customerId: ticket.customer_id,
+    })
+    const kbContext = formatKBResultsForPrompt(relevantArticles, 1500)
 
     // Fetch previous messages for context
     const { data: previousMessages } = await supabase
@@ -122,7 +126,8 @@ export async function POST(request: NextRequest) {
             translatedContent = await translateText(fullContent, 'en', detectedLanguage)
           }
 
-          // Save the complete message to database
+          // Save the complete message to database with KB article references
+          const kbArticleIds = relevantArticles.map(a => a.id)
           const { data: savedMessage } = await supabase
             .from('messages')
             .insert({
@@ -131,7 +136,15 @@ export async function POST(request: NextRequest) {
               content: fullContent,
               content_translated: translatedContent,
               original_language: detectedLanguage !== 'en' ? detectedLanguage : null,
-              confidence: 75, // Default confidence for streaming, can be evaluated separately
+              confidence: 75,
+              metadata: kbArticleIds.length > 0 ? {
+                kb_article_ids: kbArticleIds,
+                kb_sources: relevantArticles.slice(0, 3).map(a => ({
+                  title: a.title,
+                  source_file: a.source_file,
+                  similarity: a.similarity,
+                })),
+              } : {},
             })
             .select()
             .single()

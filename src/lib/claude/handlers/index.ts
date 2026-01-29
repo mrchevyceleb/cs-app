@@ -3,7 +3,7 @@ import type { ToolContext, ToolResult } from '../types'
 // Import individual handlers
 import { lookupCustomer, updateCustomer } from './customer'
 import { searchTickets, updateTicket, escalateTicket, getTicketSummary } from './tickets'
-import { searchKnowledgeBase } from './knowledge'
+import { searchKnowledgeBase, browseKBArticle } from './knowledge'
 import { generateResponse } from './response'
 import { analyzeSentiment } from './analysis'
 import { processRefund } from './refund'
@@ -17,6 +17,7 @@ export {
   escalateTicket,
   getTicketSummary,
   searchKnowledgeBase,
+  browseKBArticle,
   generateResponse,
   analyzeSentiment,
   processRefund,
@@ -31,6 +32,7 @@ export type ToolName =
   | 'escalate_ticket'
   | 'get_ticket_summary'
   | 'search_knowledge_base'
+  | 'browse_kb_article'
   | 'generate_response'
   | 'analyze_sentiment'
   | 'process_refund'
@@ -114,6 +116,15 @@ export async function executeTool(
             query: toolInput.query as string,
             category: toolInput.category as string | undefined,
             limit: toolInput.limit as number | undefined,
+          },
+          context
+        )
+
+      case 'browse_kb_article':
+        return await browseKBArticle(
+          {
+            source_file: toolInput.source_file as string,
+            section: toolInput.section as string | undefined,
           },
           context
         )

@@ -68,19 +68,35 @@ export async function generateResponse(
       })
       .join('\n')
 
-    // Search knowledge base if enabled
+    // Search knowledge base using both subject AND latest customer message
     let kbArticles = 'No knowledge base articles searched.'
-    if (includeKb && ticket.subject) {
-      const kbResult = await searchKnowledgeBase(
-        { query: ticket.subject, limit: 3 },
-        context
-      )
-      if (kbResult.success && kbResult.data) {
-        const articles = (kbResult.data as { articles: { title: string; content: string }[] }).articles
-        if (articles && articles.length > 0) {
-          kbArticles = articles
-            .map((a) => `**${a.title}**\n${a.content}`)
-            .join('\n\n---\n\n')
+    if (includeKb) {
+      // Get latest customer message for better search context
+      const customerMessages = (messages || [])
+        .reverse()
+        .filter(m => m.sender_type === 'customer')
+      const latestCustomerMessage = customerMessages[0]?.content || ''
+      const searchQuery = [ticket.subject, latestCustomerMessage].filter(Boolean).join(' ')
+
+      if (searchQuery) {
+        const kbResult = await searchKnowledgeBase(
+          { query: searchQuery, limit: 5 },
+          context
+        )
+        if (kbResult.success && kbResult.data) {
+          const kbData = kbResult.data as {
+            articles: { title: string; content: string }[]
+            sources?: { source_file: string; section_path: string; similarity: number }[]
+          }
+          if (kbData.articles && kbData.articles.length > 0) {
+            kbArticles = kbData.articles
+              .map((a, i) => {
+                const source = kbData.sources?.[i]
+                const sourceLabel = source?.source_file ? ` [Source: ${source.source_file}]` : ''
+                return `**${a.title}**${sourceLabel}\n${a.content}`
+              })
+              .join('\n\n---\n\n')
+          }
         }
       }
     }

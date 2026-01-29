@@ -89,6 +89,13 @@ export type Database = {
           embedding: number[] | null
           id: string
           title: string
+          source_file: string | null
+          section_path: string | null
+          file_number: number | null
+          chunk_index: number | null
+          metadata: Json | null
+          is_kb_source: boolean
+          updated_at: string
         }
         Insert: {
           category?: string | null
@@ -97,6 +104,13 @@ export type Database = {
           embedding?: number[] | null
           id?: string
           title: string
+          source_file?: string | null
+          section_path?: string | null
+          file_number?: number | null
+          chunk_index?: number | null
+          metadata?: Json | null
+          is_kb_source?: boolean
+          updated_at?: string
         }
         Update: {
           category?: string | null
@@ -105,6 +119,49 @@ export type Database = {
           embedding?: number[] | null
           id?: string
           title?: string
+          source_file?: string | null
+          section_path?: string | null
+          file_number?: number | null
+          chunk_index?: number | null
+          metadata?: Json | null
+          is_kb_source?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kb_search_logs: {
+        Row: {
+          id: string
+          query: string
+          source: string
+          article_ids: string[] | null
+          max_similarity: number | null
+          result_count: number
+          ticket_id: string | null
+          customer_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          query: string
+          source: string
+          article_ids?: string[] | null
+          max_similarity?: number | null
+          result_count?: number
+          ticket_id?: string | null
+          customer_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          query?: string
+          source?: string
+          article_ids?: string[] | null
+          max_similarity?: number | null
+          result_count?: number
+          ticket_id?: string | null
+          customer_id?: string | null
+          created_at?: string
         }
         Relationships: []
       }
@@ -1285,6 +1342,39 @@ export type Database = {
           similarity: number
         }[]
       }
+      match_knowledge_enhanced: {
+        Args: {
+          query_embedding: number[]
+          match_threshold: number
+          match_count: number
+        }
+        Returns: {
+          id: string
+          title: string
+          content: string
+          category: string | null
+          source_file: string | null
+          section_path: string | null
+          metadata: Json | null
+          similarity: number
+        }[]
+      }
+      search_knowledge_text: {
+        Args: {
+          search_query: string
+          match_count: number
+        }
+        Returns: {
+          id: string
+          title: string
+          content: string
+          category: string | null
+          source_file: string | null
+          section_path: string | null
+          metadata: Json | null
+          rank: number
+        }[]
+      }
       insert_knowledge_article: {
         Args: {
           p_title: string
@@ -1354,6 +1444,9 @@ export type KnowledgeArticle = Database['public']['Tables']['knowledge_articles'
 export type Agent = Database['public']['Tables']['agents']['Row']
 export type CannedResponse = Database['public']['Tables']['canned_responses']['Row']
 export type MessageAttachment = Database['public']['Tables']['message_attachments']['Row']
+
+export type KBSearchLog = Database['public']['Tables']['kb_search_logs']['Row']
+export type KBSearchLogInsert = Database['public']['Tables']['kb_search_logs']['Insert']
 
 export type TicketStatus = Ticket['status']
 export type TicketPriority = Ticket['priority']

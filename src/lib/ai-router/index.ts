@@ -12,6 +12,7 @@ import { formatResponseForChannel } from './formatters';
 import { findOrCreateCustomer } from '@/lib/channels/customer';
 import { dispatchWebhook } from '@/lib/webhooks/service';
 import { sendSupportSms } from '@/lib/twilio/client';
+import { searchKnowledgeHybrid } from '@/lib/knowledge/search';
 
 // Lazy initialization to avoid build-time errors when env vars aren't available
 let _supabase: SupabaseClient<Database> | null = null;
@@ -207,14 +208,45 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     routingDecision.confidence >= (channelConfig?.ai_confidence_threshold || 0.85) &&
     channelConfig?.ai_auto_respond
   ) {
-    // Generate and send AI response
-    const responseContent = routingDecision.suggested_response ||
+    // Search KB for grounded response content
+    let kbArticleSource: string | null = null;
+    let kbArticleIds: string[] = [];
+    let responseContent = routingDecision.suggested_response ||
       await generateResponse(routingDecision.intent, ticket, customer);
+
+    try {
+      const kbResults = await searchKnowledgeHybrid({
+        query: request.message_content,
+        limit: 3,
+        source: 'auto_response',
+        ticketId: ticket.id,
+      });
+
+      if (kbResults.length > 0) {
+        kbArticleIds = kbResults.map(r => r.id);
+        kbArticleSource = kbResults[0].title;
+
+        // Direct KB response for very high similarity FAQ/troubleshooting matches
+        const topResult = kbResults[0];
+        const isFaqOrTroubleshooting = topResult.metadata?.is_faq || topResult.metadata?.is_troubleshooting;
+        if (topResult.similarity > 0.92 && isFaqOrTroubleshooting) {
+          // Use KB content directly for fastest, most accurate response
+          responseContent = topResult.content;
+        }
+      }
+    } catch {
+      // Non-critical: continue with existing response
+    }
+
+    // Add KB article citation footer if applicable
+    if (kbArticleSource) {
+      responseContent = responseContent.trimEnd() + `\n\n[Source: ${kbArticleSource}]`;
+    }
 
     // Format for channel
     const formattedResponse = formatResponseForChannel(responseContent, request.channel);
 
-    // Create AI message
+    // Create AI message with KB metadata
     const { data: aiMessage } = await getSupabase()
       .from('messages')
       .insert({
@@ -226,6 +258,8 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
         metadata: {
           routing_decision: routingDecision,
           auto_responded: true,
+          kb_article_ids: kbArticleIds,
+          kb_article_source: kbArticleSource,
         } as any,
       })
       .select()

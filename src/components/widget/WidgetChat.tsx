@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Send, Loader2, AlertCircle, User, Headphones, Sparkles } from 'lucide-react'
+import { Send, Loader2, AlertCircle, User, Headphones, Sparkles, BookOpen, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { WidgetSession, WidgetMessage_DB, WidgetTicket } from '@/types/widget'
 import { createClient } from '@supabase/supabase-js'
@@ -68,6 +68,7 @@ export function WidgetChat({
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [expandedSource, setExpandedSource] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const pendingMessageRef = useRef<string | null>(null) // Track pending message to prevent race condition
@@ -339,6 +340,31 @@ export function WidgetChat({
                     {message.content}
                   </p>
                 </div>
+
+                {/* Related Article card for AI messages with KB citations */}
+                {message.sender_type === 'ai' && message.content.includes('[Source:') && (() => {
+                  const sourceMatch = message.content.match(/\[Source:\s*([^\]]+)\]/)
+                  if (!sourceMatch) return null
+                  const sourceTitle = sourceMatch[1].trim()
+                  const isExpanded = expandedSource === message.id
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedSource(isExpanded ? null : message.id)}
+                      className={cn(
+                        'mt-1.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg',
+                        'bg-purple-50 dark:bg-purple-900/20',
+                        'border border-purple-200 dark:border-purple-800',
+                        'text-xs text-purple-700 dark:text-purple-400',
+                        'hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors'
+                      )}
+                    >
+                      <BookOpen className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">Related: {sourceTitle}</span>
+                      {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+                  )
+                })()}
               </div>
             </div>
           )

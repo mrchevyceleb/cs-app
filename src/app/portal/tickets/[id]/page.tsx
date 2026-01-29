@@ -17,10 +17,22 @@ import {
   User,
   Headphones,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PortalMessage, TicketStatus } from '@/types/database'
+
+interface RelatedArticle {
+  id: string
+  title: string
+  content: string
+  category: string | null
+  source_file: string
+  similarity: number
+}
 
 interface TicketDetail {
   id: string
@@ -182,6 +194,12 @@ export default function PortalTicketDetailPage() {
   const [isSending, setIsSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
 
+  // Related articles state
+  const [relatedArticles, setRelatedArticles] = useState<RelatedArticle[]>([])
+  const [articlesLoading, setArticlesLoading] = useState(false)
+  const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null)
+  const [showArticles, setShowArticles] = useState(true)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -192,6 +210,31 @@ export default function PortalTicketDetailPage() {
     // Scroll to bottom when messages change
     scrollToBottom()
   }, [messages])
+
+  // Fetch related KB articles when ticket subject is available
+  useEffect(() => {
+    if (!ticket?.subject) return
+
+    async function fetchRelatedArticles() {
+      setArticlesLoading(true)
+      try {
+        const response = await fetch(
+          `/api/portal/kb?q=${encodeURIComponent(ticket!.subject)}`,
+          { credentials: 'include' }
+        )
+        if (response.ok) {
+          const data = await response.json()
+          setRelatedArticles(data.results || [])
+        }
+      } catch {
+        // Non-critical, silently fail
+      } finally {
+        setArticlesLoading(false)
+      }
+    }
+
+    fetchRelatedArticles()
+  }, [ticket?.subject])
 
   function scrollToBottom() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -439,6 +482,101 @@ export default function PortalTicketDetailPage() {
           </p>
         </div>
       </Card>
+
+      {/* Related Help Articles */}
+      {(relatedArticles.length > 0 || articlesLoading) && (
+        <Card className="border-purple-200 dark:border-purple-800">
+          <CardContent className="p-0">
+            <button
+              type="button"
+              onClick={() => setShowArticles(!showArticles)}
+              className="w-full flex items-center justify-between p-4 text-left"
+            >
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-purple-500" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  Related Help Articles
+                </span>
+                {relatedArticles.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {relatedArticles.length}
+                  </Badge>
+                )}
+              </div>
+              {showArticles ? (
+                <ChevronUp className="h-4 w-4 text-gray-400" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-gray-400" />
+              )}
+            </button>
+
+            {showArticles && (
+              <div className="px-4 pb-4 space-y-2">
+                {articlesLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Searching help articles...
+                  </div>
+                ) : (
+                  relatedArticles.slice(0, 3).map((article) => {
+                    const isExpanded = expandedArticleId === article.id
+                    return (
+                      <div
+                        key={article.id}
+                        className={cn(
+                          'border rounded-lg overflow-hidden transition-all',
+                          'border-purple-200 dark:border-purple-800',
+                          'bg-purple-50/50 dark:bg-purple-900/10'
+                        )}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setExpandedArticleId(isExpanded ? null : article.id)}
+                          className="w-full flex items-start gap-2 p-3 text-left"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {article.title}
+                            </p>
+                            {!isExpanded && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                                {article.content.slice(0, 150)}
+                                {article.content.length > 150 ? '...' : ''}
+                              </p>
+                            )}
+                            {article.category && (
+                              <Badge variant="outline" className="text-[10px] mt-1">
+                                {article.category}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex-shrink-0 mt-0.5">
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4 text-gray-400" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-gray-400" />
+                            )}
+                          </div>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="px-3 pb-3">
+                            <div className="max-h-64 overflow-y-auto rounded bg-white dark:bg-gray-900 p-3">
+                              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                {article.content}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Refresh Button */}
       <div className="text-center">

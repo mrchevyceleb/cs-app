@@ -1,29 +1,17 @@
 /**
  * AI Triage
  * Uses Claude to analyze messages and determine routing
+ * Enhanced with hybrid KB search for KB-grounded decisions
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { ChannelType, RoutingDecision } from '@/types/channels';
 import type { Ticket, Customer } from '@/types/database';
 import { TRIAGE_PROMPT, RESPONSE_PROMPT } from './prompts';
+import { searchKnowledgeHybrid, formatKBResultsForPrompt } from '@/lib/knowledge/search';
+import type { KBSearchResult } from '@/lib/knowledge/types';
 
 const anthropic = new Anthropic();
-
-// Lazy initialization to avoid build-time errors when env vars aren't available
-let _supabase: SupabaseClient | null = null;
-function getSupabase(): SupabaseClient {
-  if (!_supabase) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) {
-      throw new Error('Missing required Supabase environment variables');
-    }
-    _supabase = createClient(url, key);
-  }
-  return _supabase;
-}
 
 interface TriageInput {
   message: string;
@@ -75,8 +63,14 @@ export async function triageMessage(input: TriageInput): Promise<RoutingDecision
     };
   }
 
-  // Search knowledge base for relevant articles
-  const knowledgeArticles = await searchKnowledgeBase(input.message);
+  // Search knowledge base using hybrid search
+  const knowledgeArticles = await searchKnowledgeHybrid({
+    query: input.message,
+    limit: 5,
+    source: 'triage',
+    ticketId: input.ticket.id,
+    customerId: input.customer.id,
+  });
 
   // Build context for Claude
   const context = buildTriageContext(input, knowledgeArticles);
@@ -102,9 +96,28 @@ export async function triageMessage(input: TriageInput): Promise<RoutingDecision
 
     const decision = parseTriageResponse(responseText);
 
-    // Add knowledge articles used
+    // Apply KB-based confidence adjustments
     if (knowledgeArticles.length > 0) {
       decision.knowledge_articles_used = knowledgeArticles.map(a => a.id);
+
+      const topSimilarity = knowledgeArticles[0]?.similarity || 0;
+      const topMetadata = knowledgeArticles[0]?.metadata as Record<string, unknown> | null;
+
+      // KB coverage boost
+      if (topSimilarity > 0.85) {
+        decision.confidence = Math.min(1.0, decision.confidence + 0.15);
+      }
+      // FAQ match boost
+      if (topMetadata?.is_faq) {
+        decision.confidence = Math.min(1.0, decision.confidence + 0.20);
+      }
+      // Troubleshooting match boost
+      if (topMetadata?.is_troubleshooting) {
+        decision.confidence = Math.min(1.0, decision.confidence + 0.10);
+      }
+    } else {
+      // No KB match: cap confidence
+      decision.confidence = Math.min(0.6, decision.confidence);
     }
 
     decision.processing_time_ms = Date.now() - startTime;
@@ -135,6 +148,19 @@ export async function generateResponse(
   customer: Customer
 ): Promise<string> {
   try {
+    // Search KB for relevant content to ground the response
+    const kbResults = await searchKnowledgeHybrid({
+      query: `${ticket.subject} ${intent}`,
+      limit: 3,
+      source: 'triage',
+      ticketId: ticket.id,
+      customerId: customer.id,
+    });
+
+    const kbContext = kbResults.length > 0
+      ? `\n\nRelevant Knowledge Base Articles:\n${formatKBResultsForPrompt(kbResults, 1000)}`
+      : '';
+
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
@@ -146,8 +172,9 @@ export async function generateResponse(
 Intent: ${intent}
 Customer name: ${customer.name || 'Customer'}
 Ticket subject: ${ticket.subject}
+${kbContext}
 
-The response should be helpful, professional, and concise.`,
+The response should be helpful, professional, and concise. If KB articles are provided, base your response on them and cite the source.`,
         },
       ],
     });
@@ -163,56 +190,11 @@ The response should be helpful, professional, and concise.`,
 }
 
 /**
- * Search knowledge base for relevant articles
- */
-async function searchKnowledgeBase(query: string): Promise<{ id: string; title: string; content: string }[]> {
-  try {
-    // First, generate embedding for the query
-    const embeddingResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-embedding`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: query }),
-      }
-    );
-
-    if (!embeddingResponse.ok) {
-      // Fallback to simple text search
-      const { data } = await getSupabase()
-        .from('knowledge_articles')
-        .select('id, title, content')
-        .textSearch('content', query)
-        .limit(3);
-
-      return data || [];
-    }
-
-    const { embedding } = await embeddingResponse.json();
-
-    // Search with embedding
-    const { data } = await getSupabase().rpc('match_knowledge', {
-      query_embedding: embedding,
-      match_threshold: 0.7,
-      match_count: 3,
-    });
-
-    return data || [];
-  } catch (error) {
-    console.error('Knowledge search error:', error);
-    return [];
-  }
-}
-
-/**
- * Build context for triage prompt
+ * Build context for triage prompt with enhanced KB content
  */
 function buildTriageContext(
   input: TriageInput,
-  knowledgeArticles: { id: string; title: string; content: string }[]
+  knowledgeArticles: KBSearchResult[]
 ): string {
   let context = `## Customer Message
 ${input.message}
@@ -231,9 +213,9 @@ ${input.message}
 
   if (knowledgeArticles.length > 0) {
     context += `\n## Relevant Knowledge Base Articles\n`;
-    for (const article of knowledgeArticles) {
-      context += `\n### ${article.title}\n${article.content.slice(0, 500)}...\n`;
-    }
+    context += formatKBResultsForPrompt(knowledgeArticles, 1500);
+  } else {
+    context += `\n## Knowledge Base: No matching articles found for this query.\n`;
   }
 
   return context;
@@ -256,6 +238,7 @@ function parseTriageResponse(response: string): RoutingDecision {
         action: parsed.action || 'route_human',
         suggested_response: parsed.suggested_response,
         escalation_reason: parsed.escalation_reason,
+        knowledge_articles_used: parsed.kb_article_ids,
         processing_time_ms: 0,
         model_used: '',
       };
