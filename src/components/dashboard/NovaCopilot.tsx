@@ -228,7 +228,7 @@ export function NovaCopilot() {
               )}>
                 <div
                   className={cn(
-                    "whitespace-pre-wrap leading-relaxed prose prose-sm max-w-none",
+                    "leading-normal prose prose-sm max-w-none prose-p:mt-3 prose-p:mb-1 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:mt-4 prose-headings:mb-1 prose-hr:my-3 prose-blockquote:my-2 prose-pre:my-2 prose-strong:font-semibold [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
                     message.role === 'user'
                       ? "prose-invert text-primary-foreground prose-p:text-primary-foreground prose-strong:text-primary-foreground prose-headings:text-primary-foreground prose-a:text-primary-foreground"
                       : "dark:prose-invert"

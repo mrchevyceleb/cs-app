@@ -259,7 +259,7 @@ export function ChatBubble({ message, customerName, isPending = false, showReadS
           {/* Message text content */}
           {message.content && (
             <div className={cn(
-              "text-sm prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-strong:font-semibold",
+              "text-sm prose prose-sm max-w-none prose-p:mt-3 prose-p:mb-1 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:mt-4 prose-headings:mb-1 prose-hr:my-3 prose-blockquote:my-2 prose-pre:my-2 prose-strong:font-semibold [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
               // For agent messages (dark background), always use inverted (light) prose
               // For others, use standard prose that switches based on dark mode
               (message.sender_type === 'agent' && !isInternal) 
