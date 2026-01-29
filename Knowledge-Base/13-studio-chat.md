@@ -1,234 +1,395 @@
-# Studio Chat System
+# 13 - Studio Chat
 
 ## Overview
 
-The R-Link Studio Chat system enables real-time text communication between hosts and attendees during live sessions. Built around the `ChatMessage` entity, the chat system supports standard messaging, command processing via `ChatCommandsProcessor`, AI-powered analysis through `AIChatInsights`, and the ability to feature comments on the live stream via `FeaturedCommentOverlay`. Chat messages are scoped to individual sessions using a `webinar_id` (equivalent to `room_id`), ensuring each session maintains its own isolated chat history. The chat system is available across all R-Link session types -- Meeting, Webinar, and Live Stream.
+The R-Link Studio Chat system provides real-time messaging between the host, co-hosts, and viewers during live sessions. The chat is powered by the `ChatPanel` component and includes public and private channels, emoji reactions, image sharing, message threading with replies, sentiment analysis, AI-powered chat insights, featured comment overlays, moderation controls, chat commands, notification settings, and urgency detection. The chat panel is accessible from the **Right Sidebar** in the studio interface.
 
-## Chat Message Entity
+---
 
-### Data Structure
-Each chat message is represented by a `ChatMessage` entity with the following key properties:
+## Accessing the Chat Panel
 
-| Property | Description |
-|----------|-------------|
-| `id` | Unique identifier for the message |
-| `webinar_id` | The session/room ID this message belongs to (also referenced as `room_id`) |
-| `user_id` | The ID of the user who sent the message |
-| `content` | The text content of the message |
-| `timestamp` | When the message was sent |
-| `user_name` | Display name of the sender |
-| `user_role` | Role of the sender (host, co-host, attendee, etc.) |
+1. Enter any R-Link Studio session.
+2. Open the **Right Sidebar**.
+3. Click the **Chat** tab.
+4. The panel loads with:
+   - **AI Features bar** -- AI Assistant, Summary, and Notification Settings buttons.
+   - **Channel navigation** -- "Everyone" public channel, "New chat" button, and private conversation tabs.
+   - **Messages area** -- Scrollable message list with auto-scroll behavior.
+   - **Input area** -- Message composer with emoji, attachment, image, and send controls.
 
-### Message Fetching and Filtering
-- Chat messages are fetched filtered by `webinar_id` / `room_id` to ensure only messages from the current session are displayed
-- Messages load in real-time via WebSocket or polling, depending on the connection
-- Historical messages may be loaded when a participant joins mid-session
-- Messages from blocked or muted users are filtered out on the client side
+---
 
-## Sending and Receiving Messages
+## ChatMessage Entity
 
-### Sending a Message
-1. Open the **Chat** panel in the Studio sidebar
-2. Type a message in the chat input field at the bottom of the panel
-3. Press **Enter** or click the send button
-4. The message is transmitted to all participants in the current session
-5. The message appears in the chat feed with your name, role indicator, and timestamp
+Chat messages are stored as `ChatMessage` entities linked to a webinar/session.
 
-### Receiving Messages
-- Incoming messages appear in real-time in the chat panel
-- Messages are displayed chronologically (newest at the bottom)
-- Host/co-host messages may be visually distinguished (e.g., highlighted or badged)
-- New message notifications appear if the chat panel is collapsed or scrolled up
+### Entity Fields
 
-## Chat Commands
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string/number | Unique message identifier |
+| `webinar_id` | string | ID of the session this message belongs to |
+| `user_id` | string | ID of the message author |
+| `user_name` | string | Display name of the author |
+| `user_avatar` | string | URL to the author's avatar image |
+| `message` | string | Text content of the message |
+| `sent_at` | datetime | Timestamp when the message was sent |
+| `status` | string | `'active'`, `'flagged'`, `'removed'` |
+| `flags` | array | Moderation flags (e.g., `['profanity', 'spam']`) |
+| `channel` | string | `'Everyone'` for public or recipient name for private |
+| `image` | string | URL of attached image (uploaded via `Core.UploadFile`) |
+| `reactions` | array | `[{ emoji: '...', count: N }]` |
+| `isPinned` | boolean | Whether the message is pinned |
+| `replyTo` | object | Reference to parent message for threaded replies |
+| `sentiment` | string | AI-detected sentiment: `'positive'`, `'negative'`, `'neutral'`, `'question'` |
+| `edited` | boolean | Whether the message was edited after sending |
 
-### ChatCommandsProcessor
-The `ChatCommandsProcessor` component handles special commands typed into the chat input. Commands are prefixed with a designated character (typically `/`) and trigger specific actions rather than sending a visible chat message.
+---
 
-### Using Chat Commands
-1. In the chat input field, type a command starting with the command prefix
-2. Press **Enter** to execute the command
-3. The command is processed by `ChatCommandsProcessor`
-4. The result or action is executed (e.g., muting a user, starting a poll, clearing chat)
-5. Commands are generally not visible to regular attendees; only the resulting action is seen
+## Channels
 
-### Common Command Capabilities
-- **Moderation commands:** Mute, ban, or remove participants
-- **Display commands:** Trigger overlays, activate elements, or change settings
-- **Utility commands:** Clear chat, pin a message, announce to all participants
+### Public Channel ("Everyone")
 
-## AI Chat Insights
+- Default channel visible to all session participants.
+- All public messages appear here.
+- Shown as the first tab in the channel navigation bar.
+- Displays unread count badge when new messages arrive while scrolled up.
 
-### AIChatInsights Component
-The `AIChatInsights` component provides AI-powered analysis of the chat conversation, offering hosts real-time intelligence about audience engagement and sentiment.
+### Private Conversations
 
-### Features
-- **Sentiment analysis:** Monitors the overall mood of the chat (positive, negative, neutral)
-- **Topic detection:** Identifies trending topics or frequently mentioned subjects in the conversation
-- **Engagement metrics:** Tracks chat activity levels, message frequency, and participation rates
-- **Key highlights:** Surfaces important messages or questions that may need host attention
-- **Summary generation:** Provides condensed summaries of long chat threads
+- Click the **New chat** (+) button to start a private conversation.
+- A search popover appears listing all participants (filtered by the search input).
+- Select a participant to open a direct message channel.
+- Private channels appear as individual tabs in the channel navigation bar.
+- Each private tab shows the participant's avatar initial, first name, and unread count badge.
+- Messages sent in a private channel are only visible to the two participants.
 
-### Using AI Chat Insights
-1. Open the chat panel in the Studio
-2. Look for the **AI Insights** section or toggle (typically above the chat feed or in a sub-tab)
-3. View real-time analysis of the ongoing conversation
-4. Use insights to guide your presentation -- address trending topics, respond to sentiment shifts, or acknowledge key questions
+### Unread Count Tracking
 
-## Featured Comments
+- The system tracks `lastReadPerChannel` -- the last message ID read in each channel.
+- Unread counts are calculated per channel: messages with IDs greater than `lastReadPerChannel[channel]` from other users.
+- Red badges appear on channel tabs with unread messages.
+- The parent component is notified of unread count changes via the `onUnreadCountChange` callback.
 
-### FeaturedCommentOverlay
-The `FeaturedCommentOverlay` component allows hosts to highlight specific chat messages on the live stream/stage, making them visible to all viewers including those watching on external streaming platforms.
+---
 
-### Featuring a Comment
-1. Browse the chat feed during a session
-2. Identify a message you want to highlight
-3. Click the "Feature" action on the message (star icon, pin icon, or context menu option)
-4. The message is set as the `featuredComment` in the application state
-5. The `FeaturedCommentOverlay` renders the featured message on the live stage
-6. The featured comment is visible to all viewers, including those on external streams
+## Sending Messages
 
-### Managing Featured Comments
-- **`featuredComment` state:** Holds the currently featured chat message object
-- **Display:** The overlay renders the commenter's name and message content in a styled banner on the stage
-- **Removing:** Click "Unfeature" or feature a different comment to replace the current one
-- **Clearing:** Set `featuredComment` to `null` to remove the overlay entirely
+### Text Messages
 
-### Best Practices for Featured Comments
-- Feature questions that are relevant to the current topic
-- Highlight positive testimonials or reactions during product showcases
-- Use featured comments to acknowledge audience participation
-- Avoid featuring comments with sensitive or inappropriate content
+1. Type your message in the input field at the bottom of the chat panel.
+2. Press **Enter** to send (single line) or **Shift+Enter** for a new line.
+3. The message is added to the active channel with the current timestamp.
 
-## Chat Moderation
+### Image Attachments
 
-### Moderation Tools
-Hosts and co-hosts have access to moderation tools to maintain a productive chat environment:
+1. Click the **Paperclip** or **Image** icon in the input area.
+2. Select an image file from your device.
+3. A preview thumbnail appears above the input field.
+4. Click the **X** on the preview to remove it before sending.
+5. Images are uploaded via `base44.integrations.Core.UploadFile` and the returned `file_url` is stored in the message.
+6. If upload fails, an error toast notification appears.
+
+### Replying to Messages
+
+1. Hover over any message to reveal action buttons.
+2. Click the **Reply** button (arrow icon).
+3. A reply context bar appears above the input showing "Replying to [username]" and the original message preview.
+4. Type your reply and press Enter.
+5. The reply displays with a nested context block showing the original message and author.
+6. Click the **X** on the reply bar to cancel.
+
+---
+
+## Message Actions
+
+### For Your Own Messages
 
 | Action | Description |
 |--------|-------------|
-| **Mute user** | Temporarily prevent a user from sending messages |
-| **Ban user** | Permanently remove a user from the session and block future messages |
-| **Delete message** | Remove a specific message from the chat feed for all participants |
-| **Slow mode** | Limit how frequently users can send messages (rate limiting) |
-| **Clear chat** | Remove all messages from the chat feed |
-| **Pin message** | Pin an important message to the top of the chat panel |
+| **Reply** | Start a threaded reply to this message |
+| **Edit** | Enter inline edit mode; type changes and press Enter to save or Escape to cancel |
+| **Delete** | Remove the message after confirmation prompt |
 
-### Moderation Workflow
-1. Identify a problematic message or user in the chat feed
-2. Click on the user's name or the message's context menu
-3. Select the appropriate moderation action
-4. The action takes effect immediately:
-   - Muted users see a notification that they are muted
-   - Banned users are removed from the session
-   - Deleted messages disappear for all participants
-5. Moderation actions are logged for the host's reference
+### For Host/Admin (All Messages)
 
-### Automated Moderation
-- The system may include automated filters for profanity, spam, or links
-- AI-powered moderation can flag potentially problematic messages for host review
-- Hosts can configure moderation sensitivity in session settings
+| Action | Description |
+|--------|-------------|
+| **Reply** | Start a threaded reply |
+| **Feature on Screen** | Display the message as a featured comment overlay on the live stage |
+| **Pin** | Pin the message to the top of the chat (purple pin indicator) |
+| **Remove** | Delete any user's message (moderation action) |
 
-## Settings and Options
+### Reactions
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| Chat enabled | Whether the chat panel is available in the session | Enabled |
-| Chat visibility | Who can see chat messages | All participants |
-| Send permissions | Who can send messages | All participants |
-| Slow mode interval | Minimum seconds between messages per user | Disabled |
-| Link sharing | Whether URLs in chat are clickable | Enabled |
-| AI Insights | Enable AI-powered chat analysis | Varies by plan |
-| Featured comment style | Visual style of the featured comment overlay | Default theme |
-| Profanity filter | Automatic filtering of inappropriate language | Enabled |
-| Chat history | Whether chat history is available after session ends | Varies by plan |
+1. Hover over a message to reveal the **smiley face** button.
+2. Click it to open the reaction picker popover.
+3. Select from 10 available emojis: thumbs-up, heart, laughing, surprised, sad, praying, clapping, fire, celebration, checkmark.
+4. The reaction appears as a badge below the message with a count.
+5. Clicking an existing reaction badge increments its count.
+6. Multiple different reactions can exist on a single message.
 
-## Troubleshooting
+---
 
-### Chat messages not appearing
-1. Verify the chat panel is open and not collapsed
-2. Check your internet connection -- chat requires an active WebSocket or polling connection
-3. Ensure you are in the correct session (messages are filtered by `webinar_id`/`room_id`)
-4. Try refreshing the Studio page
-5. Check if you have been muted by a host
+## Sentiment Analysis
 
-### Cannot send messages
-1. Verify you are not muted or banned
-2. Check if slow mode is active and you are sending too frequently
-3. Ensure the chat input field is focused and not disabled
-4. Verify your user role has send permissions for the current session configuration
+Every chat message is automatically tagged with a sentiment indicator displayed as a small badge on the user's avatar.
 
-### Featured comment not displaying on stream
-1. Confirm a comment has been featured (check `featuredComment` state)
-2. Ensure the `FeaturedCommentOverlay` component is active in the stream layout
-3. Verify the stream is running -- featured comments display on the live output
-4. Check if another overlay is covering the featured comment area
+### Sentiment Types
 
-### AI Insights not available
-1. Verify your plan includes AI Chat Insights
-2. Ensure sufficient chat messages have been sent for analysis (minimum threshold required)
-3. Check if AI Insights is toggled on in the chat panel settings
-4. The feature may take a few moments to generate initial analysis after a session starts
+| Sentiment | Icon | Color | Badge Color | Description |
+|-----------|------|-------|-------------|-------------|
+| `positive` | ThumbsUp | Green | `bg-green-500` | Positive or appreciative messages |
+| `negative` | ThumbsDown | Red | `bg-red-500` | Negative or critical messages |
+| `neutral` | Meh | Gray | `bg-gray-500` | Neutral or informational messages |
+| `question` | HelpCircle | Yellow | `bg-yellow-500` | Questions or requests for information |
 
-### Chat history missing after session
-1. Chat history retention depends on your plan tier
-2. Check the session's recording or archive for chat logs
-3. Chat history is associated with the `webinar_id` -- ensure you are looking at the correct session
+Sentiment is determined by the `ChatPanel` component when messages are created. The avatar badge is a small circle (3.5px) positioned at the bottom-right corner of the user avatar with a tooltip showing the sentiment label.
 
-## FAQ
+---
 
-**Q: Are chat messages saved after a session ends?**
-A: Chat message retention depends on your plan. Business plans typically include post-session chat history access. Messages are stored with their `webinar_id` for retrieval.
+## AI Chat Insights
 
-**Q: Can attendees see chat commands?**
-A: No. Commands processed by `ChatCommandsProcessor` are intercepted before being sent as visible messages. Only the resulting actions are visible to attendees.
+The `AIChatInsights` component provides real-time AI-powered analysis of the chat conversation.
 
-**Q: How does the featured comment overlay work on external streams?**
-A: The `FeaturedCommentOverlay` is rendered as part of the stream output. When streaming to platforms like YouTube or Facebook, the featured comment appears as a visual overlay burned into the video feed, so external viewers see it as part of the video.
+### Accessing AI Insights
 
-**Q: Can I feature multiple comments at once?**
-A: No. The `featuredComment` state holds a single message at a time. Featuring a new comment replaces the previous one. To remove the featured comment without replacing it, clear the state.
+- Click the **AI Assistant** button in the chat header to open the `AIChatAssistant` panel.
+- Click the **Summary** button to toggle the `ChatSummaryPanel`.
 
-**Q: Is the AI Chat Insights analysis shared with attendees?**
-A: No. AI Chat Insights are visible only to hosts and co-hosts. Attendees do not see sentiment analysis, topic detection, or any AI-generated summaries.
+### Insight Features
 
-**Q: Can I export chat messages?**
-A: Chat export capabilities depend on your plan and session type. Business plans generally support exporting chat logs for post-session review and analysis.
+#### Action Suggestions
 
-**Q: Does the chat work across all session types?**
-A: Yes. Chat is available in Meeting, Webinar, and Live Stream session types, though the moderation tools and featured comment overlay are most relevant in Webinar and Live Stream modes where there is a larger audience.
+The system monitors chat for trending topics and generates actionable suggestions:
 
-## Known Limitations
+| Topic Detected | Suggestion | Recommended Action |
+|----------------|------------|-------------------|
+| Pricing (3+ mentions) | "N people asking about pricing" | Activate checkout element |
+| Features (3+ mentions) | "N questions about features" | Activate product showcase |
+| Demo requests (3+ mentions) | "N requests for demo" | Start screen share or presentation |
+| Comparison (3+ mentions) | "N comparison questions" | Activate talking point element |
+| Integration (3+ mentions) | "N integration questions" | Activate web overlay element |
+| Support (3+ mentions) | "N support requests" | Trigger lead capture |
 
-- Only one comment can be featured at a time; there is no queue or rotation system for featured comments
-- Chat commands are processed client-side by `ChatCommandsProcessor`; there is no server-side command registry
-- AI Chat Insights requires a minimum volume of messages before generating useful analysis
-- Chat messages are filtered by `webinar_id`, so cross-session chat is not possible
-- The featured comment overlay position and style customization options are limited
-- Chat history availability after a session depends on plan tier; Basic plans may not retain full history
-- Slow mode applies uniformly to all non-host participants; per-user rate limits are not configurable
-- Chat does not support rich media embedding (images, GIFs) in standard messages -- only text is supported
-- Moderation actions (mute, ban) are session-scoped; they do not carry over to other sessions unless account-level bans are configured
+Suggestions are prioritized by mention count: **High** (10+), **Medium** (5+), **Low** (3+). Each suggestion has an **action button** that the host can click to immediately take the recommended action (e.g., activate an element type).
 
-## Plan Requirements
+#### Keyword Detection
 
-| Feature | Basic Plan | Business Plan |
-|---------|-----------|---------------|
-| Real-time chat | Yes | Yes |
-| Send and receive messages | Yes | Yes |
-| Chat moderation tools | Basic (mute, delete) | Full (mute, ban, slow mode, clear, pin) |
-| Chat commands | Yes | Yes |
-| AI Chat Insights | No | Yes |
-| Featured comment overlay | Yes | Yes |
-| Post-session chat history | Limited | Full |
-| Chat export | No | Yes |
-| Automated moderation filters | Basic | Advanced |
-| Profanity filter | Yes | Yes |
+The system monitors for these keyword categories:
 
-## Related Documents
+| Category | Keywords Detected |
+|----------|-------------------|
+| `pricing` | price, cost, how much, pricing, expensive, cheap, affordable, buy, purchase |
+| `features` | feature, capability, can it, does it, support, include, functionality |
+| `demo` | demo, show, example, tutorial, how to, guide |
+| `comparison` | vs, versus, compare, comparison, difference, better than, alternative |
+| `integration` | integrate, integration, connect, api, webhook, plugin |
+| `support` | help, support, contact, issue, problem, bug, error |
 
-- [00-index.md](00-index.md) -- Knowledge base index
-- [10-studio-elements.md](10-studio-elements.md) -- Studio elements (poll element for audience interaction)
-- [12-studio-polls-qa.md](12-studio-polls-qa.md) -- Polls and Q&A (complementary audience engagement)
-- [14-studio-overlays-scenes.md](14-studio-overlays-scenes.md) -- Overlays system (FeaturedCommentOverlay details)
-- [15-studio-streaming.md](15-studio-streaming.md) -- Streaming (how chat overlays appear on streams)
+#### Sentiment Overview
+
+Displays a visual breakdown of chat sentiment across all messages:
+- Positive, Neutral, Negative, Excited, Confused categories with emoji badges and counts.
+
+#### Trending Topics
+
+Shows the top 5 trending topics as horizontal bar charts with mention counts, analyzed from the last 50 messages.
+
+#### Most Engaged Users
+
+Ranks the top 3 most engaged participants by engagement score:
+- **Score formula:** `(messageCount * 2) + reactionCount + (questionCount * 3)`
+- Displayed with gold (#1), silver (#2), and bronze (#3) ranking badges.
+
+### Urgent Query Detection
+
+The `UrgentQueryAlert` component displays a banner alert when the AI detects urgent or time-sensitive questions from viewers. The host can click to respond directly or dismiss the alert.
+
+---
+
+## Featured Comment Overlay
+
+Hosts can feature any chat message as an on-screen overlay visible to all viewers.
+
+### How to Feature a Comment
+
+1. Hover over any message in the chat.
+2. Click the **Star** icon (host-only action).
+3. The `FeaturedCommentOverlay` component renders the message on the live stage.
+4. The overlay appears at the bottom-left of the stage with:
+   - User avatar (or initial badge with user's color).
+   - User name in bold.
+   - Message text (max 2 lines, truncated with `line-clamp-2`).
+   - Gradient background using session branding colors (`primaryColor` to `accentColor`).
+5. Click the overlay to unfeature it, or click the star icon again in the chat.
+
+### Overlay Styling
+
+- **Font:** Inherits from session branding (`font` setting, default: Inter).
+- **Colors:** Gradient from `primaryColor` (default: `#6a1fbf`) to `accentColor` (default: `#00c853`).
+- **Animation:** Slides in from the left (`x: -40` to `x: 0`) with 300ms ease-out transition.
+- **Avatar size:** 48x48px rounded circle.
+- **Max width:** `max-w-md` for the text content area.
+
+---
+
+## Chat Commands
+
+Viewers and hosts can type special commands in chat to trigger effects and overlays. Commands are processed by the `ChatCommandsProcessor` component.
+
+### Available Commands
+
+| Command | Type | Action |
+|---------|------|--------|
+| `!confetti` or `!celebrate` | Effect | Trigger confetti celebration animation |
+| `!fireworks` | Effect | Launch fireworks animation |
+| `!hearts` | Effect | Show floating hearts animation |
+| `!poll` | Show | Display the active poll overlay |
+| `!qa` or `!question` | Show | Open the Q&A session panel |
+| `!price` or `!rly` | Overlay | Show the RLY price tracker overlay |
+| `!nft` | Overlay | Display the NFT showcase overlay |
+| `!leaderboard` | Overlay | Show the token leaderboard overlay |
+
+### Command Processing
+
+- Commands must start with `!` followed by the command keyword.
+- Commands are case-insensitive (converted to lowercase before matching).
+- Only the first word after `!` is parsed as the command.
+- The `onCommand` callback receives an object: `{ type: 'effect'|'show'|'overlay', value: '...' }`.
+- Commands can be enabled/disabled via the `enabled` prop on the `ChatCommandsProcessor`.
+
+### Chat Commands Helper
+
+The `ChatCommandsHelper` component provides an in-panel reference guide:
+- Click the **help icon** (question mark) in the chat panel header.
+- A floating panel lists all available commands with descriptions.
+- Includes a "Pro Tip" section encouraging viewers to use commands during live streams.
+
+---
+
+## Moderation
+
+### ModerationSettings Entity
+
+Moderation settings are stored per webinar via the `ModerationSettings` entity:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `webinar_id` | string | -- | Session this config applies to |
+| `ai_moderation_enabled` | boolean | false | Enable AI-powered content filtering |
+| `slow_mode_enabled` | boolean | false | Rate-limit messages per user |
+| `slow_mode_seconds` | number | 5 | Seconds between allowed messages in slow mode |
+| `profanity_filter_level` | string | `'medium'` | Filter strength: `'low'`, `'medium'`, `'high'` |
+| `link_filtering` | string | `'approve'` | Link handling: `'allow'`, `'approve'` (require approval), `'block'` |
+
+### Moderation Features
+
+- **AI Moderation:** When enabled, incoming messages are analyzed for inappropriate content. Flagged messages receive a `status: 'flagged'` and display a yellow "Flagged" badge visible only to the host.
+- **Slow Mode:** When enabled, users can only send one message every N seconds (configurable). Prevents spam flooding during high-traffic sessions.
+- **Profanity Filter:** Automatically detects and filters profane content at the configured sensitivity level.
+- **Link Filtering:** Controls how URLs in messages are handled:
+  - `'allow'` -- All links pass through.
+  - `'approve'` -- Links are held for host approval before appearing in chat.
+  - `'block'` -- All links are automatically removed.
+- **Moderation Flags:** Flagged messages display colored badges in the chat visible only to the host (e.g., "profanity", "spam"). The host can review and choose to keep or remove the message.
+- **Message Removal:** Hosts can remove any message via the hover action menu.
+
+### Accessing Moderation Settings
+
+1. The `ModerationSettingsPanel` is opened from the chat panel settings.
+2. It fetches the current `ModerationSettings` for the `webinarId`.
+3. Toggle settings on/off, adjust values, and click **Save** to persist changes.
+
+---
+
+## Notification Settings
+
+The `NotificationSettingsModal` allows users to configure their chat notification preferences:
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `newMessages` | boolean | true | Notify on all new messages |
+| `privateOnly` | boolean | false | Only notify for private/DM messages |
+| `mentions` | boolean | true | Notify when mentioned by name |
+| `urgentQueries` | boolean | true | Notify for AI-detected urgent questions |
+| `sound` | boolean | true | Play notification sounds |
+| `desktop` | boolean | true | Show desktop/browser notifications |
+
+Access notification settings by clicking the **bell icon** in the chat panel header.
+
+---
+
+## Auto-Scroll Behavior
+
+- The chat panel auto-scrolls to the bottom as new messages arrive.
+- Scrolling up pauses auto-scroll. A banner appears: "Auto-scroll paused" with the unread count.
+- Clicking the banner re-enables auto-scroll and jumps to the latest message.
+- When auto-scroll resumes, all visible messages are marked as read.
+- Auto-scroll detection threshold: within 10px of the bottom.
+
+---
+
+## Typing Indicators
+
+- When a user types, a typing event is dispatched (via WebSocket in production).
+- The chat panel displays animated bouncing dots with "[User(s)] is/are typing..." text.
+- Typing indicators auto-clear after 3 seconds of inactivity.
+- Multiple simultaneous typists are displayed together.
+
+---
+
+## Pinned Messages
+
+- Hosts can pin any message by clicking the **Pin** icon in the hover actions.
+- Pinned messages display with:
+  - A purple background tint (`bg-[#6a1fbf]/10`).
+  - A purple pin badge in the top-right corner of the message bubble.
+  - A "Pinned" badge next to the username in the `ChatMessage` component.
+- Clicking the pin icon again unpins the message.
+- Pinned messages remain in their chronological position (they are not moved to the top in the main chat view, but are visually highlighted).
+
+---
+
+## Message Editing
+
+1. Hover over your own message.
+2. Click the **Edit** (pencil) icon.
+3. The message bubble transforms into an inline input field with the current text.
+4. Edit the text and press **Enter** to save, or **Escape** to cancel.
+5. Saved edits add an "(edited)" label next to the message text.
+6. Only the message author can edit their own messages.
+
+---
+
+## Common Troubleshooting
+
+### Q: I cannot see private messages from a specific participant.
+**A:** Click the participant's tab in the channel navigation. If no tab exists, click the "New chat" (+) button and search for the participant. Private conversations only appear as tabs after the first message is exchanged.
+
+### Q: Chat messages are not auto-scrolling to the bottom.
+**A:** You have likely scrolled up in the chat, which pauses auto-scroll. Click the "Auto-scroll paused" banner to re-enable it, or scroll to the very bottom of the chat manually.
+
+### Q: I featured a comment but it is not showing on the stage.
+**A:** Ensure the session is in live mode. The `FeaturedCommentOverlay` renders on the stage canvas. If you are in editor/preview mode, overlays may not be visible. Also confirm the `onFeatureComment` callback is properly wired in the studio layout.
+
+### Q: Chat commands are not working.
+**A:** Chat commands require the `ChatCommandsProcessor` to be enabled (`enabled` prop set to `true`). Verify the host has not disabled commands for this session. Commands must start with `!` and be typed as the first word in the message.
+
+### Q: How do I enable slow mode?
+**A:** Open the Moderation Settings panel (accessible from the chat settings), toggle "Slow Mode" on, and set the desired interval in seconds. This limits how frequently each user can send messages.
+
+### Q: Can viewers see flagged messages?
+**A:** No. Flagged messages with moderation badges are only visible to the host. Other viewers see the message normally unless the host removes it.
+
+### Q: How does the AI generate suggestions?
+**A:** The AI Chat Insights system analyzes the last 50 chat messages for keyword patterns in 6 categories (pricing, features, demo, comparison, integration, support). When 3 or more messages match a category, a suggestion card appears with a recommended action. Suggestions are prioritized by frequency.
+
+---
+
+## Related Features
+
+- **Elements:** AI suggestions can recommend activating specific element types. See `10-studio-elements.md`.
+- **Overlays and Scenes:** Featured comments render as stage overlays. See `14-studio-overlays-scenes.md`.
+- **Polls and Q&A:** Chat commands can trigger poll and Q&A displays. See `12-studio-polls-qa.md`.
+- **Streaming:** Chat is visible to viewers on all streaming platforms. See `15-studio-streaming.md`.

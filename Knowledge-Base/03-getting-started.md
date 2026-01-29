@@ -1,451 +1,754 @@
-# Getting Started with R-Link
+# R-Link Getting Started & Onboarding
 
 ## Overview
 
-This guide walks new customers through every step of getting started on the R-Link platform -- from initial signup and registration, through the guided onboarding flow, to creating a first room and launching a live session. It covers account auto-creation, default Brand Kit initialization, session type selection, and the Setup page for device configuration. By the end of this guide, a new user should be able to host their first meeting, webinar, or live stream.
+This document covers everything a new user needs to get from zero to their first live session on R-Link. It includes the registration and authentication flow, the complete 6-step onboarding process with interactive demos, account and brand kit auto-creation with all default values, room creation, Studio launch methods, the Setup page for device configuration, session type selection, and quick-start guides for each session type (Meeting, Webinar, Live Stream).
 
 ---
 
-## Signup and Registration
+## Registration & Authentication Flow
 
-### Registration Page
+### Registration (New Users)
 
-New users begin at the **Register** page (`/register`). This page is the entry point for creating an R-Link user account.
+**Page:** `/Register`
 
-**Step-by-step signup process:**
+**Step-by-step process:**
 
-1. Navigate to the R-Link registration URL
-2. The Register page presents a signup form
-3. Enter the required information:
-   - Email address
-   - Password (or use SSO if available on Business plans with Google SSO or Microsoft SSO configured)
-4. Submit the registration form
-5. Base44 authentication creates the user account
-6. An authentication token (`access_token`) is generated and provided
-7. The user is redirected to the **Onboarding** page (`/onboarding`)
+1. Navigate to the R-Link application URL or Landing page (`/Landing`)
+2. Click **"Sign Up"** or **"Get Started"** to reach the `/Register` page
+3. Choose a registration method:
+   - **Email/Password:** Enter email address, create password, confirm password
+   - **Google SSO:** Click "Sign in with Google" button (redirects to Google OAuth)
+   - **Microsoft SSO:** Click "Sign in with Microsoft" button (redirects to Microsoft OAuth)
+4. For email registration, verify email address (if required by the Base44 instance)
+5. Upon successful registration, the Base44 SDK creates a User auth record
+6. User is redirected to the Onboarding page (`/Onboarding`) for first-time setup
+7. An Account entity is automatically created with default values (see Account Auto-Creation below)
+8. A default BrandKit entity is automatically created (see Brand Kit Auto-Creation below)
 
-**Technical details:**
-- Authentication is handled by the Base44 SDK
-- Upon successful registration, an `access_token` is returned in the URL and stored in `localStorage` as `base44_access_token`
-- The `AuthContext` provider wraps the application and exposes: `user`, `isAuthenticated`, `isLoadingAuth`, `authError`, `logout`, `navigateToLogin`
+### Authentication (Returning Users)
+
+**Login Methods:**
+- Email/Password via the login page
+- Google SSO
+- Microsoft SSO
+
+**Authentication Flow:**
+1. User submits credentials
+2. Base44 SDK validates credentials and returns an `access_token`
+3. The `access_token` is passed via URL fragment (e.g., `#access_token=...`)
+4. R-Link stores the token in `localStorage` for session persistence
+5. The token is included in all subsequent API requests via the Base44 SDK
+6. User is redirected to the Home page (`/Home`) or the `fromUrl` if specified
 
 ### Authentication Parameters
 
-The following URL parameters are used during and after authentication:
+| Parameter | Description |
+|-----------|-------------|
+| `access_token` | JWT token passed in URL fragment after authentication |
+| `fromUrl` | URL to redirect to after successful authentication |
+| `clear_access_token=true` | Query parameter to force token clear and re-authentication |
 
-| Parameter | Purpose |
-|---|---|
-| `access_token` (or `token`) | Bearer token for API authentication, passed via URL after auth |
-| `appId` | Identifies the R-Link Base44 application |
-| `serverUrl` | Base44 backend endpoint URL |
-| `fromUrl` | Return URL to redirect after auth flow completes |
-| `functionsVersion` | Serverless functions version identifier |
+### Auth Error Handling
 
-### Existing User Login
+| Error Code | Error Type | Meaning | User Experience |
+|-----------|------------|---------|-----------------|
+| 403 | `auth_required` | User is not authenticated; no valid token present | Redirected to login page via `navigateToLogin()` |
+| 403 | `user_not_registered` | Token is valid but user has no R-Link account | Redirected to registration or account creation flow |
+| 401 | Expired token | The `access_token` has expired | Redirected to login; token cleared from localStorage |
 
-Returning users authenticate through the Base44 login flow:
+**Logout:**
+- Call `logout(shouldRedirect)` to clear the session
+- `shouldRedirect = true`: User is redirected to the login page after logout
+- `shouldRedirect = false`: Token is cleared but user stays on current page (used for background re-auth)
 
-1. Navigate to the R-Link application URL
-2. If no valid token is found in `localStorage`, the user is redirected to the Base44 login page
-3. Enter email and password (or use SSO)
-4. On success, `access_token` is set in the URL and persisted to `localStorage`
-5. The user is redirected to the **Home** page (`/`)
-
----
-
-## Onboarding Flow
-
-### Onboarding Page
-
-The **Onboarding** page (`/onboarding`) is a guided setup wizard that appears after first-time registration. It helps new users configure their account and understand the platform.
-
-**Onboarding steps typically include:**
-
-1. **Welcome Screen**: Introduction to R-Link and its capabilities (Meetings, Webinars, Live Streams)
-2. **Account Setup**: Organization name, basic account preferences
-3. **Brand Kit Preview**: Preview of default branding (can be customized later in Admin > Brand Kit)
-4. **First Room Creation**: Guided creation of the user's first virtual room
-5. **Session Type Introduction**: Explanation of Meeting, Webinar, and Live Stream modes
-6. **Completion**: Redirect to the Admin Dashboard or Home page
-
-### First-Time Account Auto-Creation
-
-When a newly registered user has no existing accounts, R-Link automatically creates a default account:
-
-**Auto-created Account defaults:**
-
-| Field | Default Value |
-|---|---|
-| `plan` | `basic` |
-| `billing_cycle` | `monthly` |
-| `limits.max_rooms` | 5 |
-| `limits.max_storage_gb` | 10 |
-| `limits.max_attendees` | 100 |
-| `limits.max_team_members` | 3 |
-| `owner_email` | The registering user's email |
-
-**What happens during auto-creation:**
-
-1. The system detects no Account entity exists for the authenticated user
-2. A new Account entity is created with the defaults above
-3. The user's email is set as `owner_email`, granting full owner-level access
-4. A default Brand Kit is auto-created and associated with the account (see below)
-5. The user is granted implicit `admin` role as the account owner
-
-### Default Brand Kit Auto-Creation
-
-When a new account is created, a Brand Kit entity is automatically generated with the following defaults:
-
-| Setting Category | Field | Default Value |
-|---|---|---|
-| **Colors** | Primary | `#6a1fbf` (purple) |
-| | Accent | `#00c853` (green) |
-| | Background | `#001233` (dark navy) |
-| | Text | `#ffffff` (white) |
-| | Secondary Text | `#9ca3af` (gray) |
-| **Fonts** | Heading | `Inter` |
-| | Body | `Inter` |
-| | Caption | `Inter` |
-| **Frame Settings** | Style | `rounded` |
-| | Border Width | `2` (pixels) |
-| | Border Color | `#6a1fbf` (matches primary) |
-| | Shadow | `true` (enabled) |
-| **Lower Third** | Template | `modern` |
-| | Background Color | `#001233` (matches background) |
-| | Text Color | `#ffffff` (white) |
-| | Accent Color | `#6a1fbf` (matches primary) |
-| | Show Logo | `true` (enabled) |
-
-The Brand Kit can be fully customized later via the **Admin > Brand Kit** tab.
+For detailed authentication troubleshooting, see [31-troubleshooting.md](31-troubleshooting.md).
 
 ---
 
-## Creating Your First Room
+## Account Auto-Creation
 
-### What is a Room?
+When a new user completes registration, an Account entity is automatically created with the following default values:
 
-A Room is a persistent virtual space where sessions (meetings, webinars, or live streams) take place. Rooms have their own configuration including name, type, participant capacity, and optional branding overrides. On the Basic plan, you can create 1 room. On the Business plan, you can create up to 5 rooms that can run in parallel.
+```
+Account = {
+  plan: 'basic',
+  billing_cycle: 'monthly',
+  owner_email: <registered email>,
+  limits: {
+    max_rooms: 5,
+    max_storage_gb: 10,
+    max_attendees: 100,
+    max_team_members: 3
+  },
+  usage: {
+    active_rooms: 0,
+    storage_used_gb: 0,
+    attendees_this_month: 0,
+    hours_streamed: 0
+  }
+}
+```
 
-### Step-by-Step Room Creation
-
-1. Navigate to **Admin > Rooms** tab (`/admin?tab=rooms`)
-2. Click the **Create Room** button
-3. Fill in room configuration:
-
-| Field | Required | Description |
-|---|---|---|
-| Room Name | Yes | A descriptive name for the room (e.g., "Weekly Team Standup", "Product Launch Webinar") |
-| Room Type | Yes | Default session type for this room: Meeting, Webinar, or Live Stream |
-| Max Participants | Optional | Override the default participant limit for this room |
-| Description | Optional | Internal description for team reference |
-| Branding Overrides | Optional | Override account-level Brand Kit settings for this specific room |
-
-4. Click **Save** or **Create**
-5. The new room appears in the Rooms list
-6. The room is now ready to launch a session
-
-### Room Templates
-
-For frequently used configurations, Room Templates can be created and reused:
-
-1. Navigate to **Admin > Templates** tab
-2. Create a template with pre-configured room settings
-3. When creating a new room, select a template to auto-fill the configuration
+**Key defaults explained:**
+- **plan: 'basic'** -- All new accounts start on the Basic plan
+- **billing_cycle: 'monthly'** -- Default billing is monthly
+- **limits.max_rooms: 5** -- Code default is 5 but Basic plan enforcement restricts to 1 active room
+- **limits.max_storage_gb: 10** -- 10 GB storage for Basic plan
+- **limits.max_attendees: 100** -- Code default is 100 but Basic plan enforcement restricts to 50 interactive participants
+- **limits.max_team_members: 3** -- Default team size limit of 3 members
+- **usage** -- All usage counters start at zero
 
 ---
 
-## Launching the Studio
+## Brand Kit Auto-Creation
 
-### What is the Studio?
+A default BrandKit entity is automatically created alongside the Account. This ensures sessions have a baseline visual identity from day one.
 
-The Studio (`/studio`) is the live session production interface. It is where hosts manage video feeds, switch layouts, activate elements, manage participants, and control the session. The Studio is the core production environment for all three session types.
+### Default Brand Kit Values
 
-### How to Launch Studio
+```
+BrandKit = {
+  name: 'Default',
+  primary_color: '#000000' (or platform default),
+  secondary_color: '#FFFFFF' (or platform default),
+  accent_color: '#0066FF' (or platform default),
+  font_family: 'Inter' (or platform default sans-serif),
+  logo_url: null (no logo by default),
+  background_url: null (no custom background by default),
+  cta_button: {
+    text: '',
+    url: '',
+    enabled: false
+  },
+  exit_url: '',
+  waiting_room_config: {
+    enabled: false,
+    message: 'The session will begin shortly.',
+    background_url: null
+  },
+  vanity_url: null
+}
+```
 
-**Method 1: From Admin > Rooms**
+**Note:** The CTA button, exit URL, waiting room customization, and vanity URL fields are present in the BrandKit entity but are only functional on the Business plan. On Basic, these fields are read-only/disabled in the Admin > Brand Kit tab.
+
+### Customizing the Brand Kit
+
+1. Navigate to **Admin > Brand Kit** tab
+2. Upload a logo (recommended size: 200x60px, PNG or SVG)
+3. Set primary, secondary, and accent colors using the color picker or hex input
+4. Choose a font family from the available options
+5. Upload a custom background image (recommended: 1920x1080px, JPG or PNG)
+6. **(Business only)** Configure CTA button text and URL
+7. **(Business only)** Set an exit URL for post-session redirect
+8. **(Business only)** Enable and customize the waiting room
+9. **(Business only)** Set a vanity URL slug
+10. Click **"Save"** to apply changes
+
+---
+
+## Onboarding Page Flow
+
+**Page:** `/Onboarding`
+
+The Onboarding page is a guided 6-step flow presented to new users after registration. It introduces the core features of R-Link through interactive demos and a practice session. Users can navigate forward, backward, or skip the entire onboarding.
+
+### Navigation Controls
+
+| Control | Action |
+|---------|--------|
+| **Next** button | Advance to the next step |
+| **Back** button | Return to the previous step |
+| **Skip** button/link | Skip the entire onboarding and go to Home page |
+| Step indicators | Visual progress showing current step out of 6 |
+
+### Step 1: Welcome
+
+**Purpose:** Introduce R-Link and set expectations for the onboarding flow.
+
+**Content:**
+- Welcome message with the user's name (if available from registration)
+- Brief description of R-Link as a live video collaboration platform
+- Overview of what the onboarding will cover (Studio, Elements, Layouts, AI Tools)
+- "Let's get started" CTA to proceed to Step 2
+
+**Key Points:**
+- No interactive demo on this step
+- Sets the context for the remaining 5 steps
+- First-time personalization: user sees their account details
+
+### Step 2: Studio (Interactive Demo)
+
+**Purpose:** Introduce the Studio interface where live sessions take place.
+
+**Content:**
+- Explanation of the Studio page and its purpose
+- **StudioControlsDemo** -- An interactive component that demonstrates the Studio control bar:
+  - Microphone toggle (mute/unmute)
+  - Camera toggle (on/off)
+  - Screen share button
+  - Chat panel toggle
+  - Participants panel toggle
+  - Recording button
+  - Session end button
+  - Layout selector
+- Users can click each control to see its effect in a simulated environment
+- **Practice Launch** -- A button that launches a real practice session:
+  - URL: `/Studio?type=meeting&name=Practice`
+  - Opens a meeting-type session named "Practice"
+  - User can test their camera, microphone, and Studio controls in a live environment
+  - No other participants (solo practice session)
+  - User returns to onboarding after ending the practice session
+
+**Key Points:**
+- The StudioControlsDemo is a sandboxed simulation (no real WebRTC connection)
+- The Practice Launch creates a real Studio session for hands-on experience
+- This is the most interactive step in the onboarding flow
+- Users who are comfortable can skip the practice and proceed
+
+### Step 3: Elements (Interactive Demo)
+
+**Purpose:** Introduce interactive Elements that enhance sessions.
+
+**Content:**
+- Explanation of what Elements are and how they work
+- **ElementsDemo** -- An interactive component that showcases available Elements:
+  - **Core Media (Basic+):**
+    - Slides -- Upload and present slide decks during sessions
+    - Video -- Play video files or embed video content
+    - Audio -- Play audio tracks during sessions
+  - **Advanced Elements (Business):**
+    - Links -- Display clickable links as overlays
+    - Banners -- Show announcement banners during sessions
+    - Polls -- Launch audience polls and view real-time results
+    - Website Overlays -- Embed live websites as overlays
+    - Prompter -- Scrolling teleprompter text visible only to the host
+- Each Element type is demonstrated with a preview and description
+- Business-only Elements are shown with a "Business" badge
+
+**Key Points:**
+- Users can see all Element types even if they are on the Basic plan
+- Business-only Elements serve as an upgrade incentive
+- Elements are managed in Admin > Elements tab
+- Elements are organized into ElementFolders for grouping
+
+### Step 4: Layouts (Interactive Demo)
+
+**Purpose:** Introduce the different layout options for arranging video feeds and content.
+
+**Content:**
+- Explanation of how layouts affect the visual arrangement of a session
+- **LayoutsDemo** -- An interactive component that previews each layout type:
+  - **Meeting Layouts (5):**
+    - Gallery -- Grid view, all participants equal
+    - Speaker -- Active speaker prominent, others in strip
+    - Sidebar -- Content main area, participants in side panel
+    - Spotlight -- One participant highlighted, others minimized
+    - Compact -- Minimal view optimized for screen sharing
+  - **Webinar Layouts (6):**
+    - Stage Host -- Host on virtual stage (default for webinar)
+    - Stage Content -- Content center stage, host overlay
+    - Picture-in-Picture -- Host as small overlay on content
+    - Full Content -- Content fills view, host hidden
+    - Interview -- Side-by-side speaker arrangement
+    - Panel -- Multiple speakers in panel format
+  - **Live Stream Layouts (7):**
+    - Live Host -- Host with branding overlays (default for live stream)
+    - Live Content -- Content primary, host overlay
+    - Live Split -- Split view between host and content
+    - Live Full -- Full-screen content, no host video
+    - Live Interview -- Broadcast-quality interview layout
+    - Live Panel -- Panel discussion format
+    - Live Custom -- Fully customizable drag-and-drop layout
+- Users can click each layout to see a visual preview
+
+**Key Points:**
+- Layout availability depends on session type
+- Webinar and Live Stream layouts are only available on the Business plan
+- The host can switch layouts during a live session via the Studio control bar
+- Templates can define a default layout
+
+### Step 5: AI Tools
+
+**Purpose:** Introduce the R-Link AI Suite (Notetaker + Translation).
+
+**Content:**
+- Explanation of AI-powered features in R-Link
+- **AI Notetaker:**
+  - Automatic transcription of meeting audio
+  - AI-generated meeting summary with key points
+  - Action item extraction
+  - Accessible via the MeetingNotes page (`/MeetingNotes`)
+  - Configured in Admin > Notetaker tab
+- **AI Translation:**
+  - Real-time translation of meeting content
+  - Multi-language support
+  - Useful for international teams and multilingual events
+- Both features require the Business plan
+- Demo shows sample transcript and summary output
+
+**Key Points:**
+- AI Suite is a Business-only feature set
+- Notetaker settings are configured per-account in Admin > Notetaker
+- Transcripts are stored as MeetingTranscript entities
+- Basic plan users see this step as an upgrade incentive
+
+### Step 6: Complete
+
+**Purpose:** Wrap up the onboarding and guide the user to their first action.
+
+**Content:**
+- Congratulations message
+- Summary of what was covered (Studio, Elements, Layouts, AI Tools)
+- Quick-action buttons:
+  - **"Create Your First Room"** -- Navigates to Admin > Rooms tab to create a room
+  - **"Start a Meeting"** -- Launches the Studio with meeting type
+  - **"Explore Admin Portal"** -- Navigates to the Admin page
+  - **"Go to Home"** -- Navigates to the Home page
+- Reminder that help is available in Admin > Support tab
+
+**Key Points:**
+- Marks the onboarding as completed in the user's profile (`onboarding_completed: true`)
+- User will not see the onboarding flow again on subsequent logins
+- User can always revisit by navigating directly to `/Onboarding`
+
+---
+
+## Room Creation
+
+### Creating a Room (Step-by-Step)
+
 1. Navigate to **Admin > Rooms** tab
-2. Find the room you want to launch
-3. Click the **Launch** or **Start Session** button
-4. You are redirected to the Setup page (if configured) or directly to the Studio
+2. Click the **"Create Room"** button
+   - If on Basic plan and already have 1 room, button is disabled with an upgrade prompt
+3. Enter room details:
+   - **Room Name** (required): Display name for the room (e.g., "Team Standup", "Weekly Webinar")
+   - **Room Slug** (auto-generated or custom): URL-friendly identifier used in links
+   - **Template** (optional): Select a pre-configured RoomTemplate to inherit settings
+   - **Brand Kit** (optional): Assign a BrandKit for visual branding (defaults to account default)
+   - **Default Session Type**: Meeting (default), Webinar, or Live Stream
+4. Configure room settings:
+   - **Waiting Room:** Enable/disable (Business feature for customization)
+   - **Chat:** Enable/disable; moderation settings
+   - **Recording:** Auto-record setting
+   - **Max Participants:** Override account limit (up to plan maximum)
+5. Click **"Create Room"** to save
+6. The room appears in the Rooms list and is ready for sessions
 
-**Method 2: Direct URL**
-Navigate directly to the Studio URL with appropriate parameters:
+### Room Management Actions
+
+| Action | Description | Permission |
+|--------|------------|------------|
+| Edit Room | Modify room name, settings, template, brand kit | Owner, Admin, Host |
+| Delete Room | Permanently remove the room and its events | Owner, Admin |
+| Archive Room | Deactivate the room without deleting data | Owner, Admin |
+| Duplicate Room | Create a copy of the room with same settings | Owner, Admin |
+| View Room | See room details and event history | Owner, Admin, Host |
+
+---
+
+## Studio Launch Methods
+
+There are multiple ways to launch a session in the Studio:
+
+### Method 1: Direct URL Navigation
+
+Navigate to the Studio URL with appropriate query parameters:
+
 ```
-/studio?appId={appId}&serverUrl={serverUrl}&access_token={token}&type={session_type}
+/Studio?type=meeting&name=My+Meeting
+/Studio?type=webinar&name=Product+Launch
+/Studio?type=livestream&name=Live+Show
 ```
 
-**Method 3: From Home/Dashboard**
-1. Navigate to the Home page (`/`)
-2. Quick-launch a session from the dashboard
-3. Select room and session type
-4. Proceed through Setup to Studio
+**Required Parameters:**
+| Parameter | Description |
+|-----------|-------------|
+| `type` | Session type: `meeting`, `webinar`, or `livestream` |
 
-### Pre-Session Setup Page
+**Optional Parameters:**
+| Parameter | Description |
+|-----------|-------------|
+| `name` | Session display name |
+| `room` | Room ID or slug to associate the session with |
+| `layout` | Override default layout |
+| `autostart` | Set to `true` to skip the pre-session lobby |
 
-Before entering the Studio, users typically pass through the **Setup** page (`/setup`). This page allows pre-session device configuration:
+### Method 2: From Admin > Rooms
 
-| Setup Step | Description |
-|---|---|
-| **Camera Selection** | Choose which camera device to use; preview the video feed |
-| **Microphone Selection** | Choose which microphone to use; test audio input levels |
-| **Speaker Selection** | Choose audio output device; test speaker playback |
-| **Virtual Background** | Select or upload a virtual background (optional) |
-| **Display Name** | Set the name displayed to other participants |
-| **Audio/Video Toggle** | Choose whether to join with camera and/or microphone on or off |
-| **Network Check** | Verify network quality is sufficient for the session |
+1. Navigate to **Admin > Rooms** tab
+2. Find the desired room in the list
+3. Click the **"Start Session"** or **"Go Live"** button on the room card
+4. Select session type (if not set by room default)
+5. The Studio opens with room context pre-loaded
 
-After completing setup, click **Join** or **Enter Studio** to proceed to the live session.
+### Method 3: From Admin > Schedule
+
+1. Navigate to **Admin > Schedule** tab
+2. Find the scheduled meeting/event
+3. Click **"Join"** or **"Start"** when the session time arrives
+4. The Studio opens with the scheduled event context
+
+### Method 4: From Home Page
+
+1. On the Home page (`/Home`), find the quick-action section
+2. Click **"New Meeting"**, **"New Webinar"**, or **"New Live Stream"**
+3. Enter a session name in the quick-start dialog
+4. Click **"Launch"** to open the Studio
+
+### Method 5: From Onboarding Practice
+
+During onboarding Step 2 (Studio), click the practice launch button:
+```
+/Studio?type=meeting&name=Practice
+```
+
+---
+
+## Setup Page
+
+**Page:** `/Setup`
+
+The Setup page is the pre-session device configuration screen. It appears before entering the Studio to ensure the user's camera, microphone, and speakers are properly configured.
+
+### Setup Page Components
+
+#### 1. Camera Selection and Preview
+
+- **Camera dropdown:** Lists all available video input devices detected by the browser
+- **Camera preview:** Live video feed from the selected camera
+- **Camera toggle:** Enable/disable the camera before joining
+- **Permission status:** Shows whether camera permission has been granted, denied, or is pending
+
+#### 2. Microphone Selection and Audio Level
+
+- **Microphone dropdown:** Lists all available audio input devices
+- **Audio level meter:** Real-time visual indicator showing microphone input volume
+  - Green bars: Good audio level
+  - Yellow bars: Audio is slightly low or high
+  - Red bars: Audio is too loud (clipping)
+- **Microphone toggle:** Mute/unmute before joining
+- **Permission status:** Shows microphone permission state
+
+#### 3. Speaker Selection and Test
+
+- **Speaker dropdown:** Lists all available audio output devices
+- **Test speaker button:** Plays a short test tone to verify speaker output
+- **Volume control:** Adjust speaker volume level
+
+#### 4. Display Name
+
+- **Display name input:** Text field for the name shown to other participants
+- Pre-populated with the user's registered name
+- Can be changed per-session
+
+#### 5. Event Name
+
+- **Event name display:** Shows the name of the session being joined
+- Pre-populated from the URL parameter or scheduled event
+
+#### 6. Permission Status Indicators
+
+| Status | Icon/Color | Meaning |
+|--------|-----------|---------|
+| Granted | Green checkmark | Browser has granted access to the device |
+| Denied | Red X | Browser permission was denied; user must update browser settings |
+| Pending | Yellow/Orange | Permission prompt has not been answered yet |
+| Not Found | Gray | No device of this type was detected |
+
+#### 7. Device Selection Persistence
+
+Device selections are saved to `localStorage` so the user's preferred devices are pre-selected on subsequent sessions:
+- `rlink_preferred_camera` -- Saved camera device ID
+- `rlink_preferred_microphone` -- Saved microphone device ID
+- `rlink_preferred_speaker` -- Saved speaker device ID
+
+#### 8. Join Button
+
+After configuring devices, click **"Join Session"** or **"Enter Studio"** to proceed to the Studio page.
+
+### Setup Page Troubleshooting
+
+| Issue | Cause | Resolution |
+|-------|-------|------------|
+| No devices listed | Browser permissions not granted | Click the permission prompt or update browser settings |
+| Camera shows black | Camera in use by another app | Close other apps using the camera |
+| Audio level meter not moving | Wrong microphone selected or muted at OS level | Select correct mic from dropdown; check OS audio settings |
+| "Permission Denied" status | User blocked camera/mic access | Go to browser settings > Site permissions > Allow camera and microphone |
+| Speaker test plays no sound | Wrong speaker selected or system volume muted | Select correct speaker; check system volume |
 
 ---
 
 ## Session Type Selection
 
-### How Session Types Are Selected
+When launching a session, the type is specified via the `type` URL parameter:
 
-The session type determines the available layouts, participant roles, and features for a session. Session type is specified via the `?type=` URL query parameter:
+### Meeting
 
-| Session Type | URL Parameter | Default Layout | Plan Required |
-|---|---|---|---|
-| Meeting | `?type=meeting` | Gallery View (gallery) | Basic or Business |
-| Webinar | `?type=webinar` | Stage-Host Full (stage_host) | Business only |
-| Live Stream | `?type=livestream` | Host Scene (live_host) | Business only |
+```
+/Studio?type=meeting
+```
 
-### Setting Session Type
+- **Description:** Collaborative session where all participants can interact equally
+- **Default Layout:** Gallery (grid view)
+- **Plan Requirement:** Basic+
+- **Max Participants:** 50 (Basic) / 100 (Business)
+- **Best For:** Team meetings, brainstorming, working sessions, 1-on-1 calls
 
-Session type can be set in multiple ways:
+### Webinar
 
-1. **Room Default**: Each room has a default session type configured during creation
-2. **URL Parameter Override**: Adding `?type=meeting`, `?type=webinar`, or `?type=livestream` to the Studio URL overrides the room default
-3. **Session Launch UI**: When launching a session from the Admin portal, the session type can be selected in the launch dialog
+```
+/Studio?type=webinar
+```
 
-### Session Type Comparison
+- **Description:** Host-led presentation with audience in view-only mode
+- **Default Layout:** Stage Host (`stage_host`)
+- **Plan Requirement:** Business
+- **Max Attendees:** Up to 1,000
+- **Best For:** Product launches, educational sessions, company all-hands, public talks
 
-| Feature | Meeting | Webinar | Live Stream |
-|---|---|---|---|
-| **Participant Model** | All participants interactive | Hosts/speakers on stage; audience view-only | Production crew; audience via RTMP |
-| **Default Layout** | Gallery View | Stage-Host Full | Host Scene |
-| **Max Participants** | 50 (Basic) / 100 (Business) | Up to 1,000 attendees | Unlimited (via RTMP platforms) |
-| **Breakout Rooms** | Yes | No | No |
-| **Whiteboards** | Yes | No | No |
-| **RTMP Output** | No | No | Yes |
-| **Screen Sharing** | All participants | Hosts/speakers | Production-controlled |
-| **Chat** | All participants | All (including audience) | Via streaming platform |
-| **Polls** | Yes (Business) | Yes (Business) | Via streaming platform |
-| **Recording** | Yes | Yes | Yes (plus stream recording) |
+### Live Stream
+
+```
+/Studio?type=livestream
+```
+
+- **Description:** Production-quality broadcast to external streaming platforms via RTMP
+- **Default Layout:** Live Host (`live_host`)
+- **Plan Requirement:** Business
+- **Max Viewers:** Unlimited (via RTMP)
+- **Best For:** Public broadcasts, YouTube/Facebook/Twitch streams, media events
 
 ---
 
-## Quick Start Guides
+## Quick-Start Guides
 
-### Quick Start: First Meeting
+### Quick-Start: Your First Meeting (Basic Plan)
 
-1. **Sign up** at the Register page
-2. **Complete onboarding** -- your account and Brand Kit are auto-created
-3. **Create a room** in Admin > Rooms (or use the auto-created default room if available)
-4. **Launch the session** -- click Start on your room
-5. **Complete Setup** -- select camera, microphone, test audio
-6. **Enter Studio** -- you are now in Gallery View with all participant tiles
-7. **Invite participants** -- share the room link; participants join via the Viewer page
-8. **Use features**: Enable screen sharing, open whiteboard, use chat
-9. **End session** -- click End Meeting; recording is saved automatically (if enabled)
-10. **Review** -- check recording in Admin > Recordings; view notes in Meeting Notes (Business)
+**Time to complete:** 5-10 minutes
 
-### Quick Start: First Webinar (Business Plan)
+1. **Register** at `/Register` using email or SSO
+2. **Complete onboarding** at `/Onboarding` (or skip to come back later)
+3. **Create a room:**
+   - Go to **Admin > Rooms**
+   - Click **"Create Room"**
+   - Name it (e.g., "My Meeting Room")
+   - Click **"Create Room"**
+4. **Configure devices:**
+   - The Setup page (`/Setup`) appears before entering the Studio
+   - Select your camera, microphone, and speaker
+   - Enter your display name
+   - Click **"Join Session"**
+5. **Start the meeting:**
+   - You are now in the Studio at `/Studio?type=meeting`
+   - Your camera and microphone are active
+   - Share the meeting link with participants
+6. **During the meeting:**
+   - Use the control bar to toggle mic, camera, screen share
+   - Open chat panel for text communication
+   - Switch layouts using the layout selector
+   - Start recording if desired
+7. **End the meeting:**
+   - Click the **"End Session"** button in the control bar
+   - Confirm session end
+   - Recording (if started) begins processing
+
+### Quick-Start: Your First Webinar (Business Plan)
+
+**Time to complete:** 15-20 minutes
 
 1. **Ensure Business plan** -- Webinars require the Business plan
-2. **Create a room** with type set to **Webinar**
-3. **Set up Event Landing page** (optional) -- Admin > Event Landing to create a registration page
-4. **Configure elements** -- Add Polls, Banners, Links, CTA overlays in Admin > Elements
-5. **Schedule the webinar** -- Admin > Schedule to set date/time and enable registration
-6. **Share registration link** -- Send the Event Landing page URL to your audience
-7. **Launch the session** at the scheduled time
-8. **Complete Setup** and enter Studio
-9. **Manage the stage** -- You appear on stage by default; invite speakers to join the stage
-10. **Engage audience** -- Launch polls, display banners, use chat Q&A
-11. **End session** -- Click End Webinar; recording saved; attendee data captured in Leads
+2. **Create a room** (if not already done):
+   - Go to **Admin > Rooms**
+   - Click **"Create Room"**
+   - Set default session type to "Webinar"
+3. **Set up event landing page (optional):**
+   - Go to **Admin > Event Landing** tab
+   - Create a landing page for the webinar
+   - Configure registration form fields
+   - Publish the landing page
+4. **Schedule the webinar (optional):**
+   - Go to **Admin > Schedule** tab
+   - Create a new scheduled event
+   - Set date, time, and recurrence
+   - Add the webinar room
+   - Send calendar invitations to attendees
+5. **Configure branding:**
+   - Go to **Admin > Brand Kit**
+   - Upload logo, set colors, configure waiting room
+   - Set up CTA button and exit URL
+6. **Prepare Elements:**
+   - Go to **Admin > Elements**
+   - Upload slides, create polls, set up banners
+   - Organize into folders
+7. **Launch the webinar:**
+   - Navigate to `/Studio?type=webinar&name=My+Webinar`
+   - Or start from the scheduled event in Admin > Schedule
+8. **During the webinar:**
+   - Use Stage Host layout (default) or switch as needed
+   - Present slides using the Elements panel
+   - Launch polls for audience engagement
+   - Display banners for announcements
+   - Monitor attendee chat and Q&A
+   - Use the Prompter for scripted content
+9. **End the webinar:**
+   - Click **"End Session"**
+   - Recording processes automatically
+   - Attendees are redirected to exit URL (if configured)
+   - Lead data is captured in Admin > Leads
 
-### Quick Start: First Live Stream (Business Plan)
+### Quick-Start: Your First Live Stream (Business Plan)
+
+**Time to complete:** 20-30 minutes
 
 1. **Ensure Business plan** -- Live Streaming requires the Business plan
-2. **Connect streaming platforms** -- Admin > Integrations to connect YouTube, Facebook, Twitch, and/or LinkedIn
-3. **Create a room** with type set to **Live Stream**
-4. **Configure scenes** -- Plan your scenes (Host, Interview, Media, CTA, etc.)
-5. **Prepare elements** -- Upload media, set up lower thirds, prepare CTA overlays
-6. **Launch the session**
-7. **Complete Setup** and enter Studio
-8. **Start streaming** -- Activate RTMP output to connected platforms
-9. **Produce the show** -- Switch between scenes, display elements, manage guests
-10. **End stream** -- Stop RTMP output first, then end the session
-11. **Review** -- Check recording; monitor analytics
+2. **Connect streaming platforms:**
+   - Go to **Admin > Integrations**
+   - Connect YouTube Live, Facebook Live, Twitch, and/or LinkedIn Live
+   - Configure RTMP endpoints and stream keys
+3. **Create a room:**
+   - Go to **Admin > Rooms**
+   - Click **"Create Room"**
+   - Set default session type to "Live Stream"
+4. **Configure branding:**
+   - Go to **Admin > Brand Kit**
+   - Set up all branding for the stream output (logo, colors, overlays)
+5. **Prepare Elements:**
+   - Go to **Admin > Elements**
+   - Set up banners, lower thirds, and other overlays for production
+6. **Launch the stream:**
+   - Navigate to `/Studio?type=livestream&name=My+Live+Show`
+   - The Studio opens in Live Stream mode with production controls
+7. **Configure stream destinations:**
+   - In the Studio, open the streaming panel
+   - Select which platforms to stream to (multi-platform simultaneous)
+   - Verify stream keys and endpoints
+8. **Go live:**
+   - Click **"Start Streaming"** to begin broadcasting
+   - Monitor stream health indicators (bitrate, frame rate, viewer count)
+   - Use layout switching for scene changes
+   - Display Elements as overlays during the stream
+9. **End the stream:**
+   - Click **"Stop Streaming"** to end the broadcast
+   - Recording of the stream output processes automatically
+   - Review analytics in Admin > Dashboard
 
 ---
 
 ## Settings and Options
 
-### Registration Settings
+### Account Settings (Admin > Account)
 
-| Setting | Description |
-|---|---|
-| Email | Primary email for authentication and account ownership |
-| Password | Account password (managed by Base44 auth) |
-| SSO | Google SSO or Microsoft SSO (if configured by the organization, Business plan) |
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Organization Name | Display name for the account | User's name |
+| Owner Email | Primary account email | Registration email |
+| Timezone | Account timezone for scheduling | Browser timezone |
+| Language | UI language preference | English |
+| Notification Preferences | Email and in-app notification settings | All enabled |
 
-### Onboarding Settings
+### Session Defaults (Admin > Settings)
 
-| Setting | Description |
-|---|---|
-| Organization Name | Name of the organization (stored on Account entity) |
-| Default Room Name | Name for the first auto-created room |
-| Session Type Preference | Preferred default session type |
-| Brand Colors | Quick-set primary and accent colors (optional; detailed setup in Brand Kit) |
-
-### Setup Page Settings
-
-| Setting | Description | Persistence |
-|---|---|---|
-| Camera Device | Selected camera hardware | Persisted for future sessions |
-| Microphone Device | Selected microphone hardware | Persisted for future sessions |
-| Speaker Device | Selected audio output hardware | Persisted for future sessions |
-| Virtual Background | Background image or blur effect | Persisted for future sessions |
-| Display Name | Name shown to other participants | Persisted per user |
-| Join with Camera On | Whether camera is enabled on join | Per-session choice |
-| Join with Microphone On | Whether microphone is enabled on join | Per-session choice |
-
-### Room Creation Settings
-
-| Setting | Type | Default | Description |
-|---|---|---|---|
-| Room Name | Text | (required) | Display name for the room |
-| Room Type | Selector | `meeting` | Default session type: meeting, webinar, or livestream |
-| Max Participants | Number | Plan default | Override participant limit |
-| Description | Text | (empty) | Internal description |
-| Branding | Object | Account Brand Kit | Room-level branding overrides |
-| Template | Selector | None | Apply a Room Template |
-| Waiting Room | Toggle | Off | Enable waiting room (Business) |
-| Recording | Toggle | Off | Auto-record sessions |
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Default Session Type | Pre-selected session type for new sessions | Meeting |
+| Auto-Record | Automatically start recording when sessions begin | Off |
+| Waiting Room | Enable waiting room for all sessions | Off |
+| Chat Enabled | Enable chat in all sessions | On |
+| Participant Notifications | Notify when participants join/leave | On |
 
 ---
 
 ## Troubleshooting
 
-### Registration and Login Issues
+### Common Getting-Started Issues
 
-| Issue | Cause | Solution |
-|---|---|---|
-| Registration form does not submit | Missing required fields or validation error | Ensure email is valid format and password meets requirements |
-| "User already registered" error | Email already has an account | Use login instead of register; or use password reset if forgotten |
-| Registration succeeds but no redirect | Missing `fromUrl` or `appId` parameter | Verify the registration URL contains all required application parameters |
-| SSO login fails | SSO integration not configured | SSO requires Business plan with Google SSO or Microsoft SSO integration configured in Admin > Integrations |
-| "auth_required" error (403) | No valid authentication token | Re-authenticate; navigate to login page |
-| "user_not_registered" error (403) | Token is valid but user has no R-Link account | Complete the registration process |
-| 401 Unauthorized error | Token has expired | Re-authenticate to obtain a fresh token |
+| Issue | Cause | Resolution |
+|-------|-------|------------|
+| Registration email not received | Email in spam, incorrect email entered | Check spam folder; try re-registering with correct email |
+| Google/Microsoft SSO fails | Pop-up blocker, third-party cookies disabled | Disable pop-up blocker; enable third-party cookies for SSO domain |
+| Onboarding not loading | Network issue, browser incompatibility | Try refreshing; use Chrome, Firefox, or Edge (latest version) |
+| Practice session in onboarding has no video | Camera permission not granted | Grant camera permission when prompted by browser |
+| "Create Room" button disabled | At room limit (1 on Basic) | Delete existing room or upgrade to Business |
+| Cannot select Webinar or Live Stream type | Basic plan only supports Meeting | Upgrade to Business plan |
+| Studio page is blank | WebRTC not supported, JavaScript disabled | Use a modern browser; enable JavaScript |
+| Setup page shows no devices | Browser has not been granted media permissions | Click "Allow" on browser permission prompt; check site settings |
+| Account not created after registration | Registration did not complete successfully | Try registering again; check for error messages |
+| Brand kit changes not applied | Browser cache, session not reloaded | Hard refresh (Ctrl+Shift+R); exit and re-enter session |
 
-### Onboarding Issues
-
-| Issue | Cause | Solution |
-|---|---|---|
-| Onboarding page is blank | JavaScript error or missing app parameters | Check browser console for errors; verify URL parameters |
-| Account not created after onboarding | Auto-creation failed | Try refreshing the page; if persists, log out and log back in to trigger auto-creation |
-| Brand Kit not created | Account creation incomplete | Navigate to Admin > Brand Kit; if empty, the Brand Kit auto-creation may need to be triggered by re-saving account settings |
-| Stuck on onboarding step | UI state error | Refresh the page; clear browser cache; try in an incognito window |
-
-### Room Creation Issues
-
-| Issue | Cause | Solution |
-|---|---|---|
-| "Room limit reached" | `active_rooms >= max_rooms` for current plan | Delete or deactivate unused rooms; or upgrade plan |
-| Cannot select Webinar or Live Stream type | Basic plan | These session types require the Business plan |
-| Room creation form does not appear | Insufficient permissions | Check user role; Room creation may require specific permissions |
-| Room saves but does not appear in list | Data fetch delay | Refresh the Rooms tab; check TanStack Query cache |
-
-### Setup Page Issues
-
-| Issue | Cause | Solution |
-|---|---|---|
-| Camera not detected | Browser permissions denied or hardware issue | Grant camera permission in browser settings; check if camera is in use by another application |
-| Microphone not detected | Browser permissions denied or hardware issue | Grant microphone permission in browser settings; check system audio settings |
-| "getUserMedia is not supported" | Browser does not support WebRTC | Use a modern browser (Chrome, Firefox, Edge, Safari) |
-| Virtual background not rendering | WebGL or hardware acceleration disabled | Enable hardware acceleration in browser settings; some older hardware may not support virtual backgrounds |
-| Setup page does not load | Missing URL parameters | Verify Studio URL contains `appId`, `serverUrl`, and valid `access_token` |
-
-### Studio Launch Issues
-
-| Issue | Cause | Solution |
-|---|---|---|
-| Studio shows "Not authenticated" | Token expired or invalid | Re-authenticate; check that `access_token` in URL or `localStorage` is valid |
-| Studio loads but no video | Camera permissions not granted | Check browser permission bar; ensure camera is selected in Setup |
-| "Room not found" error | Invalid room ID or room deleted | Verify room exists in Admin > Rooms; check URL parameters |
-| Studio is very slow | Network bandwidth insufficient | Check internet speed; close other bandwidth-heavy applications; use wired connection if possible |
+For comprehensive troubleshooting, see [31-troubleshooting.md](31-troubleshooting.md).
 
 ---
 
 ## FAQ
 
-**Q: Do I need a credit card to sign up?**
-A: Initial signup creates a Basic plan account. Payment information is required when upgrading to Business or if the Basic plan requires payment.
+**Q: Do I need to complete onboarding to use R-Link?**
+A: No. Onboarding can be skipped by clicking "Skip" at any step. However, completing it is recommended to understand the platform's capabilities.
 
-**Q: Can I skip the onboarding flow?**
-A: The onboarding flow runs once after first registration. If you navigate away, your account and Brand Kit are still auto-created with defaults. You can configure everything later via the Admin portal.
+**Q: Can I redo the onboarding later?**
+A: Yes. Navigate directly to `/Onboarding` at any time to repeat the guided flow.
 
-**Q: How do I change my session type after creating a room?**
-A: You can either edit the room's default type in Admin > Rooms, or override it at launch time by adding `?type=meeting`, `?type=webinar`, or `?type=livestream` to the Studio URL.
+**Q: Is the practice session in onboarding private?**
+A: Yes. The practice session at `/Studio?type=meeting&name=Practice` is a solo session. No other participants can join.
 
-**Q: Can I test my camera and microphone before a session?**
-A: Yes. The Setup page (`/setup`) allows you to test camera, microphone, and speaker before entering the Studio. The VirtualBackgroundTest page (`/virtual-background-test`) is also available for testing virtual backgrounds specifically.
+**Q: What happens if I don't create a room?**
+A: You can still launch sessions directly via Studio URL, but rooms provide organizational structure, saved settings, and template support.
 
-**Q: What happens if I close the browser during a session?**
-A: The session continues for other participants. If you were the only host, the session may end automatically depending on room settings. Rejoin by navigating back to the Studio URL.
+**Q: Can I change my account's email address?**
+A: The owner email is set during registration. Contact support to request an email change.
 
-**Q: Can multiple people host a session?**
-A: Yes. Team members with appropriate roles can be co-hosts. In Meeting mode, all participants are interactive. In Webinar mode, multiple speakers can be on stage. In Live Stream mode, multiple crew members can manage production.
+**Q: How long does account creation take?**
+A: Account and Brand Kit creation are automatic and instant upon registration completion.
 
-**Q: How do participants join my session?**
-A: Share the room's Viewer URL (`/viewer`) with participants. For webinars, participants can register via the Event Landing page and receive a join link.
+**Q: Can I use R-Link on mobile?**
+A: R-Link is a web application that works in mobile browsers. The UI is responsive with sidebar auto-collapse at 768px screen width. However, full functionality is best experienced on desktop.
 
-**Q: Is there a mobile app?**
-A: R-Link is a web-based platform accessible via mobile browsers. The interface is responsive and sidebars auto-collapse on screens narrower than 768px. There is no native mobile app.
+**Q: What if my camera or microphone isn't detected?**
+A: Check that the device is connected, not in use by another application, and that browser permissions are granted. See the Setup page troubleshooting section above.
 
-**Q: How many rooms can I create?**
-A: Basic plan: 1 room. Business plan: 5 rooms (can run in parallel).
+**Q: Can I join a session without a camera?**
+A: Yes. You can disable your camera on the Setup page and join with audio only.
 
-**Q: Can I use R-Link without a camera?**
-A: Yes. You can join sessions with camera off and participate via audio only, screen sharing, or chat. The Setup page allows you to toggle camera off before joining.
+**Q: What is the fromUrl parameter?**
+A: `fromUrl` is a URL parameter that tells R-Link where to redirect the user after authentication. This is useful when a user clicks a session link while not logged in -- after logging in, they are redirected back to the session.
 
 ---
 
 ## Known Limitations
 
-1. **Single Onboarding Flow**: The onboarding wizard runs only once after registration. If a user needs to re-run it, there is no built-in mechanism; they must manually configure settings via the Admin portal.
-2. **Account Auto-Creation Timing**: Account auto-creation depends on detecting no existing accounts. In rare cases of race conditions or network issues, auto-creation may fail silently. The user should refresh or log out and back in.
-3. **Default Limits vs. Plan Limits**: The default Account entity sets `max_rooms: 5` regardless of plan. The actual enforcement depends on the `plan` field. Basic plan users see enforcement at 1 room even though the default `max_rooms` is 5.
-4. **Setup Page Device Persistence**: Device selections are persisted locally in the browser. Using a different browser or clearing browser data resets these preferences.
-5. **Session Type URL Override**: The `?type=` URL parameter overrides the room's default session type. If a Basic plan user manually adds `?type=webinar` to the URL, the system should block access, but the URL parameter itself is not validated until Studio loads.
-6. **No Offline Mode**: R-Link requires an active internet connection. There is no offline functionality.
-7. **Browser Compatibility**: Full functionality requires a browser supporting WebRTC and `getUserMedia`. Internet Explorer and very old browser versions are not supported.
+1. **Single onboarding flow:** There is only one onboarding path for all users regardless of plan. Business features shown during onboarding are informational only for Basic users.
+2. **Practice session limitation:** The onboarding practice session is meeting-type only. Users cannot practice webinar or live stream workflows during onboarding.
+3. **No guided room creation in onboarding:** Onboarding introduces features but does not walk through room creation step-by-step. Users create rooms after onboarding via Admin > Rooms.
+4. **SSO requires pop-ups:** Google and Microsoft SSO use pop-up windows for OAuth. Pop-up blockers must be disabled for the R-Link domain.
+5. **Device persistence uses localStorage:** Saved device preferences are browser-specific. Using a different browser or clearing localStorage resets device selections.
+6. **No multi-account support:** A single browser session supports one R-Link account. To switch accounts, the user must log out and log in with different credentials.
+7. **Onboarding completion flag:** Once `onboarding_completed` is set to `true`, the onboarding flow does not automatically appear again. Direct URL navigation is required to revisit.
+8. **Default brand kit limitations:** The auto-created brand kit uses generic defaults. Users should customize the brand kit before hosting public-facing sessions.
+9. **Setup page device list:** The device list refreshes on page load but does not auto-detect new devices plugged in after the page loads. A page refresh is required.
+10. **Session type cannot be changed mid-session:** Once a session is launched as a Meeting, Webinar, or Live Stream, the type cannot be changed without ending and restarting.
 
 ---
 
 ## Plan Requirements
 
-| Getting Started Feature | Basic | Business |
-|---|---|---|
-| Registration | Yes | Yes |
-| Onboarding | Yes | Yes |
-| Account Auto-Creation | Yes | Yes |
-| Brand Kit Auto-Creation | Yes | Yes |
-| Room Creation | 1 room | 5 rooms |
-| Meeting Session Type | Yes | Yes |
-| Webinar Session Type | No | Yes |
-| Live Stream Session Type | No | Yes |
-| Setup Page | Yes | Yes |
-| Studio Access | Yes | Yes |
-| SSO Login | No | Yes (with integration configured) |
+| Feature | Plan |
+|---------|------|
+| Registration and account creation | Free (all plans) |
+| Onboarding flow | Basic+ |
+| Room creation (1 room) | Basic+ |
+| Meeting session type | Basic+ |
+| Webinar session type | Business |
+| Live Stream session type | Business |
+| Brand Kit (basic customization) | Basic+ |
+| Brand Kit (full suite) | Business |
+| All Elements during onboarding demo | View only (actual use requires appropriate plan) |
 
 ---
 
 ## Related Documents
 
-- [00-index.md](./00-index.md) -- Master index and question routing
-- [01-platform-overview.md](./01-platform-overview.md) -- Platform architecture, glossary, and navigation map
-- [02-plans-and-pricing.md](./02-plans-and-pricing.md) -- Plan comparison, billing, and usage limits
-- [31-troubleshooting.md](./31-troubleshooting.md) -- Comprehensive error diagnosis and resolution
+- [00-index.md](00-index.md) -- Master index and question routing
+- [01-platform-overview.md](01-platform-overview.md) -- Platform architecture and feature reference
+- [02-plans-and-pricing.md](02-plans-and-pricing.md) -- Plans, pricing, and billing
+- [31-troubleshooting.md](31-troubleshooting.md) -- Troubleshooting, diagnostics, and known limitations

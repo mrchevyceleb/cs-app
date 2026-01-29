@@ -1,196 +1,226 @@
-# Troubleshooting
+# R-Link Troubleshooting & Diagnostics
 
 ## Overview
 
-This document is the comprehensive troubleshooting reference for the R-Link platform. It covers authentication errors, token management, browser and network requirements, common UI issues, room loading failures, integration connection problems, recording issues, stream health problems, permission denied errors, account creation failures, and known platform limitations. Each section includes specific error messages, error codes, root causes, and step-by-step resolution procedures.
+This document is the comprehensive troubleshooting reference for the R-Link platform. It covers authentication errors, token management, browser and network requirements, common UI issues, room loading errors, integration connection failures, recording problems, stream health diagnostics, permission denied errors with a full tab access matrix, account creation failures, diagnostic procedures, localStorage key reference, frequently asked questions, and known limitations.
 
-When using this document, match the customer's reported symptom or error message to the appropriate section, follow the diagnostic steps, and apply the recommended solution. If no documented solution resolves the issue, follow the escalation procedures in [00-index.md](./00-index.md).
+Use the table of contents below to jump to the relevant section, or refer to the question routing table in [00-index.md](00-index.md) to find the right starting point.
+
+---
+
+## Table of Contents
+
+1. [Authentication Errors](#authentication-errors)
+2. [Token Management](#token-management)
+3. [Browser Requirements](#browser-requirements)
+4. [Network Requirements](#network-requirements)
+5. [Common UI Issues](#common-ui-issues)
+6. [Room Loading Errors](#room-loading-errors)
+7. [Integration Connection Failures](#integration-connection-failures)
+8. [Recording Issues](#recording-issues)
+9. [Stream Health Problems](#stream-health-problems)
+10. [Permission Denied Errors](#permission-denied-errors)
+11. [Account Creation Failures](#account-creation-failures)
+12. [Diagnostic Procedures](#diagnostic-procedures)
+13. [localStorage Keys Reference](#localstorage-keys-reference)
+14. [FAQ](#faq)
+15. [Known Limitations](#known-limitations)
 
 ---
 
 ## Authentication Errors
 
-### 401 Unauthorized -- Expired Token
+### Error: 401 Unauthorized (Expired Token)
 
-**Error**: HTTP 401 response from Base44 API calls.
+**Symptom:**
+- User is suddenly logged out mid-session or on page load
+- API calls return 401 status code
+- Console shows "Unauthorized" or "Token expired" messages
+- User sees a blank page or is redirected to the login screen unexpectedly
 
-**Symptom**: The user sees a blank page, "Session expired" message, or is redirected to a login page unexpectedly. API calls fail silently or show authorization errors in the browser console.
+**Cause:**
+- The `access_token` stored in localStorage has expired
+- JWT tokens have a limited lifespan (set by the Base44 platform configuration)
+- The token was issued in a previous session and is no longer valid
 
-**Root Cause**: The `access_token` stored in `localStorage` (key: `base44_access_token`) or passed via URL parameter has expired. Base44 tokens have a limited lifetime.
+**Resolution:**
+1. **Automatic:** R-Link should redirect to the login page automatically via `navigateToLogin()`
+2. **Manual:** If not redirected, navigate to the login page directly
+3. **Force clear:** Add `?clear_access_token=true` to the URL to force token removal and re-authentication
+4. **Clear localStorage:** Open browser DevTools (F12) > Application > Local Storage > clear the `access_token` entry
+5. **Re-login:** Enter credentials to obtain a fresh token
 
-**Diagnosis Steps**:
-1. Open browser developer tools (F12)
-2. Go to the Network tab
-3. Look for API requests returning `401` status
-4. Check the Console tab for authentication-related error messages
-5. Go to Application > Local Storage and check for the `base44_access_token` key
-
-**Resolution**:
-1. Redirect the user to the login page using `navigateToLogin()` from `AuthContext`
-2. The user re-authenticates through Base44
-3. A new `access_token` is issued and stored
-4. The user is redirected back to their original page (via `fromUrl` parameter)
-
-**Customer-Facing Instructions**:
-"Your session has expired. Please log out and log back in. If the issue persists, try clearing your browser cache and cookies, then log in again."
-
----
-
-### 403 Forbidden -- auth_required
-
-**Error**: HTTP 403 with reason `auth_required`.
-
-**Symptom**: The user encounters an "Access Denied" or "Authentication Required" message when trying to access a page or feature.
-
-**Root Cause**: The request was made without any authentication token. The user is not logged in, or the token was not included in the request.
-
-**Diagnosis Steps**:
-1. Check if the URL contains an `access_token` parameter
-2. Check `localStorage` for `base44_access_token`
-3. Verify `AuthContext.isAuthenticated` is `true`
-4. Check if `AuthContext.isLoadingAuth` is stuck on `true`
-
-**Resolution**:
-1. If no token exists: Direct the user to log in
-2. If token exists but is not being sent: Check that the Base44 SDK is properly initialized with the token
-3. If `isLoadingAuth` is stuck: Refresh the page; if persists, clear `localStorage` and re-authenticate
-
-**Customer-Facing Instructions**:
-"You need to be logged in to access this feature. Please click 'Log In' or navigate to the login page. If you believe you are already logged in, try refreshing the page."
+**Prevention:**
+- Avoid keeping R-Link tabs open for extended periods without interaction
+- If using shared/public computers, always log out explicitly
 
 ---
 
-### 403 Forbidden -- user_not_registered
+### Error: 403 auth_required
 
-**Error**: HTTP 403 with reason `user_not_registered`.
+**Symptom:**
+- User sees a login prompt or blank page when navigating to an authenticated page
+- Console shows 403 error with `auth_required` message
+- Occurs on pages like `/Admin`, `/Studio`, `/Home`, `/MeetingNotes`, `/Setup`
 
-**Symptom**: The user can authenticate (has a valid token) but receives an error indicating they are not registered in the R-Link system.
+**Cause:**
+- No `access_token` is present in localStorage or the URL
+- The user has not authenticated at all
+- The token was cleared by another process (browser cleanup, extension, etc.)
+- The user navigated to an authenticated page via a direct URL without being logged in
 
-**Root Cause**: The Base44 user account exists, but the user has not completed R-Link registration. This can happen if the user authenticated via Base44 directly without going through the R-Link registration flow.
+**Resolution:**
+1. Navigate to the login page and authenticate with email/password or SSO
+2. If using a shared link, ensure the link includes authentication context or the user is already logged in
+3. Check that browser extensions (privacy tools, cookie managers) are not clearing localStorage
+4. Verify that the R-Link domain is allowed to use localStorage in browser settings
 
-**Diagnosis Steps**:
-1. Confirm the user has a valid `access_token` (token is present and not expired)
-2. Check if an Account entity exists for this user
-3. Verify the user completed the onboarding flow
+**Diagnostic Check:**
+```
+Open DevTools (F12) > Console > Type:
+localStorage.getItem('access_token')
+```
+If this returns `null`, the user has no active session.
 
-**Resolution**:
-1. Direct the user to the R-Link registration page (`/register`)
-2. Have them complete the registration and onboarding flow
-3. Account auto-creation should trigger during onboarding
-4. If the issue persists after registration, escalate to support
+---
 
-**Customer-Facing Instructions**:
-"Your authentication is valid, but you haven't completed R-Link registration. Please visit the registration page to set up your account. If you've already registered and still see this error, please contact support."
+### Error: 403 user_not_registered
+
+**Symptom:**
+- User has a valid token (SSO login succeeded) but cannot access R-Link
+- Error message indicates the user is not registered
+- Console shows 403 with `user_not_registered` type
+
+**Cause:**
+- The user authenticated via Google or Microsoft SSO but does not have an R-Link account
+- The Base44 auth system recognizes the SSO identity but R-Link's User entity has no matching record
+- The account creation process after SSO did not complete (network interruption, browser closed)
+
+**Resolution:**
+1. Navigate to `/Register` and complete the registration flow using the same SSO provider
+2. If the user believes they already registered, check if they used a different SSO provider or email address
+3. Contact support if the issue persists after re-registering
+4. Admin can check if the User entity exists by email in the Base44 admin console
+
+**Edge Case:**
+- If a team member was invited but has not accepted the invitation, they may see this error. They must complete registration via the invitation link first.
+
+---
+
+### Token Refresh and Session Recovery
+
+**Symptom:**
+- Intermittent 401 errors followed by successful requests
+- Brief UI flickers or loading states during active use
+
+**Cause:**
+- The token is nearing expiration and the SDK is attempting to refresh it
+- Network latency is causing temporary failures during the refresh process
+
+**Resolution:**
+1. These are typically transient issues. Wait a few seconds for the refresh to complete.
+2. If persistent, perform a hard refresh (Ctrl+Shift+R) to force a full page reload.
+3. If still failing, log out and log back in to get a completely new token.
 
 ---
 
 ## Token Management
 
-### Token Storage and Lifecycle
+### How Tokens Work in R-Link
 
-| Aspect | Detail |
-|---|---|
-| **Token Source** | Provided via URL parameter `access_token` (or `token`) after authentication |
-| **Storage Location** | `localStorage` key: `base44_access_token` |
-| **Token Format** | JWT (JSON Web Token) issued by Base44 |
-| **Expiration** | Tokens expire after a set period (managed by Base44) |
-| **Refresh** | No automatic refresh; user must re-authenticate when token expires |
-| **Logout** | Calling `AuthContext.logout()` clears the token from `localStorage` |
+1. **Token Acquisition:** After authentication, the Base44 SDK returns an `access_token` (JWT)
+2. **Token Delivery:** The token is passed via URL fragment (`#access_token=...`) or query parameter
+3. **Token Storage:** R-Link extracts the token from the URL and stores it in `localStorage`
+4. **Token Usage:** All API requests include the token via the Base44 SDK's request headers
+5. **Token Expiration:** Tokens have a limited lifespan; expired tokens trigger re-authentication
 
-### Token Persistence Flow
+### Token-Related URL Parameters
 
-1. User authenticates via Base44 login/registration
-2. `access_token` is included in the redirect URL
-3. R-Link frontend extracts `access_token` from URL parameters
-4. Token is stored in `localStorage` as `base44_access_token`
-5. All subsequent Base44 SDK calls use this stored token
-6. When token expires, API calls return 401 and user must re-authenticate
+| Parameter | Usage | Description |
+|-----------|-------|-------------|
+| `access_token` | URL fragment | The JWT authentication token delivered after login |
+| `clear_access_token=true` | Query parameter | Forces R-Link to clear the stored token and redirect to login |
+| `fromUrl` | Query parameter | URL to return to after re-authentication |
 
-### Clearing Tokens -- clear_access_token Parameter
+### Forcing Re-Authentication
 
-**Parameter**: `?clear_access_token=true`
+When a customer reports persistent auth issues, instruct them to:
 
-**Purpose**: Forces the frontend to delete the stored access token from `localStorage` and reset the authentication state. This is a diagnostic and recovery mechanism.
+1. **Method 1 -- URL Parameter:**
+   - Add `?clear_access_token=true` to any R-Link URL
+   - Example: `https://app.r-link.com/?clear_access_token=true`
+   - This clears the token and redirects to login
 
-**When to Use**:
-- User is stuck in a broken authentication state
-- Token in `localStorage` is corrupted or belongs to a different user
-- After account switching or SSO issues
-- As a first troubleshooting step for persistent auth errors
+2. **Method 2 -- Manual localStorage Clear:**
+   - Open DevTools (F12)
+   - Go to Application > Local Storage > select the R-Link domain
+   - Find and delete the `access_token` key
+   - Refresh the page
 
-**How to Use**:
-Add `?clear_access_token=true` to any R-Link URL. For example:
-```
-https://app.rlink.com/?clear_access_token=true
-```
+3. **Method 3 -- Full Clear:**
+   - Open DevTools (F12)
+   - Go to Application > Local Storage > select the R-Link domain
+   - Click "Clear All" to remove all R-Link localStorage data
+   - Note: This also clears device preferences and other local settings
+   - Refresh the page and log in again
 
-**What Happens**:
-1. The frontend detects the `clear_access_token=true` parameter
-2. The `base44_access_token` key is removed from `localStorage`
-3. The user's authentication state is reset (`isAuthenticated` becomes `false`)
-4. The user is redirected to the login page
-5. After re-authentication, a fresh token is issued
+### Token Security Considerations
 
-**Customer-Facing Instructions**:
-"To reset your login session, add `?clear_access_token=true` to the end of the R-Link URL in your browser's address bar, then press Enter. This will log you out and you can log back in with a fresh session."
+- Tokens should not be shared or exposed in URLs sent to others
+- If a user suspects token compromise, they should log out immediately and change their password
+- The `access_token` in the URL fragment is not sent to the server in HTTP requests (fragments are client-side only)
+- Advise users not to bookmark URLs that contain `access_token` fragments
 
 ---
 
 ## Browser Requirements
 
-### Minimum Browser Requirements
+### Minimum Browser Versions
 
-| Requirement | Detail |
-|---|---|
-| **WebRTC Support** | Required for all video/audio functionality |
-| **getUserMedia API** | Required for camera and microphone access |
-| **JavaScript** | Must be enabled |
-| **LocalStorage** | Must be enabled (for token persistence) |
-| **Cookies** | May be required for Base44 authentication |
-| **WebGL** | Required for virtual backgrounds |
-| **Hardware Acceleration** | Recommended for virtual backgrounds and video processing |
+| Browser | Minimum Version | WebRTC Support | Recommended |
+|---------|----------------|---------------|-------------|
+| Google Chrome | 72+ | Full | Yes (primary) |
+| Mozilla Firefox | 60+ | Full | Yes |
+| Microsoft Edge (Chromium) | 79+ | Full | Yes |
+| Safari | 14.1+ | Partial (limited SFU) | Conditional |
+| Safari iOS | 14.5+ | Partial | Conditional |
+| Chrome Android | 72+ | Full | Yes |
+| Opera | 60+ | Full | Yes |
 
-### Supported Browsers
+### Required Browser APIs
 
-| Browser | Version | Support Level |
-|---|---|---|
-| Google Chrome | 80+ | Full support (recommended) |
-| Mozilla Firefox | 78+ | Full support |
-| Microsoft Edge | 80+ (Chromium) | Full support |
-| Safari | 14+ | Supported (some WebRTC limitations) |
-| Internet Explorer | Any | Not supported |
-| Opera | 67+ | Supported |
+| API | Purpose | Check Method |
+|-----|---------|-------------|
+| WebRTC (`RTCPeerConnection`) | Real-time video/audio communication | `typeof RTCPeerConnection !== 'undefined'` |
+| `getUserMedia` | Camera and microphone access | `navigator.mediaDevices && navigator.mediaDevices.getUserMedia` |
+| `getDisplayMedia` | Screen sharing | `navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia` |
+| localStorage | Token storage, preferences | `typeof localStorage !== 'undefined'` |
+| WebSocket | Real-time data (chat, events) | `typeof WebSocket !== 'undefined'` |
+| Fetch API | HTTP requests | `typeof fetch !== 'undefined'` |
+| ES6+ (Promises, async/await) | Modern JavaScript features | Implied by browser version |
 
 ### Browser-Specific Issues
 
-| Issue | Browser | Cause | Solution |
-|---|---|---|---|
-| Camera/mic prompt never appears | Safari | Requires user gesture before `getUserMedia` | Click "Allow" in Safari permissions; ensure no other app is using the camera |
-| Virtual background not working | Any (older hardware) | WebGL not available or hardware too slow | Disable virtual background; update graphics drivers; use Chrome |
-| Audio echo or feedback | All | Speaker audio captured by microphone | Use headphones; enable echo cancellation in browser settings |
-| Screen share shows black screen | Firefox | Specific Firefox permission model | Grant "Entire Screen" permission; try Chrome if issue persists |
-| Video freezes intermittently | Safari | Safari WebRTC implementation differences | Switch to Chrome or Firefox for best experience |
+| Browser | Known Issue | Workaround |
+|---------|------------|------------|
+| Safari | Limited SFU support; some layouts may not render correctly | Use Chrome or Firefox for best experience |
+| Safari | getUserMedia may require HTTPS | Ensure R-Link is accessed via HTTPS |
+| Firefox | Some WebRTC stats APIs differ from Chrome | Monitoring dashboards may show less detail |
+| Edge (Legacy/non-Chromium) | Not supported | Upgrade to Chromium-based Edge |
+| Internet Explorer | Not supported at all | Use any modern browser |
+| Brave | Shield features may block WebRTC | Disable Shields for the R-Link domain or allow WebRTC in settings |
+| Any browser (Incognito/Private) | localStorage may be restricted | Use normal browsing mode |
 
-### Camera and Microphone Permissions
+### Hardware Requirements
 
-**Checking permissions:**
-1. Click the lock/info icon in the browser address bar
-2. Check Camera and Microphone permissions
-3. Ensure both are set to "Allow"
-
-**Resetting permissions:**
-1. Open browser settings
-2. Navigate to Privacy/Security > Site Settings
-3. Find the R-Link domain
-4. Reset Camera and Microphone permissions to "Ask" or "Allow"
-5. Refresh the R-Link page
-
-**If permissions are granted but devices are not detected:**
-1. Check that the device is physically connected and powered on
-2. Verify the device is not in use by another application (Zoom, Teams, etc.)
-3. Check operating system privacy settings (Windows Settings > Privacy > Camera/Microphone)
-4. Try a different USB port or device
-5. Restart the browser
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| CPU | Dual-core 2.0 GHz | Quad-core 2.5 GHz+ |
+| RAM | 4 GB | 8 GB+ |
+| Camera | 720p | 1080p |
+| Microphone | Built-in or USB | USB condenser or headset |
+| Internet | 2 Mbps up/down | 5 Mbps+ up/down |
+| Display | 1280x720 | 1920x1080+ |
 
 ---
 
@@ -198,64 +228,128 @@ https://app.rlink.com/?clear_access_token=true
 
 ### Bandwidth Requirements
 
-| Activity | Minimum Download | Minimum Upload | Recommended |
-|---|---|---|---|
-| Audio-only meeting | 100 Kbps | 100 Kbps | 500 Kbps both |
-| Video meeting (SD) | 1 Mbps | 1 Mbps | 2 Mbps both |
-| Video meeting (HD) | 2.5 Mbps | 2.5 Mbps | 5 Mbps both |
-| Screen sharing (receiving) | 1.5 Mbps | -- | 3 Mbps |
-| Screen sharing (sending) | -- | 1.5 Mbps | 3 Mbps |
-| Live streaming (RTMP output) | -- | 4 Mbps | 8 Mbps |
-| Webinar (host) | 2.5 Mbps | 2.5 Mbps | 5 Mbps both |
-| Webinar (attendee) | 2 Mbps | 0.5 Mbps | 3 Mbps / 1 Mbps |
+| Activity | Minimum Upload | Minimum Download | Recommended |
+|----------|---------------|-----------------|-------------|
+| Audio only | 100 Kbps | 100 Kbps | 256 Kbps |
+| Video (720p) | 1.5 Mbps | 1.5 Mbps | 3 Mbps |
+| Video (1080p) | 3 Mbps | 3 Mbps | 5 Mbps |
+| Screen sharing | 1 Mbps | 1 Mbps | 3 Mbps |
+| RTMP streaming | 4 Mbps upload | N/A | 6+ Mbps upload |
+| Large meeting (20+ participants) | 2 Mbps | 4 Mbps | 8+ Mbps |
 
-### Network Configuration
+### Port and Protocol Requirements
 
-| Requirement | Detail |
-|---|---|
-| **Protocol** | HTTPS (port 443) for web traffic |
-| **WebRTC** | UDP ports for media (varies by network) |
-| **TURN/STUN** | May be needed for restrictive firewalls |
-| **RTMP** | Port 1935 for live streaming output (Business plan) |
+| Protocol | Ports | Purpose |
+|----------|-------|---------|
+| HTTPS | 443 | Web application, API calls, signaling |
+| WebSocket (WSS) | 443 | Real-time data (chat, events, presence) |
+| UDP | 10000-60000 (dynamic) | WebRTC media streams (audio/video) |
+| TCP | 443 (fallback) | WebRTC TURN relay (when UDP is blocked) |
+| RTMP | 1935 | Live streaming output to external platforms |
+| RTMPS | 443 | Secure live streaming (encrypted RTMP over TLS) |
 
-### Network Troubleshooting
+### Firewall and Proxy Considerations
 
-| Symptom | Likely Cause | Solution |
-|---|---|---|
-| "Unable to connect" on Studio load | Firewall blocking WebRTC | Check that UDP traffic is allowed; configure TURN server if behind strict firewall |
-| Audio cuts in and out | Insufficient bandwidth or packet loss | Switch to audio-only; close other applications; use wired connection |
-| Video is pixelated or frozen | Low bandwidth | Reduce video quality; turn off HD; close other bandwidth-heavy applications |
-| Stream drops mid-session | Upload bandwidth insufficient or unstable | Use wired ethernet; ensure minimum 4 Mbps sustained upload for streaming |
-| High latency (delay in audio/video) | Network congestion or geographic distance | Use wired connection; reduce number of active video feeds; check ISP performance |
-| Screen share is laggy | Upload bandwidth insufficient | Reduce screen share resolution; close unnecessary applications on shared screen |
+| Environment | Common Issue | Resolution |
+|------------|--------------|------------|
+| Corporate firewall | UDP ports blocked, WebRTC cannot establish peer connections | Configure firewall to allow UDP 10000-60000 or use TURN relay (TCP 443 fallback) |
+| Proxy server | WebSocket connections blocked | Whitelist the R-Link domain and Base44 server domain |
+| VPN | High latency, packet loss on UDP streams | Use split tunneling to exclude R-Link traffic from VPN |
+| Content filter | R-Link domain categorized as "streaming" and blocked | Request domain whitelisting from IT department |
+| NAT (Symmetric) | WebRTC peer connections fail | TURN server relay is used automatically; ensure TURN ports are accessible |
+
+### Network Diagnostic Steps
+
+1. **Check bandwidth:** Use speedtest.net or fast.com to verify upload/download speeds
+2. **Check WebRTC:** Visit `https://test.webrtc.org/` to verify WebRTC is functioning
+3. **Check WebSocket:** Open DevTools > Network > WS tab to see if WebSocket connections are established
+4. **Check UDP:** If video/audio fails, UDP may be blocked. Check with IT department.
+5. **Check DNS:** Ensure the R-Link domain and Base44 server domain resolve correctly
 
 ---
 
 ## Common UI Issues
 
-### Sidebar Auto-Collapse on Mobile
+### Sidebar Auto-Collapse (Screen Width < 768px)
 
-**Behavior**: On screens narrower than 768px, sidebars automatically collapse to maximize the content area.
+**Symptom:**
+- Admin sidebar disappears or collapses to a hamburger menu icon
+- User reports "missing navigation" or "can't find tabs"
 
-**Customer Report**: "The sidebar/panel disappeared" or "I can't find the controls"
+**Cause:**
+- The R-Link responsive design collapses the sidebar when the browser window width is less than 768px
+- This includes smaller laptop screens, tablets, and mobile devices
 
-**Resolution**: This is expected responsive behavior. On mobile or narrow windows:
-- Look for a hamburger menu icon or sidebar toggle button
-- Tap/click to expand the sidebar
-- The sidebar will overlay the content on small screens
-- Rotating to landscape orientation may provide more space
+**Resolution:**
+1. Click the hamburger menu icon (three horizontal lines) to expand the sidebar
+2. Resize the browser window to be wider than 768px
+3. On desktop, check if the browser is in a split-screen or snapped window mode that reduces width
 
-### Layout and Display Issues
+### Page Not Loading / White Screen
 
-| Issue | Cause | Solution |
-|---|---|---|
-| Page layout is broken/overlapping | Zoom level not at 100% | Reset browser zoom to 100% (Ctrl+0 or Cmd+0) |
-| Fonts appear wrong | Web fonts failed to load | Check network connectivity; refresh the page; clear browser cache |
-| Dark theme elements invisible | Browser forced dark mode overriding R-Link styles | Disable browser-level dark mode for the R-Link site |
-| Buttons not responding to clicks | JavaScript error | Open console (F12) for errors; refresh the page; clear cache |
-| Modal/popup not closing | UI state stuck | Press Escape key; refresh the page |
-| Admin tabs not loading | Data fetch failure | Check network; refresh; if specific tab fails, check permissions |
-| Empty state on Dashboard | No data yet (new account) | This is expected for new accounts; create rooms and run sessions to populate |
+**Symptom:**
+- Page shows a white/blank screen with no content
+- Spinner/loading indicator shows indefinitely
+
+**Cause:**
+- JavaScript error preventing React from rendering
+- Network failure blocking API calls
+- Authentication error (see Auth Errors section)
+- Browser extension interference
+
+**Resolution:**
+1. Open DevTools (F12) > Console to check for JavaScript errors
+2. Try hard refresh: Ctrl+Shift+R (or Cmd+Shift+R on Mac)
+3. Try in an incognito/private window to rule out extensions
+4. Clear browser cache for the R-Link domain
+5. Check network connectivity
+6. Verify the URL is correct and complete
+
+### Stale Data / UI Not Updating
+
+**Symptom:**
+- Changes made in one tab (e.g., creating a room) do not appear in another tab
+- Dashboard metrics appear outdated
+- Recently created entities are missing from lists
+
+**Cause:**
+- TanStack Query cache serving stale data
+- Network request failed silently
+- Real-time subscription disconnected
+
+**Resolution:**
+1. Hard refresh the page (Ctrl+Shift+R)
+2. Navigate away from and back to the affected tab
+3. Check the browser's Network tab for failed API requests
+4. If persistent, log out and log back in to reset all caches
+
+### Modal / Overlay Stuck
+
+**Symptom:**
+- A modal dialog or overlay is stuck on screen and cannot be dismissed
+- Background is darkened but clicking does not close the modal
+
+**Resolution:**
+1. Press the Escape key
+2. If Escape does not work, hard refresh the page
+3. Check if another modal is behind the visible one (layering issue)
+
+### Element Not Displaying in Session
+
+**Symptom:**
+- An Element (slide, poll, banner, etc.) is activated but not visible to participants
+
+**Cause:**
+- Element type requires Business plan (and account is on Basic)
+- Element content failed to load (broken URL, deleted file)
+- Layout does not support the Element overlay position
+- Browser blocking embedded content (for Website Overlay type)
+
+**Resolution:**
+1. Verify the Element type is available on the current plan
+2. Check the Element content URL is accessible
+3. Try a different layout that supports overlays
+4. For Website Overlays, ensure the target URL allows iframe embedding
 
 ---
 
@@ -263,46 +357,54 @@ https://app.rlink.com/?clear_access_token=true
 
 ### "Room Not Found"
 
-**Cause**: The room ID in the URL does not match any existing Room entity.
+**Symptom:**
+- Navigating to a room results in a "Room Not Found" or 404-like error
+- The room was previously accessible
 
-**Diagnosis**:
-1. Verify the room ID in the URL
-2. Check Admin > Rooms to confirm the room exists
-3. Confirm the room has not been deleted
+**Cause:**
+- Room was deleted or archived
+- Room ID or slug in the URL is incorrect
+- User does not have permission to access the room (role-based)
+- Room belongs to a different account
 
-**Resolution**:
-- If the room was deleted: Create a new room
-- If the URL is wrong: Correct the room ID in the URL
-- If the room should exist: Refresh the page; check for API errors in browser console
+**Resolution:**
+1. Verify the room exists in Admin > Rooms
+2. Check the URL for typos in the room ID or slug
+3. If the room was archived, it must be restored by an Admin or Owner
+4. If permission-related, contact the account Admin to verify role access
 
-### "Unable to Load Room"
+### "Room Limit Reached"
 
-**Cause**: API call to fetch room data failed.
+**Symptom:**
+- Cannot create a new room
+- "Create Room" button is disabled with an upgrade prompt
 
-**Diagnosis**:
-1. Check browser console (F12) for network errors
-2. Look for 401/403 responses (authentication issue)
-3. Check if Base44 services are accessible
+**Cause:**
+- Account has reached the maximum room limit for the current plan
+- Basic: 1 room maximum
+- Business: 5 rooms maximum
 
-**Resolution**:
-- 401 error: Re-authenticate (see Authentication Errors section)
-- 403 error: Check permissions (see Permission Denied section)
-- Network error: Check internet connection; try again in a few minutes
-- 500 error: Server-side issue; escalate to support
+**Resolution:**
+1. Delete or archive an existing room to free up a slot
+2. Upgrade from Basic to Business for more rooms
+3. If on Business and at 5 rooms, contact sales for enterprise options
 
-### Room Fails to Start Session
+### Room Fails to Load in Studio
 
-**Cause**: Session initialization failed.
+**Symptom:**
+- Studio page opens but room content does not load
+- Participants cannot see shared content or each other
 
-**Diagnosis**:
-1. Check the session type against the account's plan
-2. Verify the room is not already in an active session
-3. Check browser console for errors
+**Cause:**
+- WebRTC connection failure (network issue)
+- Room session has ended or was never started
+- Conflicting session in the same room
 
-**Resolution**:
-- Wrong plan for session type: Upgrade to Business for webinars/live streams
-- Room already active: Wait for current session to end, or end it manually
-- Browser error: Refresh and retry; clear cache if persistent
+**Resolution:**
+1. Check network connectivity (see Network Requirements)
+2. Verify the session is active (check Admin > Dashboard for active rooms)
+3. Try refreshing the Studio page
+4. End any conflicting sessions in the room and restart
 
 ---
 
@@ -310,391 +412,498 @@ https://app.rlink.com/?clear_access_token=true
 
 ### General Integration Troubleshooting
 
-| Step | Action |
-|---|---|
-| 1 | Verify Business plan (most integrations require Business) |
-| 2 | Navigate to Admin > Integrations |
-| 3 | Check the integration's connection status |
-| 4 | If disconnected, click "Connect" or "Reconnect" |
-| 5 | Complete the OAuth flow or enter API credentials |
-| 6 | Test the connection using the "Test" button if available |
-| 7 | Check browser console for specific error messages |
+**Step-by-step diagnostic for any integration failure:**
+
+1. **Verify plan:** Confirm the account is on the Business plan (most integrations require Business). SSO and Calendar integrations are available on Basic.
+2. **Check credentials:** Ensure the API key, client ID, or OAuth credentials are correct and not expired
+3. **Re-authenticate:** Disconnect and reconnect the integration in Admin > Integrations
+4. **Check permissions:** Some integrations require specific permissions (e.g., Salesforce API access, YouTube Live streaming enabled)
+5. **Check rate limits:** The external service may have rate-limited the R-Link connection
+6. **Check service status:** Verify the external service is not experiencing an outage
+7. **Clear cached credentials:** In Admin > Integrations, click "Disconnect" then "Connect" to start fresh
+8. **Check webhooks:** If using webhooks, verify the endpoint URL is accessible and returns 200 OK
 
 ### Integration-Specific Issues
 
-| Integration | Common Issue | Solution |
-|---|---|---|
-| **Google Calendar** | OAuth consent screen blocked | Ensure third-party cookies are enabled; try Chrome; complete Google consent |
-| **Outlook Calendar** | Microsoft permissions insufficient | Re-authorize with appropriate Microsoft permissions |
-| **Mailchimp** | API key rejected | Generate a new API key in Mailchimp; verify the key is for the correct account |
-| **SendGrid** | Emails not sending | Verify SendGrid API key; check sender authentication in SendGrid dashboard |
-| **Stripe** | Payment integration errors | Verify Stripe API keys (publishable and secret); check Stripe dashboard for errors |
-| **PayPal** | Callback URL mismatch | Verify PayPal return URLs match R-Link configuration |
-| **Google Drive** | File access denied | Re-authorize Google Drive; ensure sufficient Google Drive storage |
-| **Dropbox** | Upload failures | Check Dropbox storage quota; re-authorize if token expired |
-| **Salesforce** | Sync failures | Verify Salesforce API access; check field mappings; re-authorize OAuth |
-| **HubSpot** | Contact sync issues | Re-authorize HubSpot; check HubSpot API rate limits |
-| **YouTube Live** | Stream key rejected | Verify YouTube Live streaming is enabled on the YouTube channel; regenerate stream key |
-| **Facebook Live** | Permission denied | Re-authorize Facebook; ensure Facebook page has live streaming permission |
-| **Twitch** | Stream drops | Verify Twitch stream key; check Twitch server selection; ensure adequate upload bandwidth |
-| **LinkedIn Live** | Access not available | LinkedIn Live requires application approval from LinkedIn; verify account eligibility |
-| **Twilio** | SMS not sending | Verify Twilio Account SID and Auth Token; check Twilio balance; verify phone number format |
-| **Google SSO** | Login redirect fails | Verify Google OAuth client ID and redirect URIs in Google Cloud Console |
-| **Microsoft SSO** | Token exchange fails | Verify Azure AD application registration; check redirect URIs and client secret |
-| **Webhooks** | Events not received | Verify webhook URL is accessible (not behind firewall); check HTTPS requirement; verify endpoint returns 200 |
-
-### OAuth Flow Failures
-
-**Common Causes**:
-1. Third-party cookies blocked (required for OAuth popups)
-2. Popup blocker preventing the authorization window
-3. OAuth redirect URI mismatch in the third-party service configuration
-4. Expired OAuth refresh token requiring re-authorization
-
-**Resolution Steps**:
-1. Enable third-party cookies or add an exception for the integration's domain
-2. Allow popups from the R-Link domain
-3. Clear browser cache and try again
-4. If re-authorization fails, disconnect the integration completely and reconnect from scratch
+| Integration | Common Issue | Resolution |
+|------------|-------------|------------|
+| Mailchimp | "Invalid API Key" | Regenerate API key in Mailchimp dashboard; ensure the key matches the data center (e.g., `us1`) |
+| SendGrid | Emails not sending | Verify sender identity is verified in SendGrid; check API key permissions |
+| Stripe | Payment page not loading | Verify publishable and secret keys are correct; check Stripe dashboard for blocked payments |
+| PayPal | Redirect loop during payment | Verify return URLs are configured correctly in PayPal developer settings |
+| Google Drive | "Access Denied" | Re-authorize with an account that has Google Drive access; check sharing permissions |
+| Dropbox | Upload fails | Check Dropbox storage limits; verify app permissions in Dropbox settings |
+| Google SSO | Pop-up blocked | Disable pop-up blocker for R-Link domain; allow third-party cookies |
+| Microsoft SSO | "Admin Consent Required" | Azure AD admin must grant consent for the R-Link application |
+| Salesforce | "Insufficient Permissions" | Verify Salesforce user has API access enabled and correct profile permissions |
+| HubSpot | Contacts not syncing | Check HubSpot API key permissions; verify contact properties match |
+| YouTube Live | "Stream key invalid" | Regenerate stream key in YouTube Studio; ensure channel has live streaming enabled |
+| Facebook Live | "Page not authorized" | Ensure the connected Facebook account has admin access to the target page |
+| Twitch | Stream not starting | Verify stream key in Twitch dashboard; check if another stream is active |
+| LinkedIn Live | "Not approved" | LinkedIn Live requires approval; verify the account/page is approved for streaming |
+| Twilio | "Invalid account SID" | Verify Account SID and Auth Token in Twilio console |
+| Google Calendar | Events not syncing | Re-authorize; check if the calendar is primary or shared (shared calendars may need explicit permission) |
+| Outlook Calendar | "Token expired" | Re-authenticate the Microsoft connection in Admin > Integrations |
+| Webhooks | No events received | Verify endpoint URL is publicly accessible; check for SSL certificate issues; review webhook logs |
 
 ---
 
 ## Recording Issues
 
-### Recording Does Not Start
+### Recording Not Starting
 
-| Cause | Solution |
-|---|---|
-| Recording not enabled for the room | Enable recording in room settings (Admin > Rooms > Edit Room) |
-| Storage limit reached | Check storage usage in Admin > Billing; delete old recordings or upgrade plan |
-| Session type limitation | Verify recording is supported for the current session type |
-| Browser permission issue | Ensure the browser has not blocked necessary permissions |
+**Symptom:**
+- Clicking "Record" does not initiate recording
+- Recording indicator does not appear
+
+**Cause:**
+- Insufficient storage (account at storage limit)
+- Permission issue (only hosts and above can initiate recording)
+- Browser does not support recording APIs
+- Session is not fully connected (WebRTC still establishing)
+
+**Resolution:**
+1. Check storage usage in Admin > Dashboard (must be below limit)
+2. Verify user has host, admin, or owner role
+3. Wait for the session to fully connect (all indicators green) before starting recording
+4. Try a different browser (Chrome recommended)
+
+### Recording Not Saved / Missing
+
+**Symptom:**
+- Recording was started and stopped but does not appear in Admin > Recordings
+- Recording status shows "Processing" indefinitely
+
+**Cause:**
+- Recording processing failed on the server
+- Network interruption during recording upload
+- Storage limit reached during recording
+- Session ended abnormally (browser crash, power loss)
+
+**Resolution:**
+1. Wait up to 30 minutes for processing to complete (large recordings take longer)
+2. Check Admin > Recordings for entries with "Processing" or "Failed" status
+3. If "Failed," check if storage limit was reached during the recording
+4. For abnormal session endings, the recording may be partially saved; check for partial files
+5. If no recording entry exists, the recording data may have been lost; escalate to Tier 2
 
 ### Recording Quality Issues
 
-| Issue | Solution |
-|---|---|
-| Recording is blurry | Check original video quality; ensure HD was enabled during session |
-| Recording has no audio | Verify microphone was active during session; check audio permissions |
-| Recording is choppy | Network issues during session; check bandwidth logs |
-| Recording file is corrupted | Re-download; if still corrupted, escalate to support |
+**Symptom:**
+- Recording is blurry, choppy, or has audio sync issues
 
-### Recording Playback Issues
+**Cause:**
+- Low network bandwidth during the session
+- High CPU usage on the host's machine
+- Source video/audio quality was low
 
-| Issue | Solution |
-|---|---|
-| Replay page shows "Recording not found" | Verify recording ID in URL; check Admin > Recordings for the file |
-| Replay page loads but video does not play | Try a different browser; ensure browser supports the video codec |
-| Replay is slow to buffer | Check internet speed; try downloading the recording instead of streaming |
-| Cannot download recording | Check storage permissions; verify the recording has finished processing |
+**Resolution:**
+1. Ensure minimum bandwidth requirements are met during recording sessions
+2. Close unnecessary applications to reduce CPU usage
+3. Use a high-quality camera and microphone
+4. Check if the recording resolution matches the session resolution settings
 
-### Recording Storage
+### Local vs Cloud Recording
 
-| Plan | Storage Limit | Warning Threshold (80%) |
-|---|---|---|
-| Basic | 10 GB | 8 GB |
-| Business | 50 GB | 40 GB |
-
-When storage is full:
-1. New recordings cannot be started
-2. Active recordings may be truncated
-3. The user receives a notification with options: delete old files or upgrade
+| Aspect | Local Recording | Cloud Recording |
+|--------|----------------|----------------|
+| Storage Location | User's device | R-Link cloud (Base44 storage) |
+| Availability | Immediately after session | After processing (minutes to hours) |
+| Quality | Depends on local resources | Optimized by platform |
+| Storage Impact | Does not count toward account limit | Counts toward storage limit |
+| Access | Only on the recording device | Available in Admin > Recordings |
+| Sharing | Manual upload/sharing required | Built-in sharing via SharedClip |
 
 ---
 
-## Stream Health Problems (Business Plan)
+## Stream Health Problems
 
-### RTMP Stream Issues
+### Stream Not Connecting to Platform
 
-| Issue | Cause | Solution |
-|---|---|---|
-| Stream does not start | RTMP URL or stream key incorrect | Re-enter RTMP URL and stream key from the platform (YouTube, Facebook, etc.) |
-| Stream starts then drops | Insufficient upload bandwidth | Ensure minimum 4 Mbps sustained upload; use wired connection |
-| Stream is laggy for viewers | High latency on RTMP path | This is inherent to RTMP (5-30 seconds latency); reduce encoding complexity |
-| Audio/video out of sync | Encoding issues | Restart the stream; check CPU usage; reduce video quality |
-| Stream is pixelated | Bitrate too low | Increase stream bitrate; ensure upload bandwidth supports higher bitrate |
-| Multi-platform stream fails on one platform | Platform-specific issue | Check the specific platform's dashboard for errors; re-enter that platform's stream key |
-| "Stream key expired" | Platform regenerated the key | Get a new stream key from the platform and update in R-Link integrations |
+**Symptom:**
+- "Start Streaming" button pressed but stream does not appear on YouTube/Facebook/Twitch/LinkedIn
+- Stream status shows "Connecting" indefinitely
 
-### Stream Health Monitoring
+**Cause:**
+- Invalid or expired stream key
+- RTMP port (1935) blocked by firewall
+- Platform-side issue (YouTube Studio not ready, Facebook page permissions)
+- Account not on Business plan
 
-During a live stream, monitor:
-- **Upload bitrate**: Should be stable and above minimum threshold
-- **Frame rate**: Should be consistent (target 30fps)
-- **Dropped frames**: Should be near zero; high dropped frames indicate bandwidth or CPU issues
-- **Stream status per platform**: Each connected platform shows its own connection status
+**Resolution:**
+1. Verify Business plan is active
+2. Regenerate stream key on the target platform
+3. Update stream key in R-Link Studio streaming panel or Admin > Integrations
+4. Check if RTMP port 1935 is open (or use RTMPS on port 443)
+5. Verify the target platform is ready to receive the stream
+
+### Stream Buffering / Poor Quality
+
+**Symptom:**
+- Viewers report buffering, pixelation, or freezing
+- Stream health indicators show warnings
+
+**Cause:**
+- Insufficient upload bandwidth on the host's network
+- CPU overload on the host's machine (encoding takes significant CPU)
+- Network congestion or packet loss
+- Too many simultaneous streams (multi-platform)
+
+**Resolution:**
+1. Check upload bandwidth: minimum 4 Mbps, recommended 6+ Mbps for 720p
+2. Close unnecessary applications and browser tabs
+3. Reduce stream resolution (1080p to 720p)
+4. Reduce the number of simultaneous streaming destinations
+5. Use a wired ethernet connection instead of Wi-Fi
+6. If on VPN, try split tunneling or disconnect VPN
+
+### Stream Health Indicators
+
+The Studio displays real-time stream health metrics:
+
+| Indicator | Green | Yellow | Red |
+|-----------|-------|--------|-----|
+| Bitrate | > 2500 kbps | 1000-2500 kbps | < 1000 kbps |
+| Frame Rate | > 25 fps | 15-25 fps | < 15 fps |
+| Dropped Frames | < 1% | 1-5% | > 5% |
+| Connection | Stable | Intermittent reconnects | Disconnected |
+
+### Stream Dropped / Disconnected
+
+**Symptom:**
+- Stream suddenly stops on the external platform
+- Studio shows "Disconnected" status
+
+**Cause:**
+- Network interruption
+- Platform-side disconnect (platform server issue)
+- Stream exceeded platform's maximum duration
+- RTMP connection timeout (idle stream)
+
+**Resolution:**
+1. Check network connectivity
+2. Click "Restart Streaming" in the Studio
+3. If the platform disconnected, check the platform's streaming dashboard for error messages
+4. Verify the stream has not exceeded the platform's duration limit
 
 ---
 
 ## Permission Denied Errors
 
-### How Permissions Work
+### Admin Tab Access Matrix (Complete)
 
-The `usePermissions` hook provides three key functions:
-- `isOwner`: Returns `true` if the user's email matches `Account.owner_email`
-- `hasPermission(category, action)`: Checks if the user's role grants permission for a specific action
-- `canAccessTab(tab)`: Checks if the user can access a specific admin tab
+When a user attempts to access an Admin tab they do not have permission for, they receive a "Permission Denied" or "Access Restricted" message.
 
-### "You don't have permission to access this page/feature"
+| Tab | Owner | Admin | Host | Member | Public |
+|-----|-------|-------|------|--------|--------|
+| dashboard | Full | Full | Full | Full | Yes |
+| account | Full | Full | Full | Full | Yes |
+| rooms | Full | Full | View/Create/Edit | -- | -- |
+| schedule | Full | Full | Full | Full | Yes |
+| recordings | Full | Full | View | -- | -- |
+| clips | Full | Full | View | -- | -- |
+| brand-kit | Full | Full | -- | -- | -- |
+| team | Full | Full | View/Invite | -- | -- |
+| roles | Full (Owner-only) | -- | -- | -- | -- |
+| templates | Full | Full | -- | -- | -- |
+| billing | Full (Owner-only) | -- | -- | -- | -- |
+| integrations | Full | Full | -- | -- | -- |
+| settings | Full | Full | -- | -- | -- |
+| support | Full | Full | Full | Full | Yes |
+| notetaker | Full | Full | Full | Full | Yes |
+| leads | Full | Full | -- | -- | -- |
+| event-landing | Full | Full | -- | -- | -- |
+| elements | Full | Full | -- | -- | -- |
 
-**Diagnosis**:
-1. Determine which tab or feature the user is trying to access
-2. Check the tab access rules:
+**Permission levels:**
+- **Full:** Complete read/write/delete access
+- **View:** Read-only access
+- **View/Create/Edit:** Can view, create, and edit but not delete
+- **View/Invite:** Can view team members and send invitations
+- **--:** No access (tab not visible or shows permission denied)
+- **Yes (Public):** Accessible to all authenticated users regardless of role
 
-| Tab | Access Rule | Who Can Access |
-|---|---|---|
-| dashboard | Public | All authenticated users |
-| account | Public | All authenticated users |
-| schedule | Public | All authenticated users |
-| support | Public | All authenticated users |
-| notetaker | Public | All authenticated users |
-| billing | Owner-only | Only `owner_email` |
-| roles | Owner-only | Only `owner_email` |
-| rooms, recordings, clips, brand-kit, team, templates, integrations, settings, leads, event-landing, elements | Permission-gated | Depends on user's assigned role |
+### Determining User Role
 
-**Resolution by Access Level**:
+The user's role is determined by:
 
-For **public tabs** (dashboard, account, schedule, support, notetaker):
-- If access is denied, there may be an authentication issue. Re-authenticate.
+1. **isOwner:** `user.email === account.owner_email` -- The account creator with full access to everything including billing and roles
+2. **Admin role:** Assigned via Team > Roles -- Full access to all tabs except billing and roles
+3. **Host role:** Assigned via Team > Roles -- Access to team (view/invite), rooms (view/create/edit), and public tabs
+4. **Member (default):** Default role for new team members -- Access to public tabs only
 
-For **owner-only tabs** (billing, roles):
-- Only the account owner can access these. The user must be the person whose email is `owner_email` on the Account entity.
-- If the user should be the owner but cannot access: Check that their login email matches exactly (case-sensitive) with `owner_email`.
+### Common Permission Issues
 
-For **permission-gated tabs** (all others):
-- The user's role must grant permission for the specific tab.
-- Check the user's role in Admin > Team.
-- The account owner or an admin can change the user's role.
-- Built-in roles: `admin` (all permissions), `host` (limited team/rooms permissions).
-- Custom roles can be created by the account owner in Admin > Roles.
-
-### "canAccessTab returned false" Debugging
-
-**For support agents debugging this issue**:
-1. Identify the user's email address
-2. Look up their TeamMember entity to find their assigned role
-3. Look up the Role entity to check its permission set
-4. Compare the required permission for the tab against the role's permissions
-5. If the role lacks the needed permission, the account owner must update the role or assign a different role
+| Issue | Cause | Resolution |
+|-------|-------|------------|
+| "Cannot access Billing" | User is not the account Owner | Only the Owner (person who created the account) can access Billing |
+| "Cannot access Roles" | User is not the account Owner | Only the Owner can manage Roles |
+| "Cannot edit room" | User is a Member (not Host/Admin/Owner) | Request role upgrade from Admin or Owner |
+| "Cannot see Recordings tab" | User is a Member | Request Host or Admin role |
+| "Cannot manage integrations" | User is Host or Member | Request Admin role |
+| "Tab not visible" | User role does not include access | Check role assignment in Admin > Team |
 
 ---
 
 ## Account Creation Failures
 
-### Auto-Creation Does Not Trigger
+### Registration Fails Silently
 
-**Symptom**: User completes registration/onboarding but no Account entity is created. Admin portal shows empty state or errors.
+**Symptom:**
+- User clicks "Register" but nothing happens or the form resets
+- No error message displayed
 
-**Possible Causes**:
-1. Network error during the auto-creation API call
-2. Base44 backend error preventing entity creation
-3. Race condition if multiple requests fire simultaneously
-4. The detection logic for "no existing accounts" failed
+**Cause:**
+- Form validation failure (weak password, invalid email format)
+- JavaScript error in the registration component
+- Network request to Base44 SDK failed
+- Base44 platform is experiencing issues
 
-**Resolution**:
-1. Have the user log out completely
-2. Clear `localStorage` (or use `?clear_access_token=true`)
-3. Log back in
-4. Navigate to the Home page or Admin portal
-5. The auto-creation logic should re-trigger
-6. If it still fails, check the browser console for API errors
-7. If API errors indicate a server-side issue, escalate to engineering
+**Resolution:**
+1. Check that the email is valid and password meets minimum requirements
+2. Open DevTools (F12) > Console for JavaScript errors
+3. Check DevTools > Network for failed API requests
+4. Try a different browser
+5. Wait a few minutes and retry (possible platform issue)
 
-### Account Created with Wrong Defaults
+### "Account Already Exists"
 
-**Symptom**: Account exists but has unexpected default values.
+**Symptom:**
+- Registration fails with a message indicating the email is already in use
 
-**Expected Defaults**:
-| Field | Expected Default |
-|---|---|
-| `plan` | `basic` |
-| `billing_cycle` | `monthly` |
-| `limits.max_rooms` | 5 |
-| `limits.max_storage_gb` | 10 |
-| `limits.max_attendees` | 100 |
-| `limits.max_team_members` | 3 |
+**Cause:**
+- The user previously registered with this email
+- Another user used this email (unlikely if email verification is enabled)
+- The user registered via SSO and is now trying email/password registration
 
-**Resolution**: If defaults are wrong, the account owner can manually update settings via Admin > Account and Admin > Billing. For limit discrepancies, escalate to support.
+**Resolution:**
+1. Try logging in instead of registering
+2. Use the "Forgot Password" flow to reset credentials
+3. If SSO was used previously, log in with the same SSO provider
+4. Contact support if the user cannot access the existing account
 
-### Brand Kit Not Auto-Created
+### Account Entity Not Created After Registration
 
-**Symptom**: Admin > Brand Kit tab is empty or shows errors instead of the default brand kit.
+**Symptom:**
+- User can log in but sees an empty/broken Admin portal
+- No account data, no brand kit, no rooms
 
-**Resolution**:
-1. Navigate to Admin > Brand Kit
-2. If empty, try creating a new Brand Kit manually
-3. Use the default values documented in [03-getting-started.md](./03-getting-started.md) as reference
-4. If creation fails, check for API errors in the browser console
-5. Escalate to support if the issue persists
+**Cause:**
+- The auto-creation process for Account and BrandKit entities failed
+- Network interruption during the post-registration setup
+- Base44 entity creation API returned an error
+
+**Resolution:**
+1. Try logging out and logging back in (may trigger re-initialization)
+2. Navigate to `/Onboarding` to see if the flow triggers account creation
+3. If the issue persists, escalate to Tier 2 support for manual account entity creation
+4. Check Base44 admin console for the User record to verify registration completed
 
 ---
 
-## General Diagnostic Procedures
+## Diagnostic Procedures
 
-### Step 1: Gather Information
+### Procedure 1: Full Client-Side Diagnostic
 
-Always collect the following before attempting troubleshooting:
-1. **Browser and version** (e.g., Chrome 120)
-2. **Operating system** (e.g., Windows 11, macOS 14)
-3. **Internet connection type** (WiFi, ethernet, mobile)
-4. **The exact URL** the user is on (including all query parameters)
-5. **The exact error message** (word for word)
-6. **When it started** (always, recently, after an action)
-7. **Account plan** (Basic or Business)
-8. **User role** (owner, admin, host, custom)
+Use this procedure when a customer reports vague issues ("nothing works", "page is broken").
 
-### Step 2: Basic Checks
+1. **Check browser and version:**
+   - Ask the customer for browser name and version
+   - Verify it meets minimum requirements (see Browser Requirements)
 
-| Check | Action |
-|---|---|
-| Browser up to date? | Check browser version against supported list |
-| JavaScript enabled? | Should be enabled by default; check browser settings |
-| Extensions interfering? | Try incognito/private mode |
-| Multiple tabs issue? | Close other R-Link tabs; only keep one active |
-| Cache issue? | Hard refresh (Ctrl+Shift+R or Cmd+Shift+R) |
-| Token issue? | Try `?clear_access_token=true` |
+2. **Check console errors:**
+   - Instruct: Press F12 > Click "Console" tab > Look for red error messages
+   - Ask the customer to screenshot or copy/paste any red error messages
 
-### Step 3: Console Diagnostics
+3. **Check network requests:**
+   - Instruct: Press F12 > Click "Network" tab > Refresh the page
+   - Look for requests with red status (4xx or 5xx errors)
+   - Note the URL and status code of failed requests
 
-Guide the user (or check yourself if on a support call):
-1. Press F12 to open developer tools
-2. Go to the Console tab
-3. Look for red error messages
-4. Common error patterns:
-   - `401` or `403` = Authentication/permission issue (see respective sections)
-   - `404` = Resource not found (room, recording, etc.)
-   - `500` = Server error (escalate if persistent)
-   - `TypeError` or `ReferenceError` = Frontend code error (note the error and escalate)
-   - `NetworkError` or `Failed to fetch` = Connection issue (check network)
+4. **Check localStorage:**
+   - Instruct: Press F12 > Click "Application" tab > Expand "Local Storage" > Click the R-Link domain
+   - Verify `access_token` is present (if not, authentication issue)
+   - Check other R-Link keys for corruption
 
-### Step 4: Network Diagnostics
+5. **Test in incognito mode:**
+   - Open an incognito/private window
+   - Navigate to R-Link and log in
+   - If the issue does not reproduce, browser extensions or corrupted cache are likely the cause
 
-1. Go to the Network tab in developer tools
-2. Refresh the page
-3. Look for failed requests (red entries)
-4. Check the status code and response body
-5. For WebRTC issues, check `chrome://webrtc-internals/` in Chrome
+6. **Clear site data:**
+   - In browser settings, find "Site Settings" or "Cookies and Site Data"
+   - Find the R-Link domain
+   - Clear all data for the domain
+   - Log in again
+
+### Procedure 2: Network Connectivity Diagnostic
+
+Use when customers report video/audio issues, streaming failures, or connectivity problems.
+
+1. **Bandwidth test:** Ask customer to run https://speedtest.net and report upload/download speeds
+2. **WebRTC test:** Ask customer to visit https://test.webrtc.org/ and report results
+3. **Firewall check:** Ask if they are on a corporate network with firewall restrictions
+4. **VPN check:** Ask if they are using a VPN; suggest disconnecting temporarily to test
+5. **TURN check:** If WebRTC direct connection fails, verify TURN relay is configured and accessible
+6. **DNS check:** Ask customer to verify they can resolve the R-Link domain (try `nslookup` in command prompt)
+
+### Procedure 3: Integration Diagnostic
+
+Use when a third-party integration is not working.
+
+1. **Verify plan:** Confirm Business plan (most integrations require it)
+2. **Check connection status:** Admin > Integrations > verify the integration shows "Connected"
+3. **Re-authenticate:** Click "Disconnect" then "Connect" to refresh credentials
+4. **Check external service:** Verify the external service (Mailchimp, Stripe, etc.) is operational
+5. **Check API key validity:** If using API keys, verify they are not expired or revoked
+6. **Check permissions:** Verify the external account has the necessary permissions (e.g., Salesforce API access)
+7. **Check logs:** If the integration has a log/activity view, check for error messages
+8. **Test webhook:** If using webhooks, send a test event and verify the endpoint receives it
+
+### Procedure 4: Recording/Playback Diagnostic
+
+Use when recording or playback issues are reported.
+
+1. **Check storage:** Admin > Dashboard > verify storage is not at limit
+2. **Check recording status:** Admin > Recordings > find the recording > check status (Processing/Ready/Failed)
+3. **Wait for processing:** If "Processing," wait up to 30 minutes for large recordings
+4. **Check playback:** If "Ready" but won't play, try a different browser or download the file
+5. **Check file format:** Verify the recording format is compatible with the browser's video player
+6. **Check file size:** Very large files may fail to stream; try downloading instead
+7. **Check permissions:** Verify the user has at least View access to recordings
+
+---
+
+## localStorage Keys Reference
+
+R-Link uses the following localStorage keys. These are useful for diagnostics and manual troubleshooting.
+
+| Key | Type | Description | Safe to Clear? |
+|-----|------|-------------|---------------|
+| `access_token` | JWT string | Current authentication token | Yes (forces re-login) |
+| `rlink_preferred_camera` | Device ID string | User's preferred camera device | Yes (resets to default) |
+| `rlink_preferred_microphone` | Device ID string | User's preferred microphone device | Yes (resets to default) |
+| `rlink_preferred_speaker` | Device ID string | User's preferred speaker device | Yes (resets to default) |
+| `rlink_onboarding_step` | Number | Current onboarding step progress | Yes (resets onboarding progress) |
+| `rlink_sidebar_collapsed` | Boolean | Whether the admin sidebar is manually collapsed | Yes (resets sidebar state) |
+| `rlink_theme_preference` | String | Light/dark theme preference | Yes (resets to default) |
+| `rlink_notification_dismissed` | JSON array | IDs of dismissed notification banners | Yes (shows previously dismissed notifications) |
+| `rlink_last_room_id` | String | ID of the last accessed room | Yes (no impact) |
+| `rlink_layout_preference` | String | Preferred session layout | Yes (resets to session-type default) |
+| `rlink_display_name` | String | User's display name for sessions | Yes (must re-enter on Setup page) |
+| `rlink_audio_level_calibration` | Number | Microphone audio level calibration value | Yes (recalibrates on next session) |
+
+**Note:** Key names may vary slightly based on the R-Link version. The prefix `rlink_` is used for application-specific keys. The `access_token` key may not have the `rlink_` prefix.
 
 ---
 
 ## Settings and Options
 
-### Diagnostic URL Parameters
+### Troubleshooting-Related Settings
 
-| Parameter | Value | Purpose |
-|---|---|---|
-| `clear_access_token` | `true` | Clears stored auth token and forces re-login |
-| `access_token` / `token` | JWT string | Provides authentication token via URL |
-| `appId` | Application ID | Identifies the R-Link Base44 application |
-| `serverUrl` | URL | Base44 backend server endpoint |
-| `fromUrl` | URL | Return URL after auth flow |
-| `functionsVersion` | Version string | Specifies serverless functions version |
-| `type` | `meeting`, `webinar`, `livestream` | Sets session type for Studio |
-
-### LocalStorage Keys
-
-| Key | Purpose | When to Clear |
-|---|---|---|
-| `base44_access_token` | Authentication token | Auth issues, account switching, token corruption |
-| Device preferences | Camera/mic/speaker selection | Device detection issues |
-| UI state | Sidebar collapsed state, preferences | Layout/display issues |
-
-### Clearing All Local Data
-
-For persistent issues that resist individual fixes:
-1. Open browser settings
-2. Navigate to Privacy > Clear browsing data
-3. Select "Cookies and site data" and "Cached images and files"
-4. Select the R-Link domain specifically (if possible) or clear all
-5. Close and reopen the browser
-6. Navigate to R-Link and log in fresh
+| Setting | Location | Description |
+|---------|----------|-------------|
+| Notification Preferences | Admin > Account | Enable/disable email notifications for errors and warnings |
+| Auto-Record | Admin > Settings | If auto-record fails silently, disable and re-enable |
+| Default Session Type | Admin > Settings | If wrong session type launches, check this setting |
+| Webhook Retry Policy | Admin > Integrations > Webhooks | Number of retry attempts for failed webhook deliveries |
+| Integration Sync Frequency | Admin > Integrations > [specific integration] | How often data is synced with external services |
 
 ---
 
 ## FAQ
 
-**Q: The page is completely blank/white. What do I do?**
-A: This usually indicates a JavaScript error or missing URL parameters. Try: (1) Hard refresh (Ctrl+Shift+R), (2) Check that the URL includes `appId` and `serverUrl` parameters, (3) Try in an incognito window, (4) Check browser console (F12) for errors.
+**Q1: My screen is blank when I open R-Link. What should I do?**
+A: This is usually caused by an authentication error or JavaScript failure. Try: (1) Hard refresh with Ctrl+Shift+R, (2) Clear your browser cache, (3) Try an incognito window, (4) Check if your browser meets minimum requirements. If none of these work, check the console (F12) for error messages and contact support.
 
-**Q: I keep getting logged out. Why?**
-A: Your authentication token is expiring. This can happen if: (1) The token has reached its expiration time, (2) You are using a shared or public computer where `localStorage` is cleared, (3) A browser extension is clearing local storage. Solution: Re-login each time; consider bookmarking the direct login URL.
+**Q2: I keep getting logged out. Why?**
+A: This is typically caused by token expiration. Tokens have a limited lifespan set by the Base44 platform. If you are being logged out frequently, check for browser extensions that clear cookies/localStorage, and ensure your network connection is stable.
 
-**Q: I can see the Admin portal but some tabs are missing. Why?**
-A: Tab visibility is controlled by role-based permissions. Your assigned role may not include access to all tabs. Contact your account owner to adjust your role. See the Permission Denied section for the full tab access matrix.
+**Q3: My camera/microphone is not detected on the Setup page.**
+A: Ensure: (1) The device is physically connected and powered on, (2) No other application is using the device, (3) Browser permission is granted (check browser address bar for camera/mic permission icon), (4) Try refreshing the page. If using a USB device, unplug and replug it, then refresh.
 
-**Q: My camera works in other apps but not in R-Link. Why?**
-A: Common causes: (1) Browser has not granted camera permission to R-Link -- check the address bar for a camera icon or go to browser settings, (2) Another app has exclusive camera access -- close other video apps, (3) Browser needs to be updated to support WebRTC, (4) The Setup page was skipped -- navigate to `/setup` to select your camera.
+**Q4: I can hear others but they can't hear me.**
+A: Your microphone may be muted at the OS level or the wrong device is selected. Check: (1) R-Link mic toggle is unmuted, (2) Correct mic is selected in the Setup page dropdown, (3) OS sound settings show the correct input device, (4) Audio level meter shows activity when you speak.
 
-**Q: The recording says "processing" for a long time. Is it stuck?**
-A: Recording processing can take several minutes to hours depending on session length. If it has been more than 2 hours for a short session, try refreshing the page. If the status does not change, escalate to support.
+**Q5: The video is freezing or lagging during a session.**
+A: This is usually a bandwidth issue. Check: (1) Internet speed (minimum 1.5 Mbps up/down for video), (2) Close other bandwidth-heavy applications, (3) Switch from Wi-Fi to wired ethernet if possible, (4) Disable HD video if available, (5) Check if your network is throttling WebRTC traffic.
 
-**Q: I connected an integration but it shows "disconnected" now. Why?**
-A: OAuth tokens for third-party services can expire. Navigate to Admin > Integrations, find the integration, and click "Reconnect" to re-authorize. If the issue persists, disconnect completely and reconnect from scratch.
+**Q6: I can't access certain Admin tabs. Why?**
+A: Tab access is role-based. Check your role in Admin > Account. Public tabs (dashboard, account, schedule, support, notetaker) are available to everyone. Other tabs require Host, Admin, or Owner roles. The Billing and Roles tabs are Owner-only. Contact your account Owner or Admin for role changes.
 
-**Q: The live stream started but viewers say it is not showing on YouTube/Facebook/etc.**
-A: There is an inherent delay of 5-30 seconds for RTMP streams. Wait up to 60 seconds. If still not visible: (1) Verify the stream key is correct, (2) Check that the destination platform's live stream is set to "Live" not "Scheduled", (3) Ensure RTMP port 1935 is not blocked by your firewall.
+**Q7: My recording shows as "Processing" for a long time. Is this normal?**
+A: Processing time depends on recording length and server load. Typical: 5-15 minutes for a 1-hour recording. Wait up to 30 minutes before contacting support. If "Processing" persists beyond 1 hour, it may have failed. Check Admin > Recordings for a "Failed" status.
 
-**Q: I upgraded to Business but features are still locked.**
-A: Try: (1) Hard refresh the browser (Ctrl+Shift+R), (2) Log out and log back in, (3) Clear browser cache. If still locked, check Admin > Billing to confirm the plan shows "Business" and status is "Active". If billing shows Basic despite payment, escalate to support.
+**Q8: My integration says "Connected" but data is not syncing.**
+A: Try: (1) Disconnect and reconnect the integration, (2) Verify API key/credentials are still valid in the external service, (3) Check if the external service has rate limits, (4) Review integration sync settings for frequency, (5) Test with a manual data entry to verify the connection is live.
 
-**Q: My virtual background is not working / looks bad.**
-A: Virtual backgrounds require WebGL and hardware acceleration. Try: (1) Enable hardware acceleration in browser settings, (2) Use Chrome for best performance, (3) Ensure adequate lighting (poor lighting makes edge detection difficult), (4) Use a solid-color background for best results. Test at `/virtual-background-test`.
+**Q9: I'm getting a "Room Limit Reached" error. What can I do?**
+A: Basic plan allows 1 room; Business allows 5. Delete or archive existing rooms to free slots, or upgrade your plan for more rooms.
 
-**Q: Multiple team members cannot join the account.**
-A: Check: (1) Team member limit -- default is 3 on Basic plan, (2) Admin > Team tab to see current member count, (3) Upgrade plan or remove inactive members to make room.
+**Q10: Can I use R-Link behind a corporate firewall?**
+A: Yes, but the firewall must allow: HTTPS (port 443) for the web app and APIs, WebSocket (port 443) for real-time features, and UDP ports 10000-60000 for WebRTC media. If UDP is blocked, R-Link falls back to TURN relay over TCP 443, but quality may be reduced. Contact your IT department to whitelist R-Link domains.
+
+**Q11: Why does the sidebar disappear on my laptop?**
+A: R-Link's responsive design collapses the sidebar to a hamburger menu when the screen width is less than 768px. Click the hamburger menu icon (three horizontal lines) at the top of the page to access navigation.
+
+**Q12: How do I clear all R-Link data from my browser?**
+A: Open DevTools (F12) > Application > Local Storage > Right-click the R-Link domain > "Clear." Then go to browser settings > Cookies and Site Data > search for the R-Link domain > Delete. Refresh the page and log in again.
 
 ---
 
 ## Known Limitations
 
-1. **No Automatic Token Refresh**: Base44 tokens expire and are not automatically refreshed. Users must re-authenticate when their token expires, which can interrupt active sessions if the token expires mid-session.
+1. **No real-time error reporting dashboard:** R-Link does not provide an admin-facing real-time error dashboard. Errors must be diagnosed via browser DevTools or user reports.
 
-2. **LocalStorage Dependency**: Authentication depends on `localStorage`. Private/incognito mode, browser extensions that clear storage, or corporate browser policies that restrict `localStorage` can cause persistent authentication issues.
+2. **Token expiration is platform-controlled:** The JWT token lifetime is set by the Base44 platform and cannot be customized per R-Link account. If tokens expire too quickly, the Base44 platform configuration must be adjusted.
 
-3. **Single-Browser State**: Device preferences and UI state are stored per-browser. Users switching between browsers or devices must reconfigure their preferences.
+3. **No automatic reconnection for WebRTC:** If a WebRTC connection drops mid-session, automatic reconnection is attempted but may fail. Users must manually refresh or rejoin in some cases.
 
-4. **Mobile Limitations**: On screens narrower than 768px, sidebars auto-collapse. The full Studio production experience is optimized for desktop browsers. Touch interactions for complex production controls (e.g., drag-and-drop in scene management) may be limited.
+4. **TURN relay adds latency:** When UDP is blocked and the TURN relay is used (TCP 443 fallback), video/audio quality and latency are degraded compared to direct UDP connections.
 
-5. **WebRTC Firewall Restrictions**: Corporate or institutional firewalls that block UDP traffic may prevent WebRTC connections. TURN server fallback may be required but adds latency.
+5. **Safari SFU limitations:** Safari has limited support for the Selective Forwarding Unit architecture used by R-Link. Large meetings (10+ participants) may experience layout or performance issues on Safari.
 
-6. **RTMP Latency**: Live streams to external platforms inherently have 5-30 seconds of latency due to RTMP protocol characteristics. This cannot be reduced from the R-Link side.
+6. **No offline diagnostics:** All diagnostic procedures require an active internet connection. There is no offline diagnostic mode or tool.
 
-7. **Integration Token Expiration**: Third-party OAuth tokens can expire independently. Users may need to periodically re-authorize integrations without warning.
+7. **localStorage is browser-specific:** Preferences, tokens, and device selections stored in localStorage are specific to the browser profile. Users who switch browsers or use multiple browsers must re-configure in each.
 
-8. **Recording Processing Time**: Long sessions produce large recordings that take significant time to process. There is no progress indicator during processing -- only a "processing" status.
+8. **Incognito mode limitations:** In incognito/private browsing mode, localStorage may be cleared when the window closes, requiring re-authentication every time.
 
-9. **Concurrent Session Limit**: Even on Business plan, rooms are limited to 5 parallel sessions. Exceeding this requires contacting support for enterprise options.
+9. **Recording processing is asynchronous:** There is no way to speed up recording processing. The user must wait for the server-side pipeline to complete.
 
-10. **Browser Compatibility Variance**: While Chrome, Firefox, Edge, and Safari are supported, WebRTC implementation differences across browsers can cause subtle behavior variations in video quality, screen sharing, and virtual backgrounds.
+10. **RTMP streaming to custom endpoints is not validated:** R-Link does not validate custom RTMP URLs before attempting to connect. Invalid URLs result in connection timeouts rather than immediate error messages.
 
-11. **No Offline Capability**: R-Link requires a persistent internet connection. There is no offline mode or local caching of session content.
+11. **Integration webhook delivery is best-effort:** Webhooks are delivered with a retry policy, but there is no guarantee of delivery. Endpoints must be publicly accessible and respond with 200 OK.
 
-12. **Case-Sensitive Owner Email**: The owner check (`email === owner_email`) may be case-sensitive. If a user registered with different email casing than what is stored in `owner_email`, owner-only features (billing, roles tabs) will be inaccessible.
+12. **No multi-language error messages:** Error messages from the Base44 SDK are returned in English only. The UI may display localized messages, but console/API errors are always in English.
+
+13. **Device detection requires page refresh:** If a user plugs in a new camera or microphone after the Setup page has loaded, the device will not appear in the dropdown until the page is refreshed.
+
+14. **No built-in speed test:** R-Link does not include a built-in network speed test. Users must use external tools (speedtest.net, fast.com) to diagnose bandwidth issues.
+
+15. **Session type is immutable:** Once a session is started as a Meeting, Webinar, or Live Stream, the type cannot be changed without ending and restarting the session.
 
 ---
 
 ## Plan Requirements
 
-| Troubleshooting Area | Basic | Business |
-|---|---|---|
-| Authentication troubleshooting | Yes | Yes |
-| Token management | Yes | Yes |
-| Browser/network requirements | Yes | Yes |
-| Room loading issues | Yes | Yes |
-| Recording issues | Yes | Yes |
-| UI/display issues | Yes | Yes |
-| Permission issues | Yes | Yes |
-| Account creation issues | Yes | Yes |
-| Integration troubleshooting | Calendar only | All integrations |
-| Streaming issues | N/A (not available) | Yes |
-| Webinar issues | N/A (not available) | Yes |
-| AI Notetaker issues | N/A (not available) | Yes |
+| Feature | Plan |
+|---------|------|
+| Basic authentication and login | All plans |
+| Admin portal access | Basic+ |
+| Token management | All plans (Base44 platform) |
+| WebRTC sessions | Basic+ |
+| RTMP streaming diagnostics | Business |
+| Integration management | Business (except SSO and Calendar on Basic+) |
+| Recording (local) | Basic+ |
+| Recording (cloud) | Basic+ |
+| AI transcript access | Business |
 
 ---
 
 ## Related Documents
 
-- [00-index.md](./00-index.md) -- Master index, question routing, and escalation paths
-- [01-platform-overview.md](./01-platform-overview.md) -- Platform architecture, entities, permissions system
-- [02-plans-and-pricing.md](./02-plans-and-pricing.md) -- Plan limits, feature gating, billing troubleshooting
-- [03-getting-started.md](./03-getting-started.md) -- Registration, onboarding, setup page, first session
+- [00-index.md](00-index.md) -- Master index and question routing
+- [01-platform-overview.md](01-platform-overview.md) -- Platform architecture and feature reference
+- [02-plans-and-pricing.md](02-plans-and-pricing.md) -- Plans, pricing, and billing
+- [03-getting-started.md](03-getting-started.md) -- Registration, onboarding, and first session

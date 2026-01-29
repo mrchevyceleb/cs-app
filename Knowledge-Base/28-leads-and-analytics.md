@@ -2,390 +2,384 @@
 
 ## Overview
 
-R-Link includes a comprehensive lead capture and analytics system that enables users to collect attendee information during live sessions (meetings, webinars, and live streams) and analyze engagement data afterward. Leads are managed through the **Leads** admin tab (`/admin?tab=leads`) via the `LeadsTab` component. The system supports lead scoring, AI-powered tagging, CRM synchronization, and CSV data export.
-
-Lead data is stored in two Base44 entities: `LeadSubmission` (individual lead records with form data and engagement metrics) and `LeadCapture` (lead capture form configurations that define which fields to collect). Leads are associated with rooms and sessions, allowing account owners to track which events generate the most valuable prospects.
+R-Link's lead management system captures, scores, tags, and exports attendee data from events, webinars, and interactive rooms. The **LeadsTab** in the Admin Dashboard provides a centralized interface for viewing, filtering, managing, and exporting leads. The system combines AI-powered qualification with engagement-based scoring to help users identify their most valuable prospects.
 
 ---
 
-## Lead Submission Entity
+## LeadsTab
 
-The `LeadSubmission` entity stores each captured lead with the following fields:
+The LeadsTab is accessible from the Admin Dashboard via the `?tab=leads` URL parameter.
 
-| Field | Type | Description |
-|---|---|---|
-| `id` | string | Unique identifier |
-| `room_id` | string | The room where the lead was captured |
-| `lead_capture_id` | string | Reference to the `LeadCapture` form configuration used |
-| `form_data` | object | Submitted form fields (see below) |
-| `form_data.name` | string | Attendee's name |
-| `form_data.email` | string | Attendee's email address |
-| `form_data.phone` | string | Attendee's phone number |
-| `form_data.company` | string | Attendee's company/organization |
-| `ai_qualification_score` | number | AI-assigned lead score (0-100) |
-| `engagement_score` | number | Engagement-based lead score (0-100) |
-| `ai_tags` | array | AI-generated tags (e.g., "decision_maker", "high_intent") |
-| `time_in_session` | number | Time spent in session (seconds) |
-| `reactions_count` | number | Number of reactions sent during session |
-| `questions_asked` | number | Number of questions asked during session |
-| `location` | object | Geolocation data |
-| `location.city` | string | City name |
-| `location.country` | string | Country name |
-| `crm_synced` | boolean | Whether this lead has been synced to a CRM |
-| `crm_synced_at` | string | ISO timestamp of CRM sync |
-| `created_date` | string | ISO timestamp of lead creation |
-
----
-
-## LeadCapture Entity
-
-The `LeadCapture` entity defines the configuration of lead capture forms:
-
-| Field | Type | Description |
-|---|---|---|
-| `id` | string | Unique identifier |
-| `name` | string | Form name (e.g., "Webinar Registration Form") |
-| `fields` | array | List of form fields to display |
-| `room_id` | string | Associated room |
-
-Lead capture forms are displayed during sessions via the `LeadCaptureModal` / `LeadCaptureRenderer` components.
-
----
-
-## LeadsTab Interface
-
-### Accessing the Leads Tab
-
-1. Navigate to **Admin** > **Leads** in the sidebar.
-2. This tab is permission-gated (requires appropriate role permissions).
-
-### Props Received
+### Component Props
 
 | Prop | Type | Description |
-|---|---|---|
-| `accountId` | string | The current account's ID, used to filter leads by account rooms |
+|------|------|-------------|
+| `accountId` | string | The account ID used to scope all lead data |
 
-### UI Layout
+### Core Features
 
-The LeadsTab displays:
+The LeadsTab provides the following capabilities:
 
-1. **Header**: Title ("Leads"), lead count with filter status, and an **Export CSV** button.
-2. **Filter Panel**: Search bar, score filter dropdown, tag filter dropdown, sort controls.
-3. **Leads List**: Expandable lead cards showing contact info, scores, tags, and engagement metrics.
-
----
-
-## Lead Capture During Sessions
-
-Lead capture occurs during live sessions when attendees interact with lead capture forms:
-
-### How Lead Capture Works
-
-1. The host or room configuration activates a lead capture form during a session.
-2. The `LeadCaptureModal` displays to attendees, requesting information (name, email, phone, company, etc.).
-3. The attendee submits the form, creating a `LeadSubmission` entity.
-4. The system automatically tracks engagement metrics (time in session, reactions, questions) and updates the lead record.
-5. AI scoring and tagging are applied to the lead based on engagement and form data.
-
-### Lead Capture Trigger Points
-
-Lead capture forms can be triggered:
-- At session join (pre-entry gate)
-- During the session (pop-up form)
-- Via event landing page registration (pre-event capture)
+1. **Lead Capture** -- Automatic collection of attendee information from events and registrations.
+2. **Lead Scoring** -- Dual scoring system combining AI qualification and engagement metrics.
+3. **AI Tagging** -- Automated categorization and tagging of leads using AI analysis.
+4. **CSV Export** -- Export lead data to CSV format for external use.
+5. **CRM Integration** -- Sync leads with external CRM platforms.
 
 ---
 
-## Lead Scoring System
+## Lead Capture
 
-R-Link uses a dual-scoring system for leads:
+Lead capture is the process of collecting attendee information during registration, event attendance, and post-event interactions.
 
-### AI Qualification Score (`ai_qualification_score`)
+### Capture Sources
 
-- Range: 0-100
-- Generated by AI analysis of the lead's form data and behavior
-- Considers factors like company size, role/title, engagement patterns
-- Updated as more engagement data becomes available
+Leads are captured from multiple touchpoints across the R-Link platform:
 
-### Engagement Score (`engagement_score`)
+| Source | Data Captured | Trigger |
+|--------|--------------|---------|
+| Event Registration | Name, email, custom field responses | User submits registration form |
+| Webinar Attendance | Name, email, join time, duration | User joins a webinar room |
+| Room Participation | Name, interaction data, chat messages | User participates in a room |
+| Landing Page Visits | Email (if provided), page views | User visits an event landing page |
+| Shared Content Views | Email (if required), view data | User views shared clips or presentations |
+| Poll Responses | Name, email, poll answers | User responds to a poll overlay |
+| Q&A Submissions | Name, email, questions asked | User submits a Q&A question |
 
-- Range: 0-100
-- Calculated from in-session behavior:
-  - **Time in session**: Longer attendance increases score
-  - **Reactions count**: Active participants score higher
-  - **Questions asked**: Engaged attendees who ask questions score higher
+### Capture Behavior
 
-### Score Categories
+- Leads are automatically created when a new email address is captured from any source.
+- If a lead with the same email already exists, the existing lead record is updated with the new interaction data rather than creating a duplicate.
+- All captured leads are scoped to the `accountId` and are only visible to users with access to the LeadsTab.
+- Lead capture respects privacy settings: if a user opts out of data collection (where applicable), their data is not captured.
 
-The LeadsTab categorizes leads into three tiers based on the higher of the two scores:
+### Common Customer Questions About Lead Capture
 
-| Category | Score Range | Badge Color | Description |
-|---|---|---|---|
-| **Hot** | 80-100 | Red | High-value leads likely to convert |
-| **Warm** | 50-79 | Orange | Interested leads that need nurturing |
-| **Cold** | 0-49 | Blue | Low-engagement leads for long-term follow-up |
+**Q: How are leads captured during a webinar?**
+A: When attendees register for a webinar, their name and email are captured as a lead. During the webinar, their attendance duration, chat participation, poll responses, and Q&A interactions are tracked and added to their lead record.
+
+**Q: Are leads captured from replay viewers?**
+A: Yes, if the replay requires an email to access (configurable per shared clip or recording). The viewer's email and engagement data (watch time, interactions) are captured.
+
+**Q: I see duplicate leads in my list. Why?**
+A: Leads are deduplicated by email address. If you see duplicates, they may have registered with slightly different email addresses (e.g., john@company.com vs john.doe@company.com). You can merge these manually or during CSV export.
+
+**Q: Can I manually add leads?**
+A: The LeadsTab is primarily designed for automatic capture. For manual lead entry, consider importing via CSV or using the CRM integration to sync from your existing CRM.
+
+---
+
+## Lead Scoring
+
+R-Link uses a dual scoring system that combines two complementary approaches to evaluate lead quality.
+
+### AI Qualification Score
+
+The AI qualification score uses machine learning to assess a lead's likelihood of conversion based on their profile and behavioral patterns.
+
+**How It Works:**
+
+1. The AI analyzes the lead's registration data, including:
+   - Company information (if provided via custom fields)
+   - Job title or role (if provided)
+   - Industry or segment
+   - Historical patterns from similar leads
+2. The AI assigns a qualification score on a standardized scale.
+3. The score is recalculated as new data becomes available.
+
+**Factors Considered:**
+- Profile completeness (more data = better scoring)
+- Firmographic data (company size, industry, revenue)
+- Behavioral signals (registration timing, content preferences)
+- Historical conversion patterns from similar profiles
+
+**Score Interpretation:**
+| Range | Label | Meaning |
+|-------|-------|---------|
+| High | Hot Lead | Strong match to ideal customer profile; high conversion likelihood |
+| Medium | Warm Lead | Moderate match; may need nurturing |
+| Low | Cold Lead | Low match; unlikely to convert without significant engagement |
+
+### Engagement Score
+
+The engagement score measures how actively a lead has interacted with your content and events.
+
+**How It Works:**
+
+1. Every interaction a lead has with R-Link content is tracked and weighted.
+2. Interactions are aggregated into an overall engagement score.
+3. The score updates in real time as new interactions occur.
+
+**Interaction Weights (relative):**
+
+| Interaction Type | Weight | Description |
+|-----------------|--------|-------------|
+| Event attendance | High | Attended a live event |
+| Full event watch | High | Watched an entire event or replay |
+| Poll participation | Medium | Responded to one or more polls |
+| Q&A submission | Medium | Asked a question during a live event |
+| Chat activity | Medium | Sent messages in the chat during an event |
+| Partial replay view | Low-Medium | Watched part of a replay |
+| Landing page visit | Low | Visited an event landing page without registering |
+| Shared clip view | Low | Viewed a shared clip |
+
+**Score Interpretation:**
+| Range | Label | Meaning |
+|-------|-------|---------|
+| High | Highly Engaged | Active participant across multiple touchpoints |
+| Medium | Moderately Engaged | Some interaction but not fully active |
+| Low | Low Engagement | Minimal interaction; may need re-engagement |
+
+### Combined Scoring
+
+The AI qualification score and engagement score are displayed side by side for each lead, giving users a two-dimensional view of lead quality:
+
+- **High AI + High Engagement**: Priority lead. Ready for direct outreach.
+- **High AI + Low Engagement**: Qualified but disengaged. May need targeted content or a personal invitation.
+- **Low AI + High Engagement**: Engaged but may not match the ideal customer profile. Consider for community building or upsell opportunities.
+- **Low AI + Low Engagement**: Low priority. May benefit from automated nurture sequences.
+
+### Common Customer Questions About Lead Scoring
+
+**Q: How accurate is the AI qualification score?**
+A: The AI qualification score improves over time as it learns from your specific audience. It is most accurate when leads provide detailed registration information and when you have historical conversion data. For new accounts, the score may be less precise initially.
+
+**Q: Can I customize the scoring criteria?**
+A: The engagement score weights are fixed by the platform. The AI qualification score adapts automatically to your audience patterns. Custom scoring rules are available on Enterprise plans.
+
+**Q: Why does a lead have a high engagement score but a low AI score (or vice versa)?**
+A: The two scores measure different things. AI qualification assesses profile fit (who they are), while engagement measures behavioral activity (what they do). A highly engaged lead may not match your ideal customer profile, and a well-qualified lead may not have interacted much yet.
+
+**Q: How often are scores updated?**
+A: Engagement scores update in real time as interactions occur. AI qualification scores are recalculated periodically and when significant new data becomes available (e.g., new registration fields filled out).
 
 ---
 
 ## AI Tagging
 
-The `ai_tags` field contains an array of AI-generated labels applied to each lead. Tags are used for:
+AI tagging automatically categorizes leads based on their behavior, profile, and interactions.
 
-- **Segmentation**: Group leads by shared characteristics
-- **Filtering**: Use the tag filter dropdown in the LeadsTab to find specific lead segments
-- **CRM enrichment**: Tags are included in CRM sync data
+### How AI Tagging Works
 
-Example tags: `"decision_maker"`, `"high_intent"`, `"technical_user"`, `"marketing_lead"`, `"enterprise"`, `"smb"`.
+1. The AI analyzes each lead's combined data (registration info, engagement history, content interactions).
+2. Tags are automatically assigned based on detected patterns and characteristics.
+3. Tags are updated as new data becomes available.
 
-Tags are displayed as purple-outlined badges next to the lead name in the lead list.
+### Example Tags
 
----
+| Tag | Applied When |
+|-----|-------------|
+| `decision-maker` | Lead's role indicates purchasing authority |
+| `technical` | Lead engages primarily with technical content |
+| `repeat-attendee` | Lead has attended multiple events |
+| `high-intent` | Lead shows behaviors associated with purchase intent |
+| `new-prospect` | First-time interaction with your content |
+| `champion` | Highly engaged across multiple touchpoints |
+| `at-risk` | Previously engaged but activity has declined |
+| `webinar-focused` | Primarily engages through webinars |
+| `content-consumer` | Primarily engages through replays and shared clips |
 
-## Searching and Filtering Leads
+### Tag Management
 
-### Search
+- AI-assigned tags can be manually removed if they are incorrect.
+- Users can add custom tags to leads manually.
+- Tags can be used as filters in the LeadsTab and as criteria for CSV export.
+- Tags are included in CRM sync data.
 
-The search bar filters leads by:
-- **Name** (`form_data.name`)
-- **Email** (`form_data.email`)
-- **Company** (`form_data.company`)
+### Common Customer Questions About AI Tagging
 
-Search is case-insensitive and matches partial strings.
+**Q: Can I create my own tags?**
+A: Yes. You can manually add custom tags to any lead. The AI will also continue to assign its own tags based on behavior patterns.
 
-### Score Filter
+**Q: An AI tag seems incorrect. What should I do?**
+A: You can remove any AI-assigned tag by clicking the "X" on the tag. The AI learns from these corrections over time.
 
-| Filter Option | Score Criteria |
-|---|---|
-| All Scores | No filter |
-| Hot (80+) | Score >= 80 |
-| Warm (50-79) | Score >= 50 and < 80 |
-| Cold (<50) | Score < 50 |
-
-### Tag Filter
-
-Dynamically populated from all unique `ai_tags` across the lead dataset. Select a tag to show only leads with that specific tag.
-
-### Sorting
-
-Leads can be sorted by:
-
-| Sort Option | Field | Description |
-|---|---|---|
-| **Date** (default) | `created_date` | When the lead was captured |
-| **Score** | `ai_qualification_score` or `engagement_score` | Lead quality score |
-| **Time in Session** | `time_in_session` | Duration of session attendance |
-
-Sort direction toggles between ascending and descending via the sort order button.
+**Q: How are tags different from scores?**
+A: Scores are numerical measures of qualification and engagement. Tags are categorical labels that describe specific characteristics or behaviors. Tags provide more qualitative context that complements the quantitative scores.
 
 ---
 
-## Lead Detail View
+## CSV Export
 
-Clicking on a lead card expands it to show detailed information:
+The CSV export feature allows users to download their lead data for use in external tools, reporting, or manual analysis.
 
-### Engagement Metrics Panel (4-column grid)
+### Export Process
 
-| Metric | Icon Color | Description |
-|---|---|---|
-| **Score** | Purple | AI qualification or engagement score (0-100) |
-| **Time** | Blue | Time in session displayed in minutes |
-| **Reactions** | Green | Number of reactions sent |
-| **Questions** | Orange | Number of questions asked |
+1. Navigate to the LeadsTab.
+2. Optionally apply filters (by score, tag, date range, event, etc.).
+3. Click the "Export CSV" button.
+4. The system generates a CSV file containing all leads matching the current filters.
+5. The file is downloaded to the user's device.
 
-### Form Data Panel
+### Exported Fields
 
-Displays all key-value pairs from `form_data`, with keys formatted as human-readable labels (underscores replaced with spaces, capitalized).
+The CSV export includes all available lead data:
 
-### Source Information
+| Field | Description |
+|-------|-------------|
+| Name | Lead's full name |
+| Email | Lead's email address |
+| Company | Company name (if captured) |
+| AI Qualification Score | Numerical AI score |
+| Engagement Score | Numerical engagement score |
+| Tags | Comma-separated list of all tags |
+| Source | Where the lead was first captured |
+| First Interaction | Date/time of first interaction |
+| Last Interaction | Date/time of most recent interaction |
+| Events Attended | Number of events attended |
+| Total Watch Time | Cumulative time spent watching content |
+| Registration Date | When the lead first registered |
+| Custom Fields | All custom field responses from registration |
 
-- **Form**: The name of the `LeadCapture` form used
-- **Session**: The room name where the lead was captured
-- **Location**: City and country (if geolocation data is available)
+### Export Behavior
 
-### CRM Sync Status
+- Exports respect the currently applied filters. If no filters are applied, all leads for the account are exported.
+- Large exports may take a few seconds to generate.
+- The export timestamp is included in the filename for reference.
+- Exports are not scheduled; they are on-demand only.
 
-If the lead has been synced to a CRM:
-- Green "Synced to CRM" badge
-- Timestamp of the sync (`crm_synced_at`)
+### Common Customer Questions About CSV Export
 
----
+**Q: Can I schedule automatic exports?**
+A: CSV exports are currently on-demand only. For automated data flow, consider using the CRM integration which syncs data continuously.
 
-## Lead Data Export
+**Q: The export file is missing some leads. Why?**
+A: Check if you have any filters applied in the LeadsTab. Exports only include leads matching the current filter criteria. Clear all filters and export again to get the complete dataset.
 
-### Exporting to CSV
-
-1. Click the **Export CSV** button in the Leads header.
-2. The system generates a CSV file containing all currently filtered leads.
-3. The file downloads automatically with the name `leads-YYYY-MM-DD.csv`.
-
-### CSV Columns
-
-| Column | Source |
-|---|---|
-| Date | `created_date` (formatted as `YYYY-MM-DD HH:mm`) |
-| Name | `form_data.name` |
-| Email | `form_data.email` |
-| Phone | `form_data.phone` |
-| Company | `form_data.company` |
-| Score | `ai_qualification_score` or `engagement_score` |
-| Tags | `ai_tags` (semicolon-separated) |
-| Time in Session | `time_in_session` (seconds) |
-| Reactions | `reactions_count` |
-| Questions | `questions_asked` |
-| Form | Lead capture form name |
-| Session | Room name |
-
-**Note:** The export respects current filters. If you have a search query, score filter, or tag filter active, only matching leads are exported.
-
-CSV fields containing commas, quotes, or newlines are properly escaped.
+**Q: What format is the CSV in?**
+A: The file is a standard CSV (Comma-Separated Values) file encoded in UTF-8. It can be opened in Excel, Google Sheets, or any CSV-compatible tool.
 
 ---
 
-## Integration with CRM Tools
+## CRM Integration
 
-R-Link supports lead synchronization with the following CRM platforms (via the Integrations tab):
+R-Link integrates with external CRM platforms to sync lead data automatically.
 
-| CRM Platform | Plan Required | Description |
-|---|---|---|
-| **Salesforce** | Business | Enterprise CRM with full lead object mapping |
-| **HubSpot** | Business | Inbound marketing and CRM platform |
-| **Marketo** | Business | Marketing automation platform |
-| **ActiveCampaign** | Business | Email marketing and CRM automation |
-| **ConvertKit** | Business | Creator-focused email and lead management |
-| **Go High Level** | Business | All-in-one marketing and CRM platform |
+### How CRM Integration Works
 
-### CRM Sync Indicators
+1. Navigate to the Integrations tab (or the CRM section within the LeadsTab).
+2. Select your CRM platform from the supported list.
+3. Authenticate with your CRM account (OAuth or API key, depending on the platform).
+4. Configure field mappings between R-Link lead fields and your CRM fields.
+5. Enable the sync.
 
-- Leads that have been synced display a green "Synced to CRM" badge in the detail view.
-- The `crm_synced` boolean field tracks sync status.
-- The `crm_synced_at` timestamp records when the sync occurred.
+### Sync Behavior
 
-### Setting Up CRM Integration
+- **Direction**: R-Link syncs leads TO the CRM (one-way sync by default). Bidirectional sync may be available for supported platforms.
+- **Frequency**: Leads are synced in near real-time as new data is captured.
+- **Deduplication**: The integration uses email address as the unique identifier. If a lead with the same email exists in the CRM, it updates the existing record rather than creating a duplicate.
+- **Field Mapping**: Users configure which R-Link fields map to which CRM fields during setup. Unmapped fields are not synced.
+- **Score Sync**: Both AI qualification and engagement scores can be mapped to CRM fields (typically custom fields in the CRM).
+- **Tag Sync**: Tags can be synced as CRM tags, labels, or custom field values.
 
-1. Navigate to **Admin** > **Integrations** tab.
-2. Find your CRM platform in the CRM category.
-3. Click **Connect** and provide API credentials.
-4. Configure field mapping between R-Link lead data and CRM fields.
-5. Enable automatic sync or perform manual exports.
+### Common Customer Questions About CRM Integration
 
----
+**Q: Which CRM platforms are supported?**
+A: Check the Integrations tab for the current list of supported CRM platforms. Common integrations include Salesforce, HubSpot, Pipedrive, and others. The list is regularly expanded.
 
-## Analytics Dashboards
+**Q: My CRM sync is not working. What should I check?**
+A: Common issues include:
+1. Expired authentication tokens. Re-authenticate from the Integrations tab.
+2. Incorrect field mappings. Verify that R-Link fields are mapped to valid CRM fields.
+3. CRM API rate limits. If you have a large number of leads, the sync may be throttled by your CRM's API limits.
+4. Required CRM fields not mapped. If your CRM requires certain fields for new contacts, ensure they are mapped.
 
-Lead analytics are integrated into the broader R-Link analytics ecosystem:
+**Q: Can I sync historical leads to my CRM?**
+A: Yes. When you first enable the CRM integration, you can choose to sync all existing leads or only new leads going forward.
 
-### Lead-Level Analytics
-
-Available in the expanded lead detail view:
-- Individual engagement score
-- Time in session
-- Reactions count
-- Questions asked count
-- Geographic location data
-
-### Session-Level Analytics
-
-Available via the Dashboard tab:
-- Total attendees per session
-- Lead conversion rates by event
-- Top-performing rooms and sessions
-
-### Aggregate Metrics
-
-The Leads tab header shows:
-- Total lead count (with filter status)
-- Distribution across Hot/Warm/Cold categories (via filter)
-
----
-
-## Settings and Options
-
-| Setting | Location | Description |
-|---|---|---|
-| Lead capture form fields | LeadCapture entity / room configuration | Define which fields to collect from attendees |
-| Score filter | Leads tab filter panel | Filter by Hot (80+), Warm (50-79), or Cold (<50) |
-| Tag filter | Leads tab filter panel | Filter by AI-assigned tags |
-| Sort order | Leads tab filter panel | Sort by Date, Score, or Time in Session (ascending/descending) |
-| CSV export | Leads tab header | Export filtered leads to CSV file |
-| CRM integration | Integrations tab | Connect CRM platforms for lead sync |
+**Q: Does the CRM integration work on all plans?**
+A: CRM integration availability depends on your plan. Check the Billing tab or contact support for plan-specific feature availability.
 
 ---
 
 ## Troubleshooting
 
-| Issue | Cause | Solution |
-|---|---|---|
-| "No leads found" message | No lead submissions exist for the account's rooms | Ensure lead capture forms are configured and activated in your rooms |
-| Leads not appearing after session | Query cache not refreshed | Refresh the page; leads are fetched from `LeadSubmission.list()` |
-| Lead score shows 0 | Neither AI qualification nor engagement scoring has run | AI scoring processes asynchronously; allow time for scoring to complete |
-| CSV export downloads empty file | All leads are filtered out by current search/filter | Clear all filters before exporting, or adjust filter criteria |
-| CRM sync not showing | CRM integration not configured or sync pending | Check Integrations tab for CRM connection status; verify API credentials |
-| Lead form data appears empty | Attendee submitted the form without filling fields | The form only requires email in most configurations; other fields may be optional |
-| Tags not populating | AI tagging has not processed the lead | AI tagging runs asynchronously; tags may appear after a delay |
-| Search not finding a lead | Search only matches name, email, and company | Use exact spelling or partial matches in those three fields only |
-| "Loading leads..." spinner persists | Network issue or API timeout | Check network connectivity; refresh the page |
-| Leads from wrong sessions appearing | Room filtering by account_id | The system filters leads by rooms belonging to the current account; verify room ownership |
+### No Leads Appearing in LeadsTab
+
+**Possible Causes:**
+- No events or registrations have occurred yet.
+- The `accountId` is incorrect or the user is on the wrong account.
+- Lead capture is not enabled for the events in question.
+
+**Resolution Steps:**
+1. Confirm that events have occurred and attendees registered or participated.
+2. Verify the user is logged into the correct account.
+3. Check that the events were created under the same account.
+4. If leads should exist but do not appear, escalate to engineering with the account ID and event IDs.
+
+### Lead Scores Not Updating
+
+**Possible Causes:**
+- The lead has no new interactions since the last score calculation.
+- The AI scoring service is temporarily delayed.
+
+**Resolution Steps:**
+1. Check the lead's activity history. If there are no new interactions, the score will not change.
+2. Engagement scores update in real time; if they are not updating, the interaction may not have been tracked (e.g., the user was anonymous).
+3. AI qualification scores update periodically. Wait for the next recalculation cycle.
+4. If scores remain stale for more than 24 hours, escalate to engineering.
+
+### CSV Export Fails or Downloads Empty File
+
+**Possible Causes:**
+- No leads match the current filters.
+- Network interruption during export generation.
+- Browser blocked the download.
+
+**Resolution Steps:**
+1. Clear all filters and try exporting again.
+2. Check the browser's download settings and ensure downloads are not blocked.
+3. Try a different browser.
+4. If the issue persists, escalate to engineering.
+
+### CRM Sync Creates Duplicates
+
+**Possible Causes:**
+- The email field in the CRM is not set as the unique identifier.
+- The CRM field mapping was changed after initial sync.
+- The CRM has multiple matching records with different email formats.
+
+**Resolution Steps:**
+1. Verify that email is configured as the unique identifier in the CRM integration settings.
+2. Check the CRM for existing records with similar email variations.
+3. Review the field mapping configuration for accuracy.
+4. If duplicates continue, disable sync, clean up duplicates in the CRM, and re-enable sync.
 
 ---
 
-## FAQ
+## Internal Reference
 
-**Q: How are leads captured during a session?**
-A: Lead capture forms (configured via `LeadCapture` entities) are displayed to attendees during sessions. When attendees submit the form, a `LeadSubmission` record is created with their form data and engagement metrics.
+### Data Architecture
 
-**Q: What is the difference between AI qualification score and engagement score?**
-A: The AI qualification score is generated by AI analysis of the lead's profile and behavior patterns. The engagement score is calculated from measurable session activity (time, reactions, questions). The system uses whichever score is available, with `ai_qualification_score` taking priority.
+```
+Lead Record
+  |-- Profile Data (name, email, company, custom fields)
+  |-- AI Qualification Score (recalculated periodically)
+  |-- Engagement Score (updated in real time)
+  |-- Tags (AI-assigned + manual)
+  |-- Interaction History
+  |     |-- Registration events
+  |     |-- Attendance records
+  |     |-- Poll responses
+  |     |-- Chat activity
+  |     |-- Q&A submissions
+  |     |-- Content views
+  |-- CRM Sync Status
+  |-- Export History
+```
 
-**Q: Can I manually edit lead scores?**
-A: The current LeadsTab is read-only for lead data. Scores are automatically calculated and cannot be manually adjusted through the UI.
+### Related Entities
 
-**Q: How do I set up lead capture for my sessions?**
-A: Lead capture forms are configured at the room level. When creating or editing a room, you can attach a lead capture form that will display to attendees during sessions.
+- **Account**: All leads are scoped to an account (via `accountId`)
+- **Event**: Events are a primary source of lead capture
+- **WebinarRegistration**: Registration data feeds into lead records
+- **Poll**: Poll responses contribute to engagement scoring
+- **Recording / SharedClip**: Content views contribute to engagement scoring
 
-**Q: Does the CSV export include all leads or just filtered ones?**
-A: The export includes only the currently filtered leads. If you want all leads, clear all search and filter criteria before exporting.
+### Related Admin Tabs
 
-**Q: How often is lead data updated?**
-A: Lead submission data is captured in real-time during sessions. AI scoring and tagging may be processed asynchronously with a short delay.
-
-**Q: Can I delete a lead?**
-A: The LeadsTab does not provide a delete function in the current UI. Lead management operations beyond viewing and exporting require direct entity manipulation or CRM tools.
-
-**Q: What happens to leads if I disconnect my CRM integration?**
-A: Leads that have already been synced remain in the CRM. The `crm_synced` flag on the R-Link side is not affected. New leads will not sync until the integration is reconnected.
-
----
-
-## Known Limitations
-
-1. **Read-only interface**: The LeadsTab is a viewing and export interface only. Leads cannot be edited, deleted, or manually scored from the admin UI.
-2. **No real-time updates**: The leads list does not auto-refresh. Users must manually reload the page to see new leads captured during an active session.
-3. **AI scoring delay**: AI qualification scores and tags are processed asynchronously and may not appear immediately after lead capture.
-4. **Limited search fields**: Search only matches against `name`, `email`, and `company` fields from `form_data`. Other form fields are not searchable.
-5. **No lead deduplication**: If the same attendee submits lead forms in multiple sessions, separate lead records are created without automatic deduplication.
-6. **CRM sync is one-directional**: Lead data flows from R-Link to CRM tools. Changes made in the CRM are not reflected back in R-Link.
-7. **Geographic data availability**: Location data (`city`, `country`) depends on geolocation services and may not be available for all leads.
-
----
-
-## Plan Requirements
-
-| Feature | Basic | Business |
-|---|---|---|
-| Leads Tab Access | Yes | Yes |
-| Lead Capture During Sessions | Yes | Yes |
-| Lead Scoring | Yes | Yes |
-| AI Tagging | Yes | Yes |
-| CSV Export | Yes | Yes |
-| CRM Integration (Salesforce, HubSpot, etc.) | No | Yes |
-| Advanced Analytics | No | Yes |
-
----
-
-## Related Documents
-
-- [01-platform-overview.md](./01-platform-overview.md) -- Platform architecture and entity model
-- [20-integrations.md](./20-integrations.md) -- Integration setup overview
-- [23-crm-integrations.md](./23-crm-integrations.md) -- CRM integration details (Salesforce, HubSpot, etc.)
-- [29-event-landing-pages.md](./29-event-landing-pages.md) -- Event landing pages with registration forms
-- [32-admin-dashboard-reference.md](./32-admin-dashboard-reference.md) -- Complete admin tab reference
+- **LeadsTab** (`?tab=leads`): Primary lead management interface
+- **IntegrationsTab** (`?tab=integrations`): CRM integration configuration
+- **EventLandingTab** (`?tab=event-landing`): Event landing pages that capture leads
+- **RecordingsTab** (`?tab=recordings`): Recordings that generate content view data
+- **ClipsTab** (`?tab=clips`): Clips that generate content view data

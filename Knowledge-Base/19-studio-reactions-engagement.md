@@ -1,287 +1,434 @@
-# Studio Reactions and Engagement
+# 19 - Studio Reactions & Engagement
 
 ## Overview
 
-R-Link's Studio includes a full engagement system designed to keep participants active, recognized, and motivated during live sessions. The engagement suite encompasses real-time emoji reactions (including boosted reactions), a hand-raise queue, "Be Right Back" (BRB) status indicators, comprehensive engagement tracking via the `useEngagement` hook, leaderboards for gamification, and a rewards system with real-time polling and notifications. These features work across Meeting, Webinar, and Live Stream modes to create dynamic, interactive experiences.
+R-Link Studio includes a comprehensive engagement system that enables real-time participant interaction through reactions, hand raising, BRB (Be Right Back) status, rewards, and a leaderboard. These features are designed to keep participants actively engaged during live sessions and provide hosts with visibility into audience sentiment and participation levels. The engagement system is powered by the `useEngagement` hook and rendered through the `EffectsOverlay` component.
+
+---
+
+## Table of Contents
+
+1. [Reactions System](#reactions-system)
+2. [Effects Overlay](#effects-overlay)
+3. [Raised Hands Queue](#raised-hands-queue)
+4. [BRB (Be Right Back)](#brb-be-right-back)
+5. [useEngagement Hook](#useengagement-hook)
+6. [Rewards](#rewards)
+7. [Leaderboard](#leaderboard)
+8. [Engagement Configuration](#engagement-configuration)
+9. [Common Questions & Troubleshooting](#common-questions--troubleshooting)
+10. [Technical Reference](#technical-reference)
 
 ---
 
 ## Reactions System
 
+### What It Is
+
+The Reactions system allows participants to express themselves during a live session by sending visual reactions (emoji-style animations) that appear on the Studio stage. Reactions are lightweight, non-disruptive, and provide immediate feedback to the host and other participants. They serve as a real-time pulse of audience engagement and sentiment.
+
+### Types of Reactions
+
+There are two categories of reactions:
+
+| Category | Description | Controlled By |
+|----------|-------------|---------------|
+| **Standard Reactions** | Regular emoji reactions available to all participants when reactions are enabled. These are the default reaction set. | `reactionsEnabled` state property |
+| **Boosted Reactions** | Enhanced or premium reactions that have a more prominent visual effect. These are visually larger, animated differently, or include special effects. | `boostedReactionsEnabled` state property |
+
 ### How Reactions Work
 
-The reactions system allows participants to send real-time emoji reactions that appear as visual effects overlaid on the Studio stage. Reactions provide immediate, lightweight feedback without interrupting the session flow.
-
-**Core Components:**
-- **EffectsOverlay** -- The visual layer that renders reaction animations over the Studio stage.
-- `activeEffect` -- State tracking the currently displayed reaction effect.
-- `reactionsEnabled` -- Boolean toggle that controls whether reactions are available to participants.
-- `boostedReactionsEnabled` -- Boolean toggle that controls whether boosted (premium/amplified) reactions are available.
-
-### Standard Reactions
-
-When `reactionsEnabled` is `true`, participants can send emoji reactions that briefly animate on the **EffectsOverlay**. Each reaction triggers an update to the `activeEffect` state and is tracked by the engagement system.
+1. The host enables reactions for the session by setting `reactionsEnabled` to `true`.
+2. Participants see a reaction bar or button in their interface.
+3. Participants click/tap a reaction to send it.
+4. The reaction is broadcast to all participants and displayed on the **EffectsOverlay**.
+5. Reactions appear as animated visuals that float or burst across the stage area.
+6. The `useEngagement` hook tracks all reactions for analytics and engagement scoring.
 
 ### Boosted Reactions
 
-Boosted reactions are amplified versions of standard reactions that have greater visual impact on the stage. When `boostedReactionsEnabled` is `true`, participants have access to boosted reactions in addition to standard ones. Boosted reactions are tracked separately in the engagement system (see `getTotalBoostedReactions` below).
+Boosted reactions are a premium tier of reactions that stand out more than standard reactions:
 
-### Step-by-Step: Sending a Reaction
+- They are enabled separately via the `boostedReactionsEnabled` property.
+- They may require specific conditions (e.g., a certain engagement level, a host trigger, or a paid feature).
+- The `useEngagement` hook provides `getTotalBoostedReactions()` to track boosted reaction totals separately.
+- Boosted reactions contribute more weight to engagement scoring and leaderboard standings.
 
-1. The host ensures `reactionsEnabled` is `true` for the session (and optionally `boostedReactionsEnabled`).
-2. A participant clicks a reaction emoji from the reactions panel.
-3. The `activeEffect` state is updated with the selected reaction.
-4. The **EffectsOverlay** renders the reaction animation on the stage, visible to all participants.
-5. The engagement system records the reaction via the `addReaction` method.
+### Common Customer Questions
 
-### Enabling/Disabling Reactions
+**Q: How do I enable reactions for my session?**
+A: Reactions are controlled by the `reactionsEnabled` setting. This can be toggled from the Studio session controls or room settings. When enabled, participants will see reaction options in their interface.
 
-The host controls reactions through two independent toggles:
-- **reactionsEnabled** -- Master toggle for all reactions. When `false`, no reactions can be sent.
-- **boostedReactionsEnabled** -- Secondary toggle for boosted reactions. Only effective when `reactionsEnabled` is also `true`.
+**Q: What is the difference between regular and boosted reactions?**
+A: Regular reactions are standard emoji-style reactions available to all participants. Boosted reactions are enhanced reactions with more prominent visual effects. Boosted reactions are controlled by a separate `boostedReactionsEnabled` setting and may have additional requirements.
 
----
+**Q: Participants say they cannot see the reaction buttons.**
+A: Check that `reactionsEnabled` is set to `true` for the session. If participants are on a mobile device or have a very small screen, the reaction controls may be in a collapsed menu. Ask them to look for an engagement or emoji icon in their toolbar.
 
-## Hand Raise
-
-### How Hand Raise Works
-
-The hand raise feature provides an orderly way for participants to signal that they want to speak or ask a question. Raised hands are managed in a queue that the host can review and act upon.
-
-**Core Components:**
-- **RaisedHandsQueue** -- The queue management component showing all participants with raised hands in order.
-- `isHandRaised` -- Boolean state indicating whether the current user has their hand raised.
-- `raisedHands` -- Array state containing all currently raised hands, in the order they were raised.
-
-### Step-by-Step: Raising and Managing Hands
-
-1. A participant clicks the "Raise Hand" button, setting their `isHandRaised` state to `true`.
-2. The participant's hand raise is added to the `raisedHands` array.
-3. The host sees the **RaisedHandsQueue** component, displaying all raised hands in chronological order.
-4. The host can acknowledge a participant by selecting them from the queue (e.g., unmuting them or giving them the floor).
-5. Once acknowledged, the participant's hand is lowered (removed from `raisedHands` and `isHandRaised` set to `false`).
-6. Participants can also manually lower their own hand at any time.
+**Q: Reactions are not appearing on screen.**
+A: Troubleshoot:
+- Verify that `reactionsEnabled` is true.
+- Check the participant's internet connection (reactions require real-time communication).
+- Ask the participant to refresh their browser.
+- Ensure the **EffectsOverlay** component is not hidden or blocked by another element.
 
 ---
 
-## BRB (Be Right Back) Status
+## Effects Overlay
 
-### How BRB Works
+### What It Is
 
-The BRB feature allows participants to indicate they are temporarily away from the session without leaving it. This provides a clear visual signal to the host and other participants.
+The **EffectsOverlay** is the visual rendering layer for all engagement effects in the Studio. It is responsible for displaying reaction animations, visual effects, and any other overlay-based engagement content on the stage area.
 
-**State:**
-- `isBRB` -- Boolean state indicating whether the current user is in BRB mode.
+### How It Works
 
-### Step-by-Step: Using BRB
+- The EffectsOverlay sits as a transparent layer on top of the Studio stage.
+- When a reaction or effect is triggered, the overlay renders the corresponding animation.
+- Multiple reactions can appear simultaneously from different participants.
+- Animations have a lifecycle (appear, animate, fade out) and do not persist on screen.
+- The overlay does not interfere with other stage content (video, presentations, etc.).
 
-1. A participant toggles BRB on, setting `isBRB` to `true`.
-2. Other participants and the host see a visual indicator that the participant is temporarily away.
-3. When the participant returns, they toggle BRB off, setting `isBRB` to `false`.
+### Common Customer Questions
+
+**Q: Reaction animations are not showing up even though participants are sending them.**
+A: The EffectsOverlay may have rendering issues. Try:
+- Refreshing the browser.
+- Checking that hardware acceleration is enabled in the browser.
+- Trying a different browser (Chrome recommended).
+- Clearing the browser cache.
+
+**Q: The reaction animations are causing lag or performance issues.**
+A: A high volume of simultaneous reactions can impact performance on lower-end devices. Suggest:
+- Closing unnecessary browser tabs.
+- Using a device with better graphics capabilities.
+- The host can temporarily disable reactions during performance-sensitive portions of the session.
 
 ---
 
-## Engagement Tracking
+## Raised Hands Queue
 
-### The useEngagement Hook
+### What It Is
 
-The `useEngagement` hook is the central system for tracking and querying participant engagement data in real time. It provides both aggregate statistics and per-participant engagement details.
+The **RaisedHandsQueue** is an ordered queue system that allows participants to "raise their hand" to get the host's attention. This is the digital equivalent of raising your hand in a classroom or meeting to indicate you want to speak or ask a question.
 
-**Hook Return Values:**
+### How It Works
+
+1. A participant clicks the "Raise Hand" button in their interface.
+2. Their hand raise is added to the **RaisedHandsQueue** in chronological order.
+3. The host sees the queue in their participant management panel, showing participants in the order they raised their hands.
+4. The host can:
+   - **Acknowledge** a hand raise (call on the participant to speak).
+   - **Lower** a participant's hand (dismiss the hand raise).
+   - **Clear the queue** (lower all hands).
+5. When a participant is acknowledged, they can unmute and speak.
+6. Participants can also lower their own hand if they no longer need to speak.
+
+### Queue Management
+
+- **First In, First Out**: The queue respects the order in which hands were raised.
+- **Visual indicators**: Raised hands appear as icons or badges next to participant names.
+- **Count display**: The host can see the total number of raised hands at a glance.
+- **Priority**: The host can choose to acknowledge hands out of order if needed (e.g., for follow-up questions or priority speakers).
+
+### Common Customer Questions
+
+**Q: How do I raise my hand?**
+A: Look for the "Raise Hand" button in the participant toolbar at the bottom of the Studio interface. Click it once to raise your hand. Click again to lower it.
+
+**Q: I raised my hand but the host has not called on me.**
+A: The host sees all raised hands in a queue and works through them in order. Please be patient. If your hand has been raised for a long time, it may also help to mention your question in the chat.
+
+**Q: How does the host see raised hands?**
+A: The host has a participant management panel that shows a **RaisedHandsQueue** with all participants who have raised their hands, ordered by time. The host can click on a participant to acknowledge or dismiss their hand raise.
+
+**Q: Can the host disable hand raising?**
+A: Hand raising availability is part of the session engagement settings. The host can enable or disable this feature as needed.
+
+---
+
+## BRB (Be Right Back)
+
+### What It Is
+
+The **BRB (Be Right Back)** status is a participant state that indicates the participant is temporarily away from their device or not actively attending the session. This is managed through the `isBRB` property.
+
+### How It Works
+
+1. A participant activates BRB status through their interface controls.
+2. The `isBRB` property for that participant is set to `true`.
+3. Other participants and the host see a BRB indicator on that participant's video tile or name badge.
+4. The participant's video may be replaced with a BRB graphic or dimmed.
+5. When the participant returns, they deactivate BRB status, and `isBRB` returns to `false`.
+
+### BRB Behavior
+
+- **Audio**: The participant is automatically muted while BRB is active.
+- **Video**: The participant's video feed is replaced with a BRB placeholder or dimmed.
+- **Engagement**: BRB participants are excluded from active engagement calculations (they are not counted as disengaged; they are simply marked as away).
+- **Reactions**: BRB participants typically cannot send reactions while their status is active.
+- **Notifications**: BRB participants may receive a summary of what they missed when they return (depending on session settings).
+
+### Common Customer Questions
+
+**Q: How do I set my status to BRB?**
+A: Look for a BRB button or a status menu in the participant toolbar. Click BRB to indicate you are temporarily away. Click it again when you return.
+
+**Q: Other participants can see I am BRB?**
+A: Yes. When BRB is active, other participants and the host see a BRB indicator on your video tile. This lets everyone know you are temporarily unavailable.
+
+**Q: I am BRB but I can still hear the session.**
+A: BRB mutes your microphone but does not necessarily mute the session audio on your end. You may still hear the session depending on your device and browser settings. If you want to fully step away, you can mute your device or close your laptop.
+
+---
+
+## useEngagement Hook
+
+### What It Is
+
+The `useEngagement` hook is the core data layer for the entire engagement system. It provides methods and data for tracking, querying, and managing participant engagement across the session. It is used internally by Studio components to power reactions, leaderboards, rewards, and engagement analytics.
+
+### Hook Interface
+
+The `useEngagement` hook returns an object with the following properties and methods:
 
 | Property/Method | Type | Description |
-|----------------|------|-------------|
-| `engagement` | object | The full engagement state object containing all tracked data |
-| `activeReactions` | array | List of currently active (visible) reactions on the stage |
-| `addReaction` | function | Adds a new reaction to the engagement tracking system |
-| `getActiveReactionForUser` | function | Returns the currently active reaction for a specific user (if any) |
-| `getTopParticipants` | function | Returns a ranked list of the most engaged participants |
-| `getTotalReactions` | function | Returns the total count of all reactions sent during the session |
-| `getTotalBoostedReactions` | function | Returns the total count of boosted reactions sent during the session |
+|-----------------|------|-------------|
+| `engagement` | Object | The current engagement state object containing all tracked engagement data for the session |
+| `activeReactions` | Array | List of currently active (visible) reactions that are being displayed on the EffectsOverlay |
+| `addReaction(reaction)` | Function | Sends a new reaction. Takes a reaction object and broadcasts it to all participants. |
+| `getActiveReactionForUser(userId)` | Function | Returns the currently active reaction for a specific user. Returns null if the user has no active reaction. |
+| `getTopParticipants(count)` | Function | Returns an ordered list of the top `count` participants ranked by engagement score. Used by the leaderboard. |
+| `getTotalReactions()` | Function | Returns the total number of standard reactions sent during the session. |
+| `getTotalBoostedReactions()` | Function | Returns the total number of boosted reactions sent during the session. Tracked separately from standard reactions. |
 
-### Engagement Data Flow
+### Engagement Scoring
 
-1. Participants send reactions, raise hands, and interact with session features.
-2. Each action is recorded by the `addReaction` method (for reactions) or tracked by the engagement state.
-3. The `engagement` object is updated in real time.
-4. The host (or engagement-driven features like Leaderboard) can query the data using the provided methods.
-5. `getTopParticipants` ranks participants by their total engagement score, factoring in reactions, boosted reactions, and other interactions.
+The engagement system calculates a score for each participant based on their activity:
 
-### Using Engagement Data
+- **Reactions sent**: Each reaction adds to the participant's engagement score.
+- **Boosted reactions**: Boosted reactions contribute a higher weight to the engagement score.
+- **Hand raises**: Raising a hand and being acknowledged adds to engagement.
+- **Chat messages**: Active chat participation contributes to engagement.
+- **Time present**: Duration of active participation (excluding BRB time) is factored in.
 
-- **For leaderboards:** Call `getTopParticipants()` to get a ranked list for display.
-- **For reaction counts:** Call `getTotalReactions()` for standard reactions and `getTotalBoostedReactions()` for boosted reactions.
-- **For per-user data:** Call `getActiveReactionForUser(userId)` to check what reaction a specific participant last sent.
-- **For live display:** Read `activeReactions` to get reactions currently animating on stage.
+### How Components Use the Hook
 
----
+- **EffectsOverlay**: Uses `activeReactions` to render current reaction animations.
+- **Leaderboard**: Uses `getTopParticipants()` to display the ranking.
+- **RewardsPanel**: Uses engagement data to determine reward eligibility.
+- **Analytics**: Uses `getTotalReactions()` and `getTotalBoostedReactions()` for session summaries.
+- **Individual tracking**: Uses `getActiveReactionForUser()` to show reaction badges next to participant names.
 
-## Leaderboard
+### Common Customer Questions
 
-### How the Leaderboard Works
+**Q: How is the engagement score calculated?**
+A: Engagement is calculated based on a combination of reactions sent, chat messages, hand raises, and active participation time. Boosted reactions contribute more than standard reactions.
 
-The leaderboard gamifies session engagement by ranking participants based on their interaction levels. It uses data from the `useEngagement` hook to calculate and display rankings.
+**Q: Where can I see engagement data for my session?**
+A: Hosts can view engagement data in real time during the session (via the leaderboard and engagement panels) and in post-session analytics.
 
-**Core Components:**
-- **LeaderboardElementModal** -- The host-facing modal for configuring and launching the leaderboard.
-- **LeaderboardStageRenderer** -- The stage renderer displaying the leaderboard to all participants.
-
-### Step-by-Step: Using the Leaderboard
-
-1. The host opens the Leaderboard tool from the Studio toolbar.
-2. The **LeaderboardElementModal** appears for configuring leaderboard settings (e.g., which engagement metrics to include, display options).
-3. The host activates the leaderboard, which renders on the stage via **LeaderboardStageRenderer**.
-4. The leaderboard displays participant rankings based on `getTopParticipants()` data.
-5. Rankings update in real time as participants continue to engage.
-6. The host can hide or remove the leaderboard at any time.
+**Q: Is engagement data saved after the session ends?**
+A: Yes. Engagement data is persisted and available in post-session analytics and reports.
 
 ---
 
 ## Rewards
 
-### How Rewards Work
+### What It Is
 
-The rewards system allows hosts to recognize and reward participants during live sessions. Rewards are polled in real time and can be displayed publicly to all participants.
-
-**Core Components:**
-- **RewardsPanel** -- The host-facing panel for managing and issuing rewards.
-- `showRewardsPanel` -- State toggle controlling visibility of the rewards panel.
-- **RewardNotification** -- The notification component displayed when a reward is issued.
+The Rewards system allows hosts to recognize and reward participant engagement during a live session. Rewards are managed through the **RewardsPanel** and are backed by the **Reward entity**.
 
 ### Reward Entity
 
-Each reward is represented by an entity with the following fields:
+The Reward entity is the core data structure for rewards. It is polled every **3 seconds** to ensure real-time updates:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `room_id` | string | The room/session ID where the reward was issued |
-| `display_publicly` | boolean | Whether the reward is visible to all participants or only the recipient |
-| `created_date` | datetime | Timestamp of when the reward was created |
+| Property | Description |
+|----------|-------------|
+| `id` | Unique identifier for the reward |
+| `name` | Display name of the reward |
+| `description` | Description of what the reward represents |
+| `recipient` | The participant who received the reward |
+| `display_publicly` | Boolean. When true, the reward is announced to all session participants. When false, only the recipient and host see it. |
+| `created_at` | Timestamp when the reward was given |
 
-### Real-Time Polling
+### Polling Behavior
 
-The rewards system uses a polling mechanism that checks for new rewards **every 3 seconds**. This ensures that reward notifications appear promptly after they are issued, without requiring a manual refresh.
+- The Reward entity is **polled every 3 seconds** to check for new rewards.
+- This ensures that rewards appear promptly for all participants without requiring a page refresh.
+- The polling mechanism is lightweight and does not significantly impact performance.
 
-### Step-by-Step: Issuing a Reward
+### RewardsPanel
 
-1. The host opens the **RewardsPanel** by setting `showRewardsPanel` to `true`.
-2. The host selects a participant to reward and configures the reward details.
-3. The host sets `display_publicly` to `true` or `false` depending on whether the reward should be visible to everyone.
-4. The host issues the reward, creating a new Reward entity.
-5. Within 3 seconds (the polling interval), the **RewardNotification** component fires and displays the reward.
-6. If `display_publicly` is `true`, all participants see the reward notification. If `false`, only the recipient sees it.
+The **RewardsPanel** is the host-facing interface for managing rewards:
+
+- **View rewards**: See all rewards given during the session.
+- **Give rewards**: Select a participant and give them a reward.
+- **Configure visibility**: Set `display_publicly` to control whether the reward is announced to everyone.
+- **Reward history**: View the complete list of rewards given during the session.
 
 ### Public vs. Private Rewards
 
-- **Public rewards** (`display_publicly: true`) -- Visible to all session participants. Great for recognizing top contributors and encouraging engagement.
-- **Private rewards** (`display_publicly: false`) -- Visible only to the recipient. Useful for personal recognition without public attention.
+| Setting | Behavior |
+|---------|----------|
+| `display_publicly: true` | The reward is announced to all participants via a notification or announcement. This creates a moment of public recognition. |
+| `display_publicly: false` | The reward is visible only to the recipient and the host. This is useful for private acknowledgment or sensitive recognition. |
+
+### Common Customer Questions
+
+**Q: How do I give a reward to a participant?**
+A: Open the RewardsPanel from the Studio engagement tools. Select the participant you want to reward, choose or customize the reward, and send it. You can choose whether to make it public or private.
+
+**Q: How quickly do rewards appear?**
+A: Rewards are polled every 3 seconds, so they should appear within a few seconds of being given.
+
+**Q: Can participants see all rewards or only their own?**
+A: It depends on the `display_publicly` setting. Public rewards are visible to all participants. Private rewards are visible only to the recipient and the host.
+
+**Q: Can I give multiple rewards to the same participant?**
+A: Yes. There is no limit on how many rewards a single participant can receive during a session.
+
+**Q: Do rewards affect the leaderboard?**
+A: Rewards may contribute to engagement scoring and leaderboard positioning, depending on the session configuration.
 
 ---
 
-## Settings and Options
+## Leaderboard
 
-| Setting | Scope | Description |
-|---------|-------|-------------|
-| `reactionsEnabled` | Per-session | Master toggle for participant reactions |
-| `boostedReactionsEnabled` | Per-session | Toggle for boosted/amplified reactions |
-| `showRewardsPanel` | Per-session | Toggle for the rewards management panel |
-| `display_publicly` (Rewards) | Per-reward | Whether a specific reward is shown to all participants |
-| Leaderboard metrics | Per-session | Which engagement metrics are included in the leaderboard ranking |
+### What It Is
 
----
+The Leaderboard displays a ranked list of the most engaged participants during the session. It is powered by the `getTopParticipants()` method from the `useEngagement` hook and provides a gamified element to encourage active participation.
 
-## Troubleshooting
+### How It Works
 
-### Reactions not appearing on stage
-- Verify `reactionsEnabled` is set to `true`.
-- Check that the **EffectsOverlay** is rendering (it should be a top-level layer in the Studio).
-- Ensure the participant's connection is stable.
+1. The engagement system continuously tracks participant activity (reactions, chat, hand raises, time present).
+2. Each participant's engagement is scored based on their cumulative activity.
+3. The leaderboard displays participants ranked from highest to lowest engagement score.
+4. The leaderboard updates in real time as participants interact.
+5. The host can display the leaderboard to all participants or keep it visible only to themselves.
 
-### Boosted reactions not available
-- Verify `boostedReactionsEnabled` is set to `true`.
-- Ensure `reactionsEnabled` is also `true` (boosted reactions require the master toggle to be on).
+### Leaderboard Data
 
-### Raised hand not showing in queue
-- Verify `isHandRaised` is set to `true` for the participant.
-- Check that the `raisedHands` array is updating.
-- Ensure the host's **RaisedHandsQueue** component is visible.
+The leaderboard uses `getTopParticipants(count)` which returns:
 
-### BRB status not showing
-- Confirm `isBRB` is set to `true` for the participant.
-- Check that the participant's tile/avatar is visible to the host.
+- **Participant name**: Display name of the participant.
+- **Engagement score**: Numeric score reflecting their total engagement.
+- **Rank**: Their position on the leaderboard.
+- **Activity breakdown**: May include counts of reactions, messages, and other activity types.
 
-### Leaderboard not updating
-- Verify the `useEngagement` hook is returning data (check `engagement` object).
-- Ensure `getTopParticipants()` is returning a non-empty array.
-- Check that participants have actually sent reactions or engaged with tracked features.
+### Common Customer Questions
 
-### Reward notifications not appearing
-- Confirm the Reward entity was created successfully.
-- Check the polling mechanism (rewards are polled every 3 seconds, so there may be a brief delay).
-- Verify `display_publicly` is set correctly for the intended audience.
-- Ensure the **RewardNotification** component is mounted in the UI.
+**Q: How is the leaderboard ranking determined?**
+A: Rankings are based on engagement scores calculated from reactions sent (standard and boosted), chat messages, hand raises, and active participation time. Higher activity means a higher score and rank.
 
-### Engagement data seems incomplete
-- The `useEngagement` hook tracks data from the moment it is initialized. Engagement from before the hook was active may not be captured.
-- Ensure all participants are connected and their reactions are being transmitted.
+**Q: Can I show the leaderboard to all participants?**
+A: Yes. The host can choose to display the leaderboard to all participants or keep it as a host-only view.
+
+**Q: A participant is gaming the leaderboard by spamming reactions.**
+A: The engagement system may include rate limiting for reactions. If a participant is excessively spamming, the host can address it through moderation tools. The engagement algorithm may also cap the contribution of rapid-fire reactions.
+
+**Q: Does the leaderboard persist after the session?**
+A: Leaderboard data is included in post-session analytics. The real-time leaderboard is available during the session.
 
 ---
 
-## FAQ
+## Engagement Configuration
 
-**Q: What is the difference between standard and boosted reactions?**
-A: Standard reactions are regular emoji animations. Boosted reactions are amplified versions with greater visual impact on the stage. They are tracked separately, with `getTotalBoostedReactions()` providing a distinct count.
+### State Properties
 
-**Q: Can participants see the leaderboard?**
-A: Yes, when the host activates the leaderboard, the **LeaderboardStageRenderer** displays it on the stage for all participants to see.
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `reactionsEnabled` | Boolean | Varies | Whether standard reactions are available to participants |
+| `boostedReactionsEnabled` | Boolean | Varies | Whether boosted (premium) reactions are available |
+| `isBRB` | Boolean | false | Per-participant BRB status (per user, not global) |
 
-**Q: How quickly do rewards appear after being issued?**
-A: Rewards are polled every 3 seconds, so there may be up to a 3-second delay between issuing a reward and it appearing as a notification.
+### Enabling/Disabling Features
 
-**Q: Can a participant lower their own raised hand?**
-A: Yes, participants can toggle their hand raise off at any time, which removes them from the `raisedHands` queue.
+The host can toggle engagement features from the Studio session controls:
 
-**Q: Does BRB mode mute my audio/video?**
-A: BRB mode sets a visual indicator for other participants. Audio/video behavior during BRB depends on the session configuration and may or may not automatically mute.
+- **Reactions**: Toggle `reactionsEnabled` to allow or prevent participants from sending reactions.
+- **Boosted Reactions**: Toggle `boostedReactionsEnabled` independently from standard reactions.
+- **Hand Raising**: Can be enabled or disabled from the session engagement settings.
+- **Leaderboard Visibility**: Can be shown to all or host-only.
+- **Rewards**: Available through the RewardsPanel when engagement features are active.
 
-**Q: How are "top participants" calculated?**
-A: The `getTopParticipants()` method from the `useEngagement` hook calculates rankings based on total engagement activity, including reactions, boosted reactions, and other tracked interactions.
+### Best Practices for Hosts
 
-**Q: Can I issue multiple rewards to the same participant?**
-A: Yes, there is no limit on the number of rewards a single participant can receive during a session.
-
----
-
-## Known Limitations
-
-- Reaction animations are ephemeral and not persisted after the session ends.
-- The hand raise queue is first-come, first-served; there is no priority or categorization system.
-- BRB status is a simple toggle with no automatic timeout -- participants must manually turn it off.
-- Engagement data is session-scoped and resets for each new session.
-- Reward polling at 3-second intervals means there can be a slight delay in notification delivery.
-- The leaderboard ranking algorithm is based on available engagement metrics and may not capture all forms of participation (e.g., chat activity may or may not be included).
+- **Enable reactions** for casual, high-energy sessions (webinars, product launches, entertainment).
+- **Disable reactions** for formal sessions where reactions might be distracting (board meetings, compliance training).
+- **Use the leaderboard** to gamify participation in workshops and training sessions.
+- **Give public rewards** to recognize standout participants and encourage others.
+- **Monitor the hand raise queue** regularly to ensure participants feel heard.
 
 ---
 
-## Plan Requirements
+## Common Questions & Troubleshooting
 
-| Feature | Basic Plan | Business Plan |
-|---------|-----------|---------------|
-| Reactions | Available | Available |
-| Boosted Reactions | Available | Available |
-| Hand Raise | Available | Available |
-| BRB Status | Available | Available |
-| Engagement Tracking | Available | Available |
-| Leaderboard | Available | Available |
-| Rewards | Available | Available |
+### General Engagement Issues
 
-Reactions and engagement features are available across both plans.
+**Q: None of the engagement features are showing for participants.**
+A: Verify that engagement features are enabled in the session/room settings. The host must ensure that `reactionsEnabled` and other engagement toggles are active. Also check that the participant is not in BRB mode.
+
+**Q: The engagement features are causing the session to lag.**
+A: A very high volume of reactions or engagement activity can impact performance. Steps to mitigate:
+- The host can temporarily disable reactions during performance-sensitive segments.
+- Participants should close unnecessary browser tabs and applications.
+- Use Chrome or Edge for best performance.
+- Ensure a stable internet connection.
+
+**Q: Engagement data seems incorrect or not updating.**
+A: The engagement system relies on real-time communication. If data is not updating:
+- Check the participant's internet connection.
+- Refresh the browser.
+- The Reward entity polls every 3 seconds; allow a few seconds for updates.
+- If the issue persists, collect details and escalate to the engineering team.
+
+**Q: Can I export engagement data?**
+A: Engagement data is available in post-session analytics. Check the session reports section of the host dashboard for export options.
 
 ---
 
-## Related Documents
+## Technical Reference
 
-- [01 - Platform Overview](01-platform-overview.md) -- General platform capabilities.
-- [17 - Studio Commerce](17-studio-commerce.md) -- Commerce features that benefit from high engagement.
-- [18 - Studio Collaboration](18-studio-collaboration.md) -- Collaboration tools used alongside engagement features.
-- [20 - Studio Translation & Captions](20-studio-translation-captions.md) -- Accessibility features for inclusive engagement.
+### Components Map
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| EffectsOverlay | `studio/effects/EffectsOverlay` | Renders reaction animations and visual effects |
+| RaisedHandsQueue | `studio/engagement/RaisedHandsQueue` | Manages and displays the hand raise queue |
+| RewardsPanel | `studio/engagement/RewardsPanel` | Host interface for managing rewards |
+
+### Hook Reference
+
+| Hook | Returns | Purpose |
+|------|---------|---------|
+| `useEngagement` | `{ engagement, activeReactions, addReaction, getActiveReactionForUser, getTopParticipants, getTotalReactions, getTotalBoostedReactions }` | Core engagement data and methods |
+
+### Key State Properties
+
+| Property | Type | Scope | Description |
+|----------|------|-------|-------------|
+| `reactionsEnabled` | Boolean | Session | Enables/disables standard reactions |
+| `boostedReactionsEnabled` | Boolean | Session | Enables/disables boosted reactions |
+| `isBRB` | Boolean | Per-user | Participant's BRB status |
+| `engagement` | Object | Session | Full engagement state |
+| `activeReactions` | Array | Session | Currently animating reactions |
+
+### Entity Reference
+
+| Entity | Polling Interval | Key Fields |
+|--------|-----------------|------------|
+| Reward | 3 seconds | id, name, description, recipient, display_publicly, created_at |
+
+### Methods Reference
+
+| Method | Input | Output | Description |
+|--------|-------|--------|-------------|
+| `addReaction(reaction)` | Reaction object | void | Broadcasts a reaction to all participants |
+| `getActiveReactionForUser(userId)` | User ID string | Reaction or null | Gets the current active reaction for a user |
+| `getTopParticipants(count)` | Number | Array of participants | Returns top N participants by engagement score |
+| `getTotalReactions()` | None | Number | Total standard reactions in session |
+| `getTotalBoostedReactions()` | None | Number | Total boosted reactions in session |
+
+---
+
+*Last updated: 2026-01-29 | R-Link Customer Service Knowledge Base*

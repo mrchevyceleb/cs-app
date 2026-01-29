@@ -1,135 +1,111 @@
-# Plans and Pricing
+# R-Link Plans, Pricing & Billing
 
 ## Overview
 
-R-Link offers two subscription plans: **Basic** and **Business**. The Basic plan is designed for small teams that primarily need meeting functionality, while the Business plan unlocks the full platform including webinars, live streaming, advanced branding, AI features, and a comprehensive integration ecosystem. Both plans are available on monthly or annual billing cycles. Usage is tracked in real-time, and customers receive warnings when approaching their plan limits.
+R-Link offers two subscription plans -- **Basic** and **Business** -- designed to serve individuals, small teams, and organizations of varying sizes. Both plans include unlimited meeting length and access to the Admin portal. The Business plan unlocks advanced features including webinars, live streaming, expanded branding, AI tools, and a broader set of interactive elements.
+
+This document provides the complete feature comparison, exact plan limits, feature gating logic, billing details, usage tracking, upgrade/downgrade flows, and frequently asked questions about plans and pricing.
 
 ---
 
-## Complete Plan Comparison
+## Plan Comparison Tables
 
-### Core Capabilities
+### Table 1: Room & Participant Limits
 
 | Feature | Basic | Business |
-|---|---|---|
-| **Session Types** | Meeting only | Meeting + Webinar + Live Stream |
-| **Meeting Length** | Unlimited | Unlimited |
-| **Rooms** | 1 | 5 (can run in parallel) |
-| **Interactive Participants** | Up to 50 per meeting | Up to 100 per meeting |
-| **Webinar Attendees** | Not available | Up to 1,000 |
-| **Breakout Rooms** | 1 | Unlimited |
-| **Whiteboards** | 1 | Unlimited |
+|---------|-------|----------|
+| Rooms (EventFolders) | 1 | 5 (parallel) |
+| Interactive Participants per Meeting | Up to 50 | Up to 100 |
+| Meeting Length | Unlimited | Unlimited |
+| Webinar Attendees | Not available | Up to 1,000 |
+| Live Stream Viewers | Not available | Unlimited (via RTMP) |
+| Breakout Rooms | 1 | Unlimited |
+| Whiteboards | 1 | Unlimited |
+| Team Members | Up to 3 (default limit) | Expanded (configurable) |
 
-### Elements
+### Table 2: Session Types
+
+| Session Type | Basic | Business |
+|-------------|-------|----------|
+| Meeting | Yes | Yes |
+| Webinar | No | Yes |
+| Live Stream | No | Yes |
+
+### Table 3: Elements (Interactive Overlays)
 
 | Element Type | Basic | Business |
-|---|---|---|
-| Core Media (Slides) | Yes | Yes |
-| Core Media (Video) | Yes | Yes |
-| Core Media (Audio) | Yes | Yes |
+|-------------|-------|----------|
+| Slides | Yes (Core Media) | Yes |
+| Video | Yes (Core Media) | Yes |
+| Audio | Yes (Core Media) | Yes |
 | Links | No | Yes |
 | Banners | No | Yes |
 | Polls | No | Yes |
 | Website Overlays | No | Yes |
 | Prompter | No | Yes |
 
-### Branding
+**Core Media** includes Slides, Video, and Audio -- available on all plans.
 
-| Branding Feature | Basic | Business |
-|---|---|---|
+**All Elements** adds Links, Banners, Polls, Website Overlays, and Prompter -- available only on the Business plan.
+
+### Table 4: Branding & Customization
+
+| Feature | Basic | Business |
+|---------|-------|----------|
 | Branded Backgrounds | Yes | Yes |
-| Custom Background Colors | Yes (via Brand Kit) | Yes (via Brand Kit) |
-| Custom CTA Button | No | Yes |
-| Custom Exit URL | No | Yes |
-| Custom Waiting Room | No | Yes |
+| Custom Logo | Limited | Full |
+| CTA Button | No | Yes |
+| Exit URL | No | Yes |
+| Waiting Room Customization | No | Yes |
 | Vanity URL | No | Yes |
 | Full Branding Suite | No | Yes |
 
-### Storage and Media
+**Full Branding Suite** includes: Branded Background, CTA Button, Exit URL, Custom Waiting Room, and Vanity URL.
+
+### Table 5: Storage & Media
 
 | Feature | Basic | Business |
-|---|---|---|
+|---------|-------|----------|
 | Storage | 10 GB | 50 GB |
-| Recordings | Yes | Yes |
-| Clips | Yes | Yes |
+| Recording | Yes | Yes |
+| Clips (Repurposed) | Yes | Yes |
+| Clip Sharing | Yes | Yes |
+| Clip Analytics | Basic | Advanced |
 
-### AI and Communication
+### Table 6: AI & Communication
 
 | Feature | Basic | Business |
-|---|---|---|
-| AI Notetaker | No | Yes |
-| AI Translation | No | Yes |
+|---------|-------|----------|
+| R-Link AI Notetaker | No | Yes |
+| R-Link AI Translation | No | Yes |
 | Phone Dial-in | No | Yes |
 | Phone Conferencing | No | Yes |
 
-### Streaming
+**R-Link AI Suite** includes the AI Notetaker (transcription + summarization) and AI Translation (real-time multilingual support). Both require the Business plan.
+
+### Table 7: Platform & Administration
 
 | Feature | Basic | Business |
-|---|---|---|
-| Multi-platform Live Streaming (RTMP) | No | Yes |
-| YouTube Live | No | Yes |
-| Facebook Live | No | Yes |
-| Twitch | No | Yes |
-| LinkedIn Live | No | Yes |
-
-### Administration
-
-| Feature | Basic | Business |
-|---|---|---|
-| Admin Portal | Yes | Yes |
-| Team Management | Yes | Yes |
-| Role-based Permissions | Yes | Yes |
-
-### Integrations
-
-| Integration Category | Basic | Business |
-|---|---|---|
-| Calendar (Google Calendar, Outlook, iCal) | Yes | Yes |
-| Email (Mailchimp, SendGrid) | No | Yes |
-| Payment (Stripe, PayPal) | No | Yes |
-| Cloud Storage (Google Drive, Dropbox) | No | Yes |
-| SSO (Google SSO, Microsoft SSO) | No | Yes |
-| CRM (Salesforce, HubSpot, Marketo, ActiveCampaign, ConvertKit, Go High Level) | No | Yes |
-| SMS (Twilio) | No | Yes |
+|---------|-------|----------|
+| Admin Portal | Yes (all 18 tabs) | Yes (all 18 tabs) |
+| Custom Roles | Yes (via Roles tab, owner-only) | Yes |
+| Room Templates | Yes | Yes |
+| Integrations | SSO + Calendar only | All 21+ integrations |
 | Webhooks | No | Yes |
 | API Keys | No | Yes |
+| Event Landing Pages | No | Yes |
+| Lead Management | No | Yes |
 
 ---
 
-## Exact Plan Limits
+## Exact Plan Limits (from Code)
 
-### Basic Plan Limits
+### Default Account Limits Object
 
-| Limit | Value |
-|---|---|
-| Maximum Rooms | 1 |
-| Maximum Interactive Participants per Meeting | 50 |
-| Maximum Breakout Rooms per Session | 1 |
-| Maximum Whiteboards per Session | 1 |
-| Maximum Storage | 10 GB |
-| Maximum Team Members | 3 (default account setting) |
-| Webinar Attendees | Not available |
-| RTMP Streaming | Not available |
-
-### Business Plan Limits
-
-| Limit | Value |
-|---|---|
-| Maximum Rooms (parallel) | 5 |
-| Maximum Interactive Participants per Meeting | 100 |
-| Maximum Webinar Attendees | 1,000 |
-| Maximum Breakout Rooms per Session | Unlimited |
-| Maximum Whiteboards per Session | Unlimited |
-| Maximum Storage | 50 GB |
-| Maximum Team Members | Configurable (higher than Basic) |
-| RTMP Streams | Multi-platform simultaneous |
-
-### Default Account Object Limits
-
-When an account is created, the following default limits are set in the Account entity:
+When a new account is created, it receives the following default limits:
 
 ```
-limits: {
+Account.limits = {
   max_rooms: 5,
   max_storage_gb: 10,
   max_attendees: 100,
@@ -137,40 +113,64 @@ limits: {
 }
 ```
 
-Note: These default values represent the initial configuration. Actual enforced limits depend on the subscription plan (`plan` field: `basic` or `business`).
+**Note:** The default `max_rooms` value of 5 and `max_attendees` of 100 in the code represent the upper bounds. Plan-level enforcement further restricts these values:
+
+| Limit Field | Basic (Enforced) | Business (Enforced) | Default (Code) |
+|------------|------------------|--------------------| --------------|
+| `max_rooms` | 1 | 5 | 5 |
+| `max_storage_gb` | 10 | 50 | 10 |
+| `max_attendees` | 50 | 100 | 100 |
+| `max_team_members` | 3 | Expanded | 3 |
+
+### Default Account Configuration
+
+```
+Account = {
+  plan: 'basic',
+  billing_cycle: 'monthly',
+  limits: {
+    max_rooms: 5,
+    max_storage_gb: 10,
+    max_attendees: 100,
+    max_team_members: 3
+  }
+}
+```
 
 ---
 
 ## Feature Gating Details
 
-Feature gating is enforced at multiple levels in the R-Link platform:
+Feature gating in R-Link uses plan-based checks to determine whether a feature is available to the current user. The gating logic evaluates the `Account.plan` field.
 
-### Plan-Level Gating
+### Gate Conditions
 
-The `Account` entity has a `plan` field (values: `basic` or `business`). Feature availability checks compare the user's account plan against feature requirements.
+| Feature Gate | Condition | UI Behavior When Gated |
+|-------------|-----------|----------------------|
+| Webinar session type | `plan === 'business'` | Session type selector shows "Business" badge; clicking shows upgrade prompt |
+| Live Stream session type | `plan === 'business'` | Session type selector shows "Business" badge; clicking shows upgrade prompt |
+| Advanced Elements (Links, Banners, Polls, Website Overlays, Prompter) | `plan === 'business'` | Element picker shows lock icon; clicking shows upgrade modal |
+| Full Branding Suite (CTA, Exit URL, Waiting Room, Vanity URL) | `plan === 'business'` | Brand kit fields are disabled with "Upgrade to Business" tooltip |
+| AI Notetaker | `plan === 'business'` | Notetaker toggle is disabled; shows upgrade prompt |
+| AI Translation | `plan === 'business'` | Translation option hidden or disabled with upgrade prompt |
+| Phone Dial-in | `plan === 'business'` | Dial-in section shows "Business feature" badge |
+| Multi-platform Streaming | `plan === 'business'` | Streaming destination selector shows upgrade prompt for RTMP targets |
+| Advanced Integrations | `plan === 'business'` | Integration cards show lock icon; connecting shows upgrade modal |
+| Event Landing Pages | `plan === 'business'` | Event Landing tab shows upgrade prompt |
+| Lead Management | `plan === 'business'` | Leads tab shows upgrade prompt |
+| Webhooks & API Keys | `plan === 'business'` | Integration sub-section disabled with upgrade prompt |
+| Room count > 1 | `plan === 'business'` | "Create Room" button disabled when at limit; shows upgrade prompt |
+| Breakout Rooms > 1 | `plan === 'business'` | "Add Breakout Room" button disabled after 1st; shows upgrade prompt |
+| Whiteboards > 1 | `plan === 'business'` | "Add Whiteboard" button disabled after 1st; shows upgrade prompt |
+| Participants > 50 | `plan === 'business'` | Participant join is blocked at 50 on Basic; shows capacity message |
 
-| Gated Feature | Gate Condition | User Experience When Blocked |
-|---|---|---|
-| Webinar session type | `plan !== 'business'` | Session type option disabled or hidden; upgrade prompt shown |
-| Live Stream session type | `plan !== 'business'` | Session type option disabled or hidden; upgrade prompt shown |
-| Non-core Elements | `plan !== 'business'` | Element appears locked in the Elements panel with upgrade badge |
-| Full Branding Suite | `plan !== 'business'` | Brand Kit shows limited options; advanced fields locked |
-| AI Notetaker | `plan !== 'business'` | Notetaker toggle disabled; upgrade prompt in admin tab |
-| AI Translation | `plan !== 'business'` | Translation option hidden or disabled in session |
-| Phone Dial-in | `plan !== 'business'` | Dial-in section not shown in session setup |
-| RTMP Streaming | `plan !== 'business'` | Streaming destinations section hidden; no RTMP output options |
-| Most Integrations | `plan !== 'business'` | Integration cards show "Business plan required" badge |
+### Limit Enforcement
 
-### Limit-Level Gating
+Limits are enforced at both the UI level (disabling controls) and the backend level (API rejections). When a limit is reached:
 
-Even within a plan, usage limits are enforced:
-
-| Limit | Enforcement |
-|---|---|
-| Room count | Cannot create new rooms when `active_rooms >= max_rooms` |
-| Storage | Upload blocked when `storage_used_gb >= max_storage_gb` |
-| Participants | Additional participants cannot join when room is at capacity |
-| Team members | Cannot invite new members when team is at limit |
+1. **UI Level:** The relevant button or control becomes disabled with a tooltip or modal explaining the limit.
+2. **API Level:** If the UI check is bypassed, the backend rejects the action with an appropriate error.
+3. **Upgrade Prompt:** A modal or inline message offers the option to upgrade to the Business plan.
 
 ---
 
@@ -178,71 +178,93 @@ Even within a plan, usage limits are enforced:
 
 ### Billing Cycles
 
-| Cycle | Value | Description |
-|---|---|---|
-| Monthly | `monthly` | Billed every month |
-| Annual | `annual` | Billed once per year (typically at a discount) |
-
-The billing cycle is stored in the `Account` entity as `billing_cycle`.
-
-### Account Billing Fields
-
-The `Account` entity tracks the following billing-related fields:
-
-| Field | Type | Description |
-|---|---|---|
-| `plan` | String | Current plan: `basic` or `business` |
-| `billing_cycle` | String | Current cycle: `monthly` or `annual` |
-| `plan_status` | String | Subscription status (e.g., `active`, `past_due`, `canceled`, `trialing`) |
-| `payment_method` | Object | Stored payment method details |
-| `billing_history` | Array | List of past invoices and payments |
-| `next_billing_date` | Date | Date of next scheduled payment |
-| `subscription_start_date` | Date | When the current subscription period began |
+| Cycle | Description | Discount |
+|-------|------------|----------|
+| Monthly | `billing_cycle: 'monthly'` | Standard pricing |
+| Annual | `billing_cycle: 'annual'` | Discounted (typically 15-20% savings) |
 
 ### Payment Methods
 
-R-Link supports payment processing through integrated payment providers:
-- **Stripe**: Credit/debit card payments, ACH transfers
-- **PayPal**: PayPal balance and linked payment methods
+R-Link accepts the following payment methods through integrated payment processors:
+- Credit/debit cards (Visa, Mastercard, American Express)
+- PayPal (via PayPal integration)
+- Stripe-supported payment methods (ACH, SEPA, etc., depending on region)
 
-Payment method management is available in the **Billing** admin tab (owner-only access).
+### Invoice History
 
-### Invoice and Billing History
+Accessible via **Admin > Billing** (Owner-only tab):
+- View all past invoices with dates, amounts, and status
+- Download invoices as PDF
+- Filter by date range
+- View payment method used for each invoice
 
-Customers can view and download billing history from the **Billing** admin tab:
-- List of all past invoices with dates, amounts, and status
-- Download individual invoices as PDF
-- View payment method used for each transaction
-- See upcoming charges and next billing date
+### Billing Entity Fields
+
+The Account entity tracks billing-related data:
+
+```
+Account = {
+  plan: 'basic' | 'business',
+  billing_cycle: 'monthly' | 'annual',
+  payment_method: { type, last_four, expiry },
+  billing_email: 'owner@example.com',
+  next_billing_date: 'YYYY-MM-DD',
+  subscription_status: 'active' | 'past_due' | 'canceled' | 'trialing'
+}
+```
 
 ---
 
 ## Usage Tracking
 
-R-Link tracks usage in real-time on the Account entity. The following metrics are monitored:
+R-Link tracks usage metrics in real-time to enforce plan limits and provide visibility into account consumption.
 
-| Metric | Field | Description |
-|---|---|---|
-| Active Rooms | `active_rooms` | Number of currently active/configured rooms |
-| Storage Used | `storage_used_gb` | Total storage consumed in GB (recordings, clips, uploads) |
-| Attendees This Month | `attendees_this_month` | Cumulative unique attendees in current billing period |
-| Hours Streamed | `hours_streamed` | Total streaming hours in current billing period |
+### Tracked Metrics
 
-### Near Limit Warnings
+| Metric | Field | Description | Where Displayed |
+|--------|-------|-------------|-----------------|
+| Active Rooms | `usage.active_rooms` | Number of currently active (live) rooms | Admin > Dashboard |
+| Storage Used | `usage.storage_used_gb` | Total storage consumed by recordings, clips, and media (in GB) | Admin > Dashboard, Admin > Recordings |
+| Attendees This Month | `usage.attendees_this_month` | Cumulative unique attendees across all sessions in the current billing month | Admin > Dashboard |
+| Hours Streamed | `usage.hours_streamed` | Total hours of live streaming in the current billing period | Admin > Dashboard |
 
-The platform triggers **"Near Limit" warnings** when usage reaches **80% of the plan limit** for any tracked metric.
+### Usage Display
 
-| Metric | Basic 80% Threshold | Business 80% Threshold | Warning Location |
-|---|---|---|---|
-| Rooms | 1 of 1 (always at limit) | 4 of 5 | Dashboard, Room creation UI |
-| Storage | 8 GB of 10 GB | 40 GB of 50 GB | Dashboard, Upload UI, Recordings tab |
-| Participants (per session) | 40 of 50 | 80 of 100 | Dashboard, active session indicator |
-| Team Members | 2 of 3 (default) | Depends on limit | Dashboard, Team tab |
+The Admin > Dashboard tab shows usage metrics with visual progress bars:
 
-**Warning behavior:**
-- A banner or notification appears in the Admin Dashboard
-- The specific feature area (e.g., room creation, file upload) shows an inline warning
-- The warning message includes the current usage, the limit, and a link to upgrade (for Basic users) or contact support (for Business users at hard limits)
+```
+Storage:    ████████░░  8.2 / 10 GB (82%)
+Rooms:      █░░░░░░░░░  1 / 1 (100%)
+Attendees:  ████░░░░░░  42 / 50 (84%)
+```
+
+### Near-Limit Warnings (80% Threshold)
+
+When any usage metric reaches 80% of the plan limit, R-Link displays warning notifications:
+
+| Metric | 80% Threshold (Basic) | 80% Threshold (Business) | Warning Behavior |
+|--------|----------------------|--------------------------|-----------------|
+| Storage | 8 GB of 10 GB | 40 GB of 50 GB | Yellow warning banner on Dashboard; optional email notification |
+| Rooms | N/A (1 room, binary) | 4 of 5 rooms | Warning when creating 4th room |
+| Attendees | 40 of 50 | 80 of 100 | Warning banner during active session when approaching limit |
+| Team Members | N/A (3 is default) | 80% of limit | Warning when adding team members near limit |
+
+**Warning notification includes:**
+- Current usage value and limit
+- Percentage used
+- Upgrade CTA button (if on Basic plan)
+- Link to manage storage/resources (if on Business plan)
+
+### At-Limit Behavior
+
+When a limit is reached (100%):
+
+| Metric | Basic Behavior | Business Behavior |
+|--------|---------------|-------------------|
+| Storage (100%) | Cannot upload new recordings or media; existing content accessible | Cannot upload; prompt to delete old content or request storage increase |
+| Rooms (100%) | "Create Room" button disabled; shows upgrade prompt | "Create Room" button disabled; shows contact sales prompt |
+| Attendees (100%) | New participants see "Session Full" message | New participants see "Session Full" message |
+| Team Members (100%) | "Invite" button disabled; shows upgrade prompt | "Invite" button disabled; shows contact sales prompt |
 
 ---
 
@@ -250,157 +272,208 @@ The platform triggers **"Near Limit" warnings** when usage reaches **80% of the 
 
 ### Basic to Business Upgrade
 
-1. Customer navigates to **Admin > Billing** tab (or clicks an upgrade prompt anywhere in the platform)
-2. Plan comparison is displayed showing the customer's current plan and Business features
-3. Customer selects **Business** plan
-4. Customer selects billing cycle (monthly or annual)
-5. Customer enters or confirms payment method
-6. Payment is processed
-7. Account `plan` field is updated to `business`
-8. All Business features are immediately unlocked
-9. Usage limits are updated to Business tier values
-10. Confirmation email is sent
+**Step-by-step process:**
 
-### Downgrade (Business to Basic)
+1. User navigates to **Admin > Billing** (must be account Owner)
+2. Current plan section shows "Basic" with an **"Upgrade to Business"** button
+3. User clicks the upgrade button
+4. A comparison modal appears showing Basic vs Business features
+5. User selects billing cycle (Monthly or Annual)
+6. User enters or confirms payment information
+7. User reviews the order summary (prorated charges if mid-cycle)
+8. User clicks **"Confirm Upgrade"**
+9. Account is immediately updated:
+   - `Account.plan` changes from `'basic'` to `'business'`
+   - `Account.limits` are updated to Business values
+   - All Business features are unlocked immediately
+10. Confirmation page/modal with summary of new capabilities
+11. Confirmation email sent to billing email
 
-1. Customer navigates to **Admin > Billing** tab
-2. Customer selects **Basic** plan
-3. A warning is displayed listing features that will be lost:
-   - Webinar and Live Stream session types
-   - Non-core Elements (Links, Banners, Polls, Website Overlays, Prompter)
-   - Full Branding Suite features (CTA button, Exit URL, Waiting Room, Vanity URL)
-   - AI Suite (Notetaker + Translation)
-   - Phone dial-in
-   - RTMP streaming
-   - Most integrations
-   - Rooms beyond 1 will become inactive
-   - Storage exceeding 10 GB may require cleanup
-4. Customer confirms the downgrade
-5. Downgrade takes effect at the end of the current billing period
-6. The `plan` field is updated to `basic` when the current period ends
-7. Confirmation email is sent
+**Proration:** If upgrading mid-billing-cycle, the user is charged a prorated amount for the remaining days at the Business rate, minus credit for the unused Basic portion.
 
-### Mid-Cycle Changes
+### Contextual Upgrade Prompts
 
-- **Upgrade (Basic to Business)**: Takes effect immediately. Prorated charge for the remainder of the billing period.
-- **Downgrade (Business to Basic)**: Takes effect at the end of the current billing period. No partial refund for unused time.
+Users may also encounter upgrade prompts when attempting to use gated features:
+- Clicking a locked Element type
+- Trying to create a second room on Basic
+- Attempting to launch a Webinar or Live Stream on Basic
+- Trying to connect a Business-only integration
+
+Each contextual prompt includes:
+- Explanation of why the feature requires Business
+- Preview of what the feature does
+- **"Upgrade Now"** button (redirects to Admin > Billing)
+- **"Learn More"** link (opens plan comparison)
+
+---
+
+## Downgrade Flow
+
+### Business to Basic Downgrade
+
+**Step-by-step process:**
+
+1. User navigates to **Admin > Billing** (must be account Owner)
+2. Current plan section shows "Business" with a **"Change Plan"** or **"Downgrade"** link
+3. User clicks to view plan options
+4. A warning screen appears explaining what will be lost:
+   - Webinar and Live Stream capabilities
+   - Advanced Elements (Links, Banners, Polls, Website Overlays, Prompter)
+   - Full Branding Suite features
+   - AI Notetaker and Translation
+   - Phone dial-in and conferencing
+   - Advanced integrations
+   - Rooms beyond 1
+   - Storage beyond 10 GB
+5. If storage usage exceeds 10 GB, user must delete content to get below the Basic limit before downgrading
+6. If more than 1 room exists, user must archive/delete rooms to have only 1 active room
+7. User confirms the downgrade
+8. Downgrade takes effect at the end of the current billing cycle (user retains Business features until then)
+9. `Account.plan` changes to `'basic'` at cycle end
+10. Confirmation email sent with effective date
+
+**Important:** Downgrade is not immediate. The user retains Business features until the end of the current paid period.
+
+### Data Retention on Downgrade
+
+| Data Type | Behavior After Downgrade |
+|-----------|------------------------|
+| Recordings | Retained if within 10 GB limit; excess must be deleted before downgrade |
+| Rooms | Only 1 room remains active; others are archived (data preserved but inaccessible) |
+| Elements | Core Media elements remain; Business-only elements are deactivated (not deleted) |
+| Brand Kit | Basic branding features remain; Business features (CTA, Exit URL, Vanity URL) are deactivated |
+| Team Members | Members beyond limit are deactivated (not deleted) |
+| Integrations | Business-only integrations are disconnected |
+| AI Transcripts | Existing transcripts remain accessible; new transcription is disabled |
+| Scheduled Webinars/Streams | Canceled with notification to registered attendees |
+
+---
+
+## Cancellation
+
+### Subscription Cancellation
+
+1. Navigate to **Admin > Billing** (Owner-only)
+2. Click **"Cancel Subscription"** link
+3. Cancellation survey appears (optional feedback)
+4. Confirm cancellation
+5. Access continues until end of current billing period
+6. Account transitions to a free/inactive state after expiration
+7. Data is retained for a grace period (typically 30 days) before permanent deletion
+
+### Reactivation
+
+If a customer cancels and wishes to reactivate:
+1. Log in with existing credentials
+2. Navigate to **Admin > Billing**
+3. Select a plan and enter payment information
+4. If within the grace period, all previous data is restored
+5. If past the grace period, account starts fresh
 
 ---
 
 ## Settings and Options
 
-### Billing Tab Settings
+### Billing Settings (Admin > Billing)
 
-| Setting | Type | Description | Access |
-|---|---|---|---|
-| Current Plan | Display | Shows `Basic` or `Business` | Owner-only |
-| Billing Cycle | Selector | Monthly or Annual | Owner-only |
-| Plan Status | Display | Active, Past Due, Canceled, Trialing | Owner-only |
-| Payment Method | Form | Add/update payment card or PayPal | Owner-only |
-| Auto-Renew | Toggle | Whether subscription auto-renews | Owner-only |
-| Billing Email | Text field | Email for invoices and billing notifications | Owner-only |
-| Invoice History | Table | List of past invoices with download links | Owner-only |
-| Usage Summary | Display | Current usage vs. plan limits | Owner-only |
-
-### Usage Dashboard Widgets
-
-| Widget | Description |
-|---|---|
-| Storage Usage | Bar chart showing `storage_used_gb` / `max_storage_gb` |
-| Room Usage | Count of `active_rooms` / `max_rooms` |
-| Attendee Count | Monthly cumulative attendee count |
-| Streaming Hours | Monthly cumulative hours streamed |
+| Setting | Description | Access |
+|---------|-------------|--------|
+| Current Plan | Displays Basic or Business with plan details | Owner |
+| Billing Cycle | Monthly or Annual toggle | Owner |
+| Payment Method | Add, update, or remove payment methods | Owner |
+| Billing Email | Email address for invoices and billing notifications | Owner |
+| Invoice History | List of all past invoices with download option | Owner |
+| Auto-Renewal | Toggle automatic subscription renewal | Owner |
+| Cancel/Downgrade | Options to change or cancel subscription | Owner |
 
 ---
 
 ## Troubleshooting
 
-### Billing and Payment Issues
+### Common Billing Issues
 
-| Issue | Cause | Solution |
-|---|---|---|
-| "Payment failed" error during upgrade | Invalid or expired payment method | Update payment method in Billing tab; try a different card |
-| Plan still shows "Basic" after upgrade | Payment processing delay or failure | Check billing history for the charge; if absent, retry upgrade; if charged but not updated, escalate to support |
-| "Past Due" plan status | Failed automatic renewal payment | Update payment method; the system will retry the charge |
-| Cannot access Billing tab | Not the account owner | Only the account owner (matching `owner_email`) can access Billing; contact your account owner |
-| Double charge on invoice | Billing cycle overlap during upgrade | Check invoice details; prorated charges may appear as separate line items; if genuine duplicate, escalate to support |
-| Features locked after upgrade | Browser cache showing old plan data | Hard refresh the browser (Ctrl+Shift+R); if persists, log out and back in |
-| Annual subscription charged monthly rate | Billing cycle not changed before upgrade | Check `billing_cycle` in Billing tab; contact support to correct |
-
-### Usage Limit Issues
-
-| Issue | Cause | Solution |
-|---|---|---|
-| "Room limit reached" when creating a room | `active_rooms >= max_rooms` | Delete or deactivate unused rooms; or upgrade to Business for more rooms |
-| "Storage full" when uploading | `storage_used_gb >= max_storage_gb` | Delete old recordings/clips; or upgrade for more storage |
-| "Session full" when participant joins | Room at capacity | Attendees beyond the limit cannot join; upgrade for higher capacity |
-| Near-limit warning appears but usage seems low | Cached usage data | Refresh the Dashboard; usage metrics update in near-real-time but may have brief delays |
+| Issue | Cause | Resolution |
+|-------|-------|------------|
+| "Upgrade to Business" button not visible | User is not the account Owner | Only the Owner can access Billing; contact the account Owner |
+| Payment failed | Expired or declined card | Update payment method in Admin > Billing |
+| Charged after cancellation | Cancellation takes effect at end of billing cycle | Charge is for the remaining pre-paid period; no refund for unused time |
+| Features still locked after upgrade | Browser cache or stale session | Hard refresh the page (Ctrl+Shift+R); if persisting, log out and back in |
+| Storage warning despite low usage | Cached recordings counting toward storage | Check Admin > Recordings for processing/temporary files |
+| Plan shows "basic" after upgrade | API update delay or failed payment | Check payment status; if paid, wait 5 minutes and refresh; contact support if persisting |
+| Cannot downgrade due to storage | Storage exceeds Basic limit (10 GB) | Delete recordings/clips to reduce storage below 10 GB |
+| Cannot downgrade due to rooms | More than 1 active room | Archive or delete extra rooms |
+| Invoice not received | Incorrect billing email | Verify billing email in Admin > Billing; check spam folder |
+| Proration amount seems wrong | Mid-cycle upgrade calculation | Proration credits remaining Basic days and charges remaining Business days in the cycle |
 
 ---
 
 ## FAQ
 
-**Q: How do I upgrade from Basic to Business?**
-A: Navigate to Admin > Billing, select the Business plan, choose your billing cycle, enter payment details, and confirm. The upgrade takes effect immediately.
+**Q1: What is included in the Basic plan?**
+A: The Basic plan includes 1 Room, up to 50 interactive participants, unlimited meeting length, 1 Breakout Room, 1 Whiteboard, Core Media elements (Slides/Video/Audio), 10 GB storage, branded backgrounds, and full access to the Admin portal with all 18 tabs.
 
-**Q: Can I switch from monthly to annual billing?**
-A: Yes. Go to Admin > Billing and change the billing cycle. The new cycle takes effect at the next renewal date.
+**Q2: What does the Business plan add over Basic?**
+A: Business adds 5 parallel rooms, 100 interactive participants, Webinars (up to 1,000 attendees), multi-platform live streaming (RTMP), unlimited breakout rooms and whiteboards, all Elements (Links/Banners/Polls/Website Overlays/Prompter), Full Branding Suite, R-Link AI Suite (Notetaker + Translation), 50 GB storage, phone dial-in and conferencing, all 21+ integrations, Event Landing Pages, Lead Management, Webhooks, and API Keys.
 
-**Q: What happens if I downgrade from Business to Basic?**
-A: The downgrade takes effect at the end of your current billing period. You retain Business features until then. After downgrade: rooms beyond 1 become inactive, storage exceeding 10 GB may require cleanup, and Business-only features (webinars, streaming, AI, advanced elements, advanced branding, most integrations) become unavailable.
+**Q3: Can I try Business features before upgrading?**
+A: Contact the R-Link sales team to inquire about trial or demo options for Business plan features.
 
-**Q: Do I get a refund if I downgrade mid-cycle?**
-A: No. Downgrades take effect at the end of the current billing period. You continue to have access to Business features for the remainder of the paid period.
+**Q4: How does annual billing work?**
+A: Annual billing charges once per year at a discounted rate (typically 15-20% less than monthly). The full annual amount is charged upfront.
 
-**Q: Is there a free trial?**
-A: Check the `plan_status` field for `trialing` status. Trial availability and duration depend on current promotional offers. Contact support for current trial options.
+**Q5: What happens if I exceed my storage limit?**
+A: At 80% capacity, you receive a warning notification. At 100%, you cannot upload new recordings or media. Existing content remains accessible. You can free space by deleting old recordings/clips or upgrade to Business for more storage.
 
-**Q: What happens when I hit my storage limit?**
-A: New uploads and recordings are blocked. You receive a notification to either delete existing files or upgrade your plan. Existing files remain accessible.
+**Q6: Can I change from monthly to annual billing?**
+A: Yes. Navigate to Admin > Billing and select the annual option. The change takes effect at the start of the next billing cycle, or you may be offered immediate switch with prorated credit.
 
-**Q: Can I purchase additional storage without upgrading?**
-A: The current plan structure offers fixed storage tiers (10 GB for Basic, 50 GB for Business). Contact support to discuss options for additional storage beyond your plan's allocation.
+**Q7: Is there a free plan?**
+A: R-Link does not currently offer a permanent free plan. New accounts default to the Basic plan. Contact sales for trial options.
 
-**Q: How is participant count calculated?**
-A: Interactive participants are users who join a session with the ability to enable camera/microphone. For meetings, this includes all attendees. For webinars, interactive participants are hosts and speakers; the 1,000 attendee limit is for view-only audience members.
+**Q8: How are attendees counted?**
+A: `attendees_this_month` tracks unique attendees across all sessions in the current billing month. The same person attending multiple sessions counts once.
 
-**Q: What payment methods are accepted?**
-A: Credit cards, debit cards, and PayPal (via Stripe and PayPal integrations). ACH transfers may also be available through Stripe.
+**Q9: What happens to my data if I cancel?**
+A: Your data is retained for a 30-day grace period after cancellation. During this time, you can reactivate and restore all data. After the grace period, data is permanently deleted.
 
-**Q: Where can I find my invoices?**
-A: Admin > Billing tab > Invoice History section. Only the account owner can access this tab.
+**Q10: Can I have multiple payment methods?**
+A: You can store multiple payment methods, but only one is designated as the primary method for subscription charges.
 
-**Q: What does "parallel rooms" mean on the Business plan?**
-A: Business plan allows up to 5 rooms to run active sessions simultaneously. This is useful for organizations running multiple concurrent meetings, webinars, or streams.
+**Q11: Do integrations require the Business plan?**
+A: SSO (Google, Microsoft) and Calendar integrations (Google Calendar, Outlook, iCal) are available on Basic. All other integrations (email marketing, CRM, payments, streaming platforms, Twilio, webhooks, API keys) require the Business plan.
+
+**Q12: What is the max_team_members default?**
+A: The default limit is 3 team members. This is the initial value set in the Account.limits object when a new account is created.
+
+**Q13: How do I request a custom plan or enterprise pricing?**
+A: Contact the R-Link sales team for custom plans with higher limits, dedicated support, or enterprise-specific features.
 
 ---
 
 ## Known Limitations
 
-1. **Owner-Only Billing Access**: Only the account owner (the user whose email matches `owner_email`) can access the Billing tab. There is no way to delegate billing management to another team member.
-2. **No Per-Feature Add-Ons**: Features cannot be individually purchased. The only way to access Business features is to upgrade to the Business plan.
-3. **Downgrade Data Handling**: When downgrading from Business to Basic, rooms beyond the Basic limit (1) are deactivated but not deleted. However, storage exceeding the Basic limit (10 GB) may need manual cleanup.
-4. **Billing Cycle Lock**: Changing billing cycle (monthly to annual or vice versa) takes effect at the next renewal, not immediately.
-5. **Default Account Limits**: The default Account entity sets `max_rooms: 5`, `max_storage_gb: 10`, `max_attendees: 100`, `max_team_members: 3` regardless of plan. Actual enforcement depends on the `plan` field.
+1. **No mid-cycle downgrade:** Downgrading from Business to Basic takes effect at the end of the current billing cycle. Immediate downgrade is not supported.
+2. **Storage must be reduced before downgrade:** If storage exceeds the Basic limit (10 GB), the user must manually delete content before the downgrade can be processed.
+3. **No plan pause:** There is no option to temporarily pause a subscription; cancellation is the only option.
+4. **Single billing owner:** Only the account Owner can manage billing. Delegation to admin roles for billing management is not supported.
+5. **Currency:** Pricing is displayed in a single currency; multi-currency support is not currently available.
+6. **Prorated refunds:** Refunds for mid-cycle downgrades or cancellations are generally not provided; access continues until the end of the paid period.
+7. **Team member limit on downgrade:** Excess team members are deactivated, not deleted. Re-activating them requires upgrading back to Business.
+8. **Annual billing commitment:** Annual subscriptions cannot be converted to monthly mid-term. The change takes effect at renewal.
+9. **Feature gating is binary:** There is no per-feature add-on purchasing; all Business features are bundled together.
+10. **Default limits in code vs. plan enforcement:** The code default Account object shows `max_rooms: 5` and `max_attendees: 100`, but Basic plan enforcement restricts these to 1 room and 50 attendees respectively. The higher defaults serve the Business plan.
 
 ---
 
 ## Plan Requirements
 
-This document covers features across both plans. Refer to the Complete Plan Comparison section above for the definitive breakdown of which features are included in each plan.
-
-| Document Topic | Basic | Business |
-|---|---|---|
-| Billing management | Yes (owner-only) | Yes (owner-only) |
-| Usage tracking | Yes | Yes |
-| Near-limit warnings | Yes | Yes |
-| Plan upgrade/downgrade | Yes | Yes |
+This document itself defines the plan requirements for all features. Use the comparison tables above as the authoritative reference.
 
 ---
 
 ## Related Documents
 
-- [00-index.md](./00-index.md) -- Master index and question routing
-- [01-platform-overview.md](./01-platform-overview.md) -- Platform architecture and feature overview
-- [03-getting-started.md](./03-getting-started.md) -- Signup, onboarding, and first session
-- [31-troubleshooting.md](./31-troubleshooting.md) -- Error diagnosis and resolution
+- [00-index.md](00-index.md) -- Master index and question routing
+- [01-platform-overview.md](01-platform-overview.md) -- Platform architecture and feature reference
+- [03-getting-started.md](03-getting-started.md) -- Registration, onboarding, and first session
+- [31-troubleshooting.md](31-troubleshooting.md) -- Troubleshooting, diagnostics, and known limitations

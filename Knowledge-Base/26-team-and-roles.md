@@ -1,429 +1,570 @@
-# Team Management and Roles
+# 26 - Team Management and Roles
 
 ## Overview
 
-The Team/Users tab and the Roles system together provide comprehensive access control for R-Link accounts. Located in Group 1 of the Admin Sidebar (alongside Dashboard and Account), Team management allows account owners and admins to invite members, assign roles, and control what each member can access and modify.
+R-Link provides comprehensive team management and role-based access control (RBAC) through two admin dashboard tabs: **Team** and **Roles**. The Team tab (`TeamTab` component) manages `TeamMember` entities -- inviting users, assigning roles, and controlling account access. The Roles tab (`RolesTab` component) manages `Role` entities -- defining custom permission sets that determine what each team member can do. The Roles tab is accessible to account owners only.
 
-The system consists of two interrelated entities:
+---
 
-- **TeamMember**: Represents a person invited to or active on the account, with a role assignment.
-- **Role**: Defines a set of permissions that determine what actions a team member can perform.
+## Team Tab
 
-R-Link includes built-in roles (admin, host) and supports custom roles for fine-grained access control. Role management is restricted to account owners only.
+### Accessing the Team Tab
 
-## Team Members
+1. Log in to your R-Link account.
+2. Navigate to the Admin Dashboard.
+3. Click the **Team** tab in the left sidebar.
 
-### TeamMember Entity Structure
+### Dashboard Statistics
 
-```
-TeamMember {
-  account_id    // The account this member belongs to
-  user_email    // The member's email address (used for login)
-  email         // Contact email (may be same as user_email)
-  status        // Membership status (e.g., 'invited')
-  invited_at    // Timestamp of when the invitation was sent
-  role          // Role name or identifier assigned to this member
-  role_id       // Reference to the Role entity
-}
-```
+The Team tab displays four summary cards:
 
-### Inviting Team Members
+| Stat | Description |
+|------|-------------|
+| **Total Members** | Count of all team members. If the account has a member limit, displayed as `count/limit` |
+| **Active** | Number of members with `status: 'active'` |
+| **Pending Invites** | Number of members with `status: 'invited'` |
+| **Admins** | Number of members with role `'owner'` or `'admin'` |
 
-New team members are added via invitation. When invited, a TeamMember record is created with `status: 'invited'`.
+### Search
 
-**Step-by-Step: Invite a Team Member**
+Use the search bar to filter team members by name or email address. Filtering is real-time.
 
-1. Navigate to **Team/Users** in the Admin Sidebar.
-2. Click **Invite Member** (or equivalent button).
-3. Enter the person's **email address**.
-4. Select a **role** to assign (admin, host, or a custom role).
-5. Click **Send Invitation**.
-6. The system creates a TeamMember record with:
-   - `account_id`: Current account
-   - `user_email`: The entered email
-   - `email`: The entered email
-   - `status`: `'invited'`
-   - `invited_at`: Current timestamp
-   - `role`: Selected role name
-   - `role_id`: Selected role's ID
-7. The invitee receives an email with instructions to join the account.
+### Members List
 
-**Permission Requirement**: Inviting members requires the `team.invite` permission (`canInvite`).
+Team members are displayed in a table with the following columns:
 
-### Member Status Lifecycle
-
-| Status | Description |
+| Column | Description |
 |--------|-------------|
-| `invited` | Invitation sent, member has not yet accepted |
-| `active` | Member has accepted the invitation and is active on the account |
-| `suspended` | Member access has been temporarily suspended |
-| `removed` | Member has been removed from the account |
+| **User** | Avatar (gradient fallback with initial), name, and email address |
+| **Role** | Color-coded badge with role icon and label |
+| **Status** | Color-coded badge showing current status |
+| **Last Login** | Date of last login, or "Invited [date]" for pending members |
+| **Actions** | Three-dot overflow menu (for non-owner members) |
 
-### Updating Team Members
+---
 
-Updating a team member allows changing their role or other profile information.
+## TeamMember Entity
 
-**Step-by-Step: Update a Team Member**
+The `TeamMember` entity stores team membership data. Key fields:
 
-1. Navigate to **Team/Users**.
-2. Find the member in the list.
-3. Click **Edit** or the member's row.
-4. Change the assigned **role** or update other fields.
-5. Click **Save**.
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier |
+| `account_id` | string | The account this member belongs to |
+| `user_email` | string | The member's email address (used for login/identification) |
+| `email` | string | Contact email (may differ from user_email) |
+| `name` | string | Display name of the member |
+| `avatar_url` | string | URL of the member's profile picture |
+| `status` | string | `'active'`, `'invited'`, or `'suspended'` |
+| `invited_at` | datetime | When the invitation was sent |
+| `last_login` | datetime | When the member last logged in |
+| `role` | string | Built-in role: `'owner'`, `'admin'`, `'host'`, `'presenter'`, or `'viewer'` |
+| `role_id` | string | ID of a custom `Role` entity (for custom role assignments) |
 
-**Permission Requirement**: Editing members requires the `team.edit` permission (`canEdit`).
+### Member Status Values
 
-### Removing Team Members
+| Status | Badge Color | Description |
+|--------|-------------|-------------|
+| `active` | Green | Member has accepted invitation and can access the account |
+| `invited` | Yellow | Invitation sent but not yet accepted |
+| `suspended` | Red | Member's access has been temporarily revoked |
 
-Removing a team member revokes their access to the account.
+---
 
-**Step-by-Step: Remove a Team Member**
+## Built-In Roles
 
-1. Navigate to **Team/Users**.
-2. Find the member to remove.
-3. Click **Remove** (or delete icon).
-4. Confirm the removal.
-5. The member loses access to the account immediately.
+R-Link provides five built-in roles with predefined capabilities:
 
-**Permission Requirement**: Removing members requires the `team.remove` permission (`canRemove`).
+### Owner
 
-**Important Notes**:
-- Removing a member does not delete their user account; it only disconnects them from this R-Link account.
-- The account owner cannot be removed.
-- Content created by removed members (recordings, brand kits, etc.) remains on the account.
+| Aspect | Detail |
+|--------|--------|
+| **Badge** | Yellow with crown icon |
+| **Access** | Full access to all features |
+| **Restrictions** | Cannot be removed or have role changed by other members |
+| **Unique** | Only one owner per account (typically the account creator) |
+| **Special** | Can access the Roles tab, billing, and all admin settings |
 
-## Role System
+### Admin
 
-### Overview
+| Aspect | Detail |
+|--------|--------|
+| **Badge** | Purple with shield icon |
+| **Access** | Near-full access; can manage team, rooms, settings, integrations |
+| **Restrictions** | Cannot change owner settings or access billing (unless explicitly permitted) |
+| **Use Case** | Co-administrators who handle day-to-day account management |
 
-The Role system defines what actions a team member can perform. Each role is a named entity with a permissions object that maps permission categories to specific allowed actions.
+### Host
 
-### Role Entity Structure
+| Aspect | Detail |
+|--------|--------|
+| **Badge** | Blue with users icon |
+| **Access** | Can create and manage rooms, schedule sessions, host sessions |
+| **Restrictions** | Limited access to team management, no access to billing or advanced settings |
+| **Use Case** | Team members who regularly run meetings and webinars |
 
-```
-Role {
-  account_id    // The account this role belongs to
-  permissions   // Nested object: { category: { action: boolean } }
-}
-```
+### Presenter
 
-The `permissions` field uses a nested structure where the top-level keys are **permission categories** and the nested keys are **permission actions** with boolean values.
+| Aspect | Detail |
+|--------|--------|
+| **Badge** | Green with users icon |
+| **Access** | Can present in sessions, share screen, use studio tools |
+| **Restrictions** | Cannot create rooms or manage settings; view-only for most admin features |
+| **Use Case** | Guest speakers, subject matter experts, workshop facilitators |
 
-Example:
+### Viewer
+
+| Aspect | Detail |
+|--------|--------|
+| **Badge** | Gray with users icon |
+| **Access** | Can view rooms and recordings; limited studio interaction |
+| **Restrictions** | Most admin features are hidden; read-only access |
+| **Use Case** | Stakeholders, observers, audience members with accounts |
+
+---
+
+## Team Operations
+
+### Inviting a Team Member
+
+Required permission: `team.invite`
+
+1. Click **Invite User** in the top-right corner.
+2. Fill in the invite form:
+   - **Email Address** (required) -- The email to send the invitation to.
+   - **Name** (optional) -- Display name for the new member.
+   - **Role** -- Select from: Owner, Admin, Host, Presenter, Viewer.
+3. Click **Send Invitation**.
+4. The system creates a `TeamMember` entity with `status: 'invited'` and `invited_at` set to the current timestamp.
+5. An email invitation is sent to the specified address.
+6. The member appears in the team list with a yellow "Invited" badge.
+
+### Updating a Team Member's Role
+
+Required permission: `team.edit`
+
+1. Find the member in the team list.
+2. Click the three-dot menu on the right side of their row.
+3. Select one of:
+   - **Make Owner** -- Promotes to owner role
+   - **Make Admin** -- Sets role to admin
+   - **Make Host** -- Sets role to host
+   - **Make Presenter** -- Sets role to presenter
+   - **Make Viewer** -- Sets role to viewer
+4. The role change takes effect immediately.
+
+Note: The owner's role cannot be changed by anyone. Only non-owner members show the action menu.
+
+### Suspending a Team Member
+
+Required permission: `team.edit`
+
+1. Find the active member in the team list.
+2. Click the three-dot menu.
+3. Select **Suspend**.
+4. The member's status changes to `'suspended'` and their badge turns red.
+5. Suspended members cannot log in or access any account features.
+
+### Reactivating a Suspended Member
+
+Required permission: `team.edit`
+
+1. Find the suspended member in the team list.
+2. Click the three-dot menu.
+3. Select **Reactivate**.
+4. The member's status changes back to `'active'`.
+
+### Resending an Invitation
+
+For members with `status: 'invited'`:
+
+1. Click the three-dot menu.
+2. Select **Resend Invite**.
+3. A new invitation email is sent.
+
+### Removing a Team Member
+
+Required permission: `team.remove`
+
+1. Find the member in the team list.
+2. Click the three-dot menu.
+3. Select **Remove** (red text).
+4. The member is permanently removed from the account.
+5. Their access is immediately revoked.
+
+Note: The account owner cannot be removed.
+
+---
+
+## Team Permissions
+
+Team operations are governed by three permissions:
+
+| Permission | Key | Description |
+|-----------|-----|-------------|
+| **Invite** | `team.invite` | Can send invitations to new team members |
+| **Edit** | `team.edit` | Can change member roles, suspend/reactivate members |
+| **Remove** | `team.remove` | Can permanently remove members from the account |
+
+The `TeamTab` component receives these as props:
+- `canInvite` (default: true) -- Controls visibility of the "Invite User" button.
+- `canEdit` (default: true) -- Controls visibility of role change and status change menu items.
+- `canRemove` (default: true) -- Controls visibility of the "Remove" menu item.
+
+---
+
+## Roles Tab
+
+### Accessing the Roles Tab
+
+1. Log in as the account **Owner**.
+2. Navigate to the Admin Dashboard.
+3. Click the **Roles** tab in the left sidebar.
+
+**Important**: The Roles tab is only visible to account owners. Other roles do not see this tab.
+
+### Roles Grid
+
+Custom roles are displayed in a responsive grid (1-3 columns). Each role card shows:
+- Color-coded shield icon
+- Role name (with "System Role" label for built-in roles)
+- Description
+- Permission summary (first 3 categories with enabled/total count)
+- Action buttons: Edit, Duplicate, Delete
+
+---
+
+## Role Entity
+
+The `Role` entity stores custom role definitions. Key fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier |
+| `account_id` | string | The account this role belongs to |
+| `name` | string | Role display name (e.g., "Co-Host", "Content Manager") |
+| `description` | string | Description of the role's purpose |
+| `color` | string | Badge color hex code (default: `#6a1fbf`) |
+| `is_system_role` | boolean | Whether this is a built-in system role (cannot be deleted) |
+| `permissions` | object | Nested permissions object (see below) |
+
+---
+
+## Permission Categories
+
+R-Link defines **9 permission categories** with granular action-level controls:
+
+### 1. Rooms
+
+| Permission | Key | Description |
+|-----------|-----|-------------|
+| View rooms | `rooms.view` | Can see room listings and details |
+| Create rooms | `rooms.create` | Can create new rooms |
+| Edit rooms | `rooms.edit` | Can modify room settings |
+| Delete rooms | `rooms.delete` | Can delete rooms |
+
+### 2. Brand Kits
+
+| Permission | Key | Description |
+|-----------|-----|-------------|
+| View brand kits | `brand_kits.view` | Can see brand kit listings |
+| Create brand kits | `brand_kits.create` | Can create new brand kits |
+| Edit brand kits | `brand_kits.edit` | Can modify brand kit settings |
+| Delete brand kits | `brand_kits.delete` | Can delete brand kits |
+
+### 3. Templates
+
+| Permission | Key | Description |
+|-----------|-----|-------------|
+| View templates | `templates.view` | Can browse and view templates |
+| Create templates | `templates.create` | Can create new templates |
+| Edit templates | `templates.edit` | Can modify existing templates |
+| Delete templates | `templates.delete` | Can delete templates |
+
+### 4. Team
+
+| Permission | Key | Description |
+|-----------|-----|-------------|
+| View team members | `team.view` | Can see the team member list |
+| Invite members | `team.invite` | Can send team invitations |
+| Edit members | `team.edit` | Can change member roles and status |
+| Remove members | `team.remove` | Can remove members from the account |
+
+### 5. Billing
+
+| Permission | Key | Description |
+|-----------|-----|-------------|
+| View billing | `billing.view` | Can see billing information and invoices |
+| Manage billing | `billing.manage` | Can change plans, update payment methods |
+
+### 6. Settings
+
+| Permission | Key | Description |
+|-----------|-----|-------------|
+| View settings | `settings.view` | Can see account settings |
+| Edit settings | `settings.edit` | Can modify account settings |
+
+### 7. Recordings
+
+| Permission | Key | Description |
+|-----------|-----|-------------|
+| View recordings | `recordings.view` | Can see and play recordings |
+| Download recordings | `recordings.download` | Can download recording files |
+| Delete recordings | `recordings.delete` | Can delete recordings |
+
+### 8. Integrations
+
+| Permission | Key | Description |
+|-----------|-----|-------------|
+| View integrations | `integrations.view` | Can see connected integrations |
+| Manage integrations | `integrations.manage` | Can connect, configure, and disconnect integrations |
+
+### 9. Studio Controls
+
+| Permission | Key | Description |
+|-----------|-----|-------------|
+| Host sessions | `studio.host` | Can start and control sessions as host |
+| Present | `studio.present` | Can present (share screen, use camera/mic) |
+| Moderate chat | `studio.moderate_chat` | Can moderate the chat (delete messages, mute users) |
+| Manage participants | `studio.manage_participants` | Can admit/remove participants, manage waiting room |
+| Control recording | `studio.control_recording` | Can start/stop recording during sessions |
+| Use studio tools | `studio.use_tools` | Can use studio tools (scenes, overlays, graphics) |
+
+---
+
+## Default Permissions
+
+When creating a new role, the following default permissions are applied:
+
 ```json
 {
-  "team": {
-    "view": true,
-    "invite": true,
-    "edit": false,
-    "remove": false
-  },
-  "rooms": {
-    "view": true,
-    "create": true,
-    "edit": true,
-    "delete": false
-  },
-  "recordings": {
-    "view": true,
-    "delete": false
+  "rooms": { "view": true, "create": false, "edit": false, "delete": false },
+  "brand_kits": { "view": true, "create": false, "edit": false, "delete": false },
+  "templates": { "view": true, "create": false, "edit": false, "delete": false },
+  "team": { "view": true, "invite": false, "edit": false, "remove": false },
+  "billing": { "view": false, "manage": false },
+  "settings": { "view": false, "edit": false },
+  "recordings": { "view": true, "download": false, "delete": false },
+  "integrations": { "view": false, "manage": false },
+  "studio": {
+    "host": false,
+    "present": false,
+    "moderate_chat": false,
+    "manage_participants": false,
+    "control_recording": false,
+    "use_tools": false
   }
 }
 ```
 
-### Permission Categories
+This default gives new roles **view-only access** to rooms, brand kits, templates, team, and recordings, with everything else disabled.
 
-The following permission categories control access to different areas of the platform:
+---
 
-| Category | Description | Available Actions |
-|----------|-------------|-------------------|
-| `team` | Team member management | `view`, `invite`, `edit`, `remove` |
-| `rooms` | Room creation and management | `view`, `create`, `edit`, `delete` |
-| `settings` | Account settings | `view`, `edit`, `manage` |
-| `integrations` | Third-party integrations | `view`, `edit`, `manage` |
-| `brand_kits` | Brand kit management | `view`, `create`, `edit`, `delete` |
-| `templates` | Room template management | `view`, `create`, `edit`, `delete` |
-| `recordings` | Recording management | `view`, `create`, `edit`, `delete` |
+## Custom Role Operations
 
-### Permission Actions
+### Creating a Custom Role
 
-| Action | Description |
-|--------|-------------|
-| `view` | Can see/access the feature or data |
-| `create` | Can create new items |
-| `edit` | Can modify existing items |
-| `delete` | Can permanently remove items |
-| `invite` | Can send invitations (specific to team) |
-| `remove` | Can remove members (specific to team) |
-| `manage` | Full management access (specific to settings/integrations) |
+1. Click **Create Role** in the top-right corner.
+2. Fill in the role details:
+   - **Role Name** (required) -- e.g., "Co-Host", "Content Manager", "Moderator"
+   - **Badge Color** -- Choose a hex color for the role badge
+   - **Description** (optional) -- Explain the role's purpose
+3. Configure permissions:
+   - Each permission category is displayed as a bordered section.
+   - Toggle individual permissions on/off using switches.
+   - Permissions are organized in a 2-column grid within each category.
+4. Click **Create Role** to save.
 
-### Built-In Roles
+### Editing a Custom Role
 
-R-Link provides two built-in roles with predefined permissions:
+1. Find the role in the grid.
+2. Click the **Edit** button on the card.
+3. Modify name, description, color, and permissions.
+4. Click **Save Changes**.
 
-#### Admin Role
+### Duplicating a Role
 
-The admin role grants **all permissions** across all categories. Admins have full access to every feature and management capability.
+1. Find the role in the grid.
+2. Click the **Duplicate** button (copy icon).
+3. A new role is created with:
+   - Name: "[Original Name] (Copy)"
+   - `is_system_role: false` (always editable)
+   - All permissions copied from the original.
+4. Edit the duplicate to customize.
+
+### Deleting a Custom Role
+
+1. Find the role in the grid.
+2. Click the **Delete** button (trash icon, red).
+3. System roles cannot be deleted (alert: "Cannot delete system roles").
+4. Confirm the deletion for custom roles.
+5. The role is permanently removed. Team members using this role should be reassigned.
+
+---
+
+## Role Assignment Flow
+
+1. **Create a custom role** in the Roles tab with specific permissions.
+2. **Invite a team member** in the Team tab and assign them a built-in role.
+3. **Assign the custom role** by updating the member's `role_id` to point to the custom role.
+4. The member's effective permissions are determined by their role assignment.
+5. UI elements (buttons, tabs, actions) automatically show/hide based on the member's permissions.
+
+---
+
+## Permissions Integration with UI
+
+The `usePermissions` hook is used throughout the admin dashboard to check permissions:
+
+- **Tab visibility**: Admin tabs are shown/hidden based on the user's role and permissions.
+- **Button visibility**: Create, edit, and delete buttons are conditionally rendered.
+- **Action availability**: Context menu items are enabled/disabled based on permissions.
+- **Data access**: API queries may be restricted based on the user's permission level.
+
+### Example Permission Checks
+
+| Feature | Required Permission |
+|---------|-------------------|
+| See Recordings tab | `recordings.view` |
+| Download a recording | `recordings.download` |
+| Delete a recording | `recordings.delete` |
+| Create a room | `rooms.create` |
+| Edit a brand kit | `brand_kits.edit` |
+| Invite team members | `team.invite` |
+| Connect an integration | `integrations.manage` |
+| Host a session | `studio.host` |
+| Start/stop recording | `studio.control_recording` |
+
+---
+
+## Suggested Custom Role Templates
+
+Here are common custom role configurations:
+
+### Co-Host
+```
+rooms: { view: true, create: true, edit: true, delete: false }
+brand_kits: { view: true, create: false, edit: true, delete: false }
+team: { view: true, invite: false, edit: false, remove: false }
+recordings: { view: true, download: true, delete: false }
+studio: { host: true, present: true, moderate_chat: true, manage_participants: true, control_recording: true, use_tools: true }
+```
+
+### Content Manager
+```
+rooms: { view: true, create: false, edit: true, delete: false }
+brand_kits: { view: true, create: true, edit: true, delete: false }
+templates: { view: true, create: true, edit: true, delete: true }
+recordings: { view: true, download: true, delete: true }
+studio: { host: false, present: false, moderate_chat: false, manage_participants: false, control_recording: false, use_tools: true }
+```
+
+### Moderator
+```
+rooms: { view: true, create: false, edit: false, delete: false }
+team: { view: true, invite: false, edit: false, remove: false }
+recordings: { view: true, download: false, delete: false }
+studio: { host: false, present: false, moderate_chat: true, manage_participants: true, control_recording: false, use_tools: false }
+```
+
+---
+
+## Common Troubleshooting
+
+### Q: I cannot see the Roles tab.
+**A:** The Roles tab is only visible to account owners. If you are an admin, host, presenter, or viewer, you will not see this tab. Ask the account owner to configure roles on your behalf.
+
+### Q: I invited someone but they did not receive the email.
+**A:** Check the following:
+1. Verify the email address was entered correctly (no typos).
+2. Ask the invitee to check their spam/junk folder.
+3. Use the "Resend Invite" option from the three-dot menu.
+4. If the issue persists, the email service may be experiencing delays. Contact support.
+
+### Q: A team member's status is "Invited" for a long time.
+**A:** The status remains "Invited" until the person accepts the invitation by clicking the link in the email and completing registration. They may have missed the email. Use "Resend Invite" to send a fresh invitation.
+
+### Q: I cannot remove a team member.
+**A:** Check these scenarios:
+1. You cannot remove the account owner (owner role is protected).
+2. Your role must have the `team.remove` permission.
+3. If you are not the owner and lack remove permissions, ask the owner to perform the removal.
+
+### Q: A suspended member needs to be reactivated.
+**A:** Find the suspended member in the team list, click the three-dot menu, and select "Reactivate". Their status will change from "Suspended" back to "Active" and they can log in again.
+
+### Q: How do I transfer account ownership?
+**A:** The current owner can promote another admin to owner using the "Make Owner" option in the three-dot menu. Note: transferring ownership is a significant action. The new owner gains full control of the account. The previous owner's role should be updated accordingly.
+
+### Q: My custom role permissions are not working.
+**A:** Ensure that:
+1. The role was saved correctly (check the permission toggles in the role editor).
+2. The team member is assigned to the correct role (check both `role` and `role_id`).
+3. The page was refreshed after role changes. Some permission changes require a page reload.
+
+### Q: What happens to members when I delete a custom role?
+**A:** Members assigned to a deleted custom role may lose specific permissions. Reassign affected members to a new role (built-in or custom) to ensure continued access.
+
+### Q: Can I have multiple owners?
+**A:** The built-in role system supports assigning the "owner" role to multiple members via the "Make Owner" menu option. However, only one user is typically the primary account owner. Use admin roles for additional administrators.
+
+---
+
+## API Reference
+
+### Team Members
 
 ```
-Admin permissions: ALL actions in ALL categories = true
+// List team members
+TeamMember.list()
+
+// Invite a new member
+onInvite({ email: 'user@example.com', name: 'Jane Doe', role: 'host' })
+
+// Update a member (role change)
+onUpdate(memberId, { role: 'admin' })
+
+// Update a member (status change)
+onUpdate(memberId, { status: 'suspended' })
+
+// Remove a member
+onRemove(memberId)
 ```
 
-An admin can:
-- View, invite, edit, and remove team members.
-- View, create, edit, and delete rooms, brand kits, templates, and recordings.
-- View, edit, and manage settings and integrations.
-- Perform all actions available in the admin panel.
-
-**Important**: The admin role does NOT include the ability to manage roles. Role CRUD operations are reserved for the account owner exclusively.
-
-#### Host Role
-
-The host role grants **limited permissions** focused on session hosting and basic team visibility.
+### Roles
 
 ```
-Host permissions:
-  team:       view, invite
-  rooms:      view, create, edit
-  (all other categories: no access)
+// Create a role
+onCreate({
+  name: 'Moderator',
+  description: 'Chat and participant management',
+  color: '#00c853',
+  permissions: { ... }
+})
+
+// Update a role
+onUpdate(roleId, {
+  name: 'Updated Name',
+  permissions: { rooms: { view: true, create: true, edit: true, delete: false } }
+})
+
+// Delete a role
+onDelete(roleId)
+
+// Duplicate a role
+onDuplicate({
+  ...existingRole,
+  name: 'Existing Role (Copy)',
+  is_system_role: false
+})
 ```
 
-A host can:
-- View the team member list.
-- Invite new team members.
-- View existing rooms.
-- Create new rooms.
-- Edit rooms they have access to.
+---
 
-A host **cannot**:
-- Edit or remove team members.
-- Delete rooms.
-- Access settings, integrations, brand kits, templates, or recordings management.
+## Related Features
 
-### Default Permission Behavior
-
-**Critical implementation detail**: If `roles.length === 0` (no roles exist on the account), the system grants all permissions to all members. This is a fallback behavior to ensure new accounts are not locked out before roles are configured.
-
-Once at least one role is created and assigned, the permission system enforces role-based restrictions.
-
-### Custom Roles
-
-Account owners can create custom roles with any combination of permissions for fine-grained access control.
-
-#### Creating a Custom Role
-
-1. Navigate to the **Roles** management area (accessible only to account owners).
-2. Click **Create Role**.
-3. Enter a **name** for the role.
-4. Configure permissions by toggling individual actions within each category:
-   - For each category (team, rooms, settings, integrations, brand_kits, templates, recordings), enable or disable specific actions (view, create, edit, delete, invite, remove, manage).
-5. Click **Save**.
-
-#### Editing a Custom Role
-
-1. Navigate to **Roles** management.
-2. Select the role to edit.
-3. Modify the permissions as needed.
-4. Click **Save**.
-5. Changes take effect immediately for all team members assigned to this role.
-
-#### Deleting a Custom Role
-
-1. Navigate to **Roles** management.
-2. Select the role to delete.
-3. Click **Delete** and confirm.
-4. If team members are assigned to this role, you will need to reassign them to a different role.
-
-#### Duplicating a Role
-
-1. Navigate to **Roles** management.
-2. Select an existing role.
-3. Click **Duplicate**.
-4. A new role is created with the same permissions as the source role.
-5. Rename the duplicated role and adjust permissions as needed.
-6. Click **Save**.
-
-### Owner-Only Role Management
-
-**All role CRUD operations (create, update, delete, duplicate) are restricted to the account owner.** The `canAccessTab('roles')` function returns `false` for all non-owner users, including admins.
-
-This means:
-- Only the owner sees the Roles management area.
-- Only the owner can create new roles.
-- Only the owner can edit existing roles.
-- Only the owner can delete roles.
-- Only the owner can duplicate roles.
-- Admins can assign existing roles to team members but cannot modify role definitions.
-
-## Tab Access Control
-
-The permission system also controls which Admin Sidebar tabs are visible to each user. The `usePermissions` hook (from `usePermissions.jsx`) evaluates the user's role and determines tab visibility.
-
-### Tab Visibility by Permission
-
-| Tab | Required Permission | Admin | Host | Notes |
-|-----|-------------------|-------|------|-------|
-| Dashboard | Always visible | Yes | Yes | |
-| Account | `settings.view` | Yes | No | |
-| Team/Users | `team.view` | Yes | Yes | |
-| Brand Kits | `brand_kits.view` | Yes | No | |
-| Room Templates | `templates.view` | Yes | No | |
-| Elements Library | Varies | Yes | No | |
-| Rooms | `rooms.view` | Yes | Yes | |
-| Schedule | `rooms.view` | Yes | Yes | Tied to rooms permission |
-| Recordings | `recordings.view` | Yes | No | |
-| Clips | `recordings.view` | Yes | No | Tied to recordings permission |
-| Event Landing Pages | Varies | Yes | No | |
-| Leads | Varies | Yes | No | |
-| AI Notetaker | Varies | Yes | No | |
-| Integrations | `integrations.view` | Yes | No | |
-| Billing & Usage | `settings.view` | Yes | No | |
-| Settings | `settings.view` | Yes | No | |
-| Support | Always visible | Yes | Yes | |
-
-## Permission Inheritance and Evaluation
-
-### How Permissions Are Evaluated
-
-The `usePermissions` hook uses the following logic:
-
-1. **Check if user is owner**: Owners have unrestricted access to everything, including role management.
-2. **Check if roles exist**: If `roles.length === 0`, all permissions are granted (fallback behavior).
-3. **Look up user's role**: Find the Role entity matching the user's `role_id`.
-4. **Evaluate permission**: Check `role.permissions[category][action]` for the requested permission.
-5. **Return boolean**: `true` if permission is granted, `false` if denied or not defined.
-
-### Permission Check Functions
-
-The permission system exposes helper functions used throughout the admin panel:
-
-- `canInvite` -- checks `team.invite`
-- `canEdit` -- checks the relevant `[category].edit` for the context
-- `canRemove` -- checks `team.remove`
-- `canCreate` -- checks the relevant `[category].create` for the context
-- `canDelete` -- checks the relevant `[category].delete` for the context
-- `canAccessTab(tabName)` -- determines if a sidebar tab is visible
-
-### Undefined Permissions
-
-If a permission action is not defined in the role's permissions object (i.e., the key does not exist), it is treated as `false` (denied). Only explicitly set `true` values grant access.
-
-## Settings and Options
-
-### Team Settings
-
-| Setting | Description | Notes |
-|---------|-------------|-------|
-| Invite by email | Send invitation via email | Primary invitation method |
-| Role assignment | Assign role during invite | Required field |
-| Bulk invite | Invite multiple members at once | Enter comma-separated emails |
-
-### Role Settings
-
-| Setting | Description | Notes |
-|---------|-------------|-------|
-| Role name | Display name of the role | Required, must be unique on account |
-| Permission toggles | Individual category.action booleans | All default to false for new custom roles |
-
-## Troubleshooting
-
-### Cannot invite team members
-- Verify your role has the `team.invite` permission.
-- Admin role includes this permission by default.
-- Host role includes this permission by default.
-- Check that the email address is valid and not already on the account.
-
-### Invited member did not receive invitation
-- Check the email address for typos.
-- Ask the invitee to check spam/junk folders.
-- The invitation email may be delayed; wait a few minutes.
-- If using a custom email integration (SendGrid, Mailchimp), verify the integration is connected.
-
-### Cannot see certain admin tabs
-- Your role does not include the `view` permission for that category.
-- Ask the account owner to check your role assignment.
-- If no roles have been configured yet (`roles.length === 0`), all tabs should be visible. If they are not, there may be a different issue.
-
-### Cannot manage roles
-- Role management is owner-only. Even admin role users cannot access role CRUD.
-- Verify you are logged in as the account owner (not just an admin).
-
-### Permission changes not taking effect
-- Permission changes take effect immediately. Try refreshing the browser.
-- Verify the correct role was edited (not a different role with a similar name).
-- Check that the team member is assigned to the updated role.
-
-### All permissions granted unexpectedly
-- If no roles exist on the account (`roles.length === 0`), the system defaults to granting all permissions.
-- Create at least one role and assign it to team members to enforce restrictions.
-
-### Cannot remove a team member
-- Verify your role has the `team.remove` permission.
-- The account owner cannot be removed from the account.
-- Admin role includes this permission; host role does not.
-
-### Role deletion issues
-- Roles assigned to active team members cannot be deleted without reassigning those members first.
-- Only the account owner can delete roles.
-
-## FAQ
-
-**Q: What is the difference between `user_email` and `email` on a TeamMember?**
-A: `user_email` is the email used for authentication and login. `email` is the contact email, which is often the same but can differ if the member uses a different email for correspondence.
-
-**Q: Can I create unlimited custom roles?**
-A: On Business plans, there is no hard limit on the number of custom roles. Basic plans may have restrictions.
-
-**Q: What happens when I change a team member's role?**
-A: The change takes effect immediately. The member's accessible tabs and actions update the next time they load the admin panel (or on page refresh).
-
-**Q: Can a team member have multiple roles?**
-A: No. Each team member is assigned exactly one role via the `role_id` field. To combine permissions from multiple roles, create a custom role with the desired combination.
-
-**Q: What is the difference between "admin" and "owner"?**
-A: The **owner** is the person who created the account and has unrestricted access to everything, including role management. An **admin** has all operational permissions but cannot create, edit, or delete roles. Only one person is the owner; multiple people can be admins.
-
-**Q: Can the owner's role be changed?**
-A: No. The owner always has full access regardless of role assignments. The owner is identified by account ownership, not by role.
-
-**Q: What happens if I delete all roles?**
-A: If `roles.length === 0`, the system defaults to granting all permissions to all team members. This is a safety fallback. It is recommended to always have at least one role configured.
-
-**Q: Can I restrict which rooms a team member can access?**
-A: The current role system controls access at the category level (e.g., `rooms.view` grants access to all rooms). Room-level granular access control (per-room permissions) is not part of the role system.
-
-**Q: How do built-in roles differ from custom roles?**
-A: Built-in roles (admin, host) have fixed permission sets that cannot be modified. Custom roles allow you to define any combination of permissions. Built-in roles are always available; custom roles are created by the account owner.
-
-**Q: Can I rename built-in roles?**
-A: No. Built-in roles (admin, host) have fixed names. You can create a custom role with any name and similar permissions if you prefer different naming.
-
-## Known Limitations
-
-- Each team member can only have one role; multi-role assignment is not supported.
-- Role management is exclusively owner-only; it cannot be delegated to admins.
-- Built-in roles (admin, host) cannot be modified or deleted.
-- The fallback behavior (all permissions when `roles.length === 0`) may create a security concern on new accounts before roles are configured.
-- Permission granularity is at the category level; per-item permissions (e.g., specific rooms, specific brand kits) are not supported.
-- There is no audit log for permission changes or team member actions.
-- Bulk role assignment (changing multiple members' roles at once) is not available.
-- The `invited` status does not expire automatically; stale invitations remain in the system.
-
-## Plan Requirements
-
-| Feature | Basic Plan | Business Plan |
-|---------|-----------|---------------|
-| Invite team members | Limited seats | Extended seats |
-| Built-in roles (admin, host) | Yes | Yes |
-| Custom roles | No | Yes |
-| Role CRUD (owner) | N/A (no custom roles) | Yes |
-| Permission categories | All | All |
-| Team member management | Yes | Yes |
-| Bulk invite | No | Yes |
-
-## Related Documents
-
-- **21-admin-panel-navigation.md** -- Admin sidebar structure and tab groupings
-- **24-brand-kits.md** -- Brand kit permissions (`brand_kits` category)
-- **27-integrations.md** -- Integration permissions (`integrations` category)
-- **23-recordings-and-clips.md** -- Recording permissions (`recordings` category)
+- **Brand Kits**: Brand kit operations require `brand_kits.*` permissions. See `24-brand-kits.md`.
+- **Recordings**: Recording access requires `recordings.*` permissions. See `23-recordings-and-clips.md`.
+- **Integrations**: Integration management requires `integrations.manage` permission. See `27-integrations.md`.
+- **Scheduling**: Session hosting requires `studio.host` permission. See `22-scheduling.md`.

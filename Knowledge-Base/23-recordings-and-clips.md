@@ -1,270 +1,465 @@
-# Recordings and Clips
+# 23 - Recordings and Clips
 
 ## Overview
 
-The Recordings tab and Clips tab are located in Group 3 of the Admin Sidebar (alongside Rooms, Schedule, and Event Landing Pages). Together, they provide a complete workflow for capturing live sessions, storing them, generating clips, and sharing content.
+R-Link provides two complementary content management tabs in the admin dashboard: **Recordings** (for full session recordings) and **Clips** (for repurposed content extracted from recordings). The Recordings tab is powered by the `RecordingsTab` component and manages `Recording` entities. The Clips tab is powered by the `ClipsTab` component and manages `RepurposedClip` entities. Together, these features form a complete post-session content pipeline: record, review, clip, repurpose, share, and analyze.
 
-- **Recordings tab** (`RecordingsTab` component): Manages all recorded sessions, supports local and cloud recording modes, and includes multi-track recording via the `MultiTrackRecorder`.
-- **Clips tab** (`ClipsTab` component): Manages video clips created from recordings, with AI-powered clip generation for automated highlight extraction.
+---
 
-## Recording Modes
-
-R-Link supports two distinct recording modes, each with different storage, quality, and workflow characteristics.
-
-### Local Recording
-
-Local recording captures the session directly to the host's device.
-
-- **Storage location**: The recording file is saved to the host's local filesystem (typically the Downloads folder or a user-specified directory).
-- **File format**: Recordings are saved in a standard video format (WebM or MP4 depending on browser support).
-- **Quality**: Full resolution as rendered in the browser, not subject to network bandwidth constraints for the recording itself.
-- **Availability**: The recording is available immediately on the host's machine once the session ends or recording is stopped.
-- **Admin visibility**: Local recordings do not automatically appear in the Recordings tab since they reside on the host's device. They must be manually uploaded to appear in the admin panel.
-
-**When to use local recording:**
-- When cloud storage is not available on the plan.
-- When the highest possible local quality is needed.
-- When the host wants immediate access to the file without waiting for cloud processing.
-
-### Cloud Recording
-
-Cloud recording captures the session and stores it in R-Link's cloud infrastructure.
-
-- **Storage location**: Recordings are stored in R-Link's cloud storage, accessible from the Recordings tab.
-- **File format**: Processed and stored in MP4 format.
-- **Quality**: Quality depends on the session's streaming resolution and network conditions.
-- **Processing**: After the session ends, cloud recordings undergo processing (encoding, optimization) before they become available. Processing time varies by session length.
-- **Availability**: Once processing completes, the recording appears automatically in the Recordings tab.
-- **Storage limits**: Cloud storage is subject to plan-based storage quotas.
-
-**When to use cloud recording:**
-- When recordings need to be accessible to the entire team from the admin panel.
-- When automatic backup and centralized management are needed.
-- When clips and AI-powered features will be used on the recording.
-
-### Multi-Track Recording
-
-The `MultiTrackRecorder` component enables multi-track recording, which captures each participant's audio and video as separate tracks.
-
-- **Separate tracks**: Each participant's camera feed and audio are recorded as individual tracks.
-- **Post-production flexibility**: Separate tracks allow for advanced editing -- adjust individual audio levels, swap camera angles, or create picture-in-picture layouts after the fact.
-- **Use cases**: Professional production, podcast-style recordings, high-quality webinar content.
-- **Storage**: Multi-track recordings consume more storage than single-track because each participant generates an independent file.
-- **Availability**: Multi-track recording is a premium feature available on Business plans.
-
-## Managing Recordings
+## Recordings Tab
 
 ### Accessing Recordings
 
-1. Navigate to the **Recordings** tab in the Admin Sidebar.
-2. The recordings list displays all cloud recordings for the account.
-3. Each entry shows: session name, date, duration, recording mode, file size, and status (processing, ready, or error).
+1. Log in to your R-Link account.
+2. Navigate to the Admin Dashboard.
+3. Click the **Recordings** tab in the left sidebar.
 
-### Recording Statuses
+### Dashboard Statistics
 
-| Status | Description |
-|--------|-------------|
-| Processing | The recording is being encoded and optimized after session end |
-| Ready | The recording is fully processed and available for playback, download, or clipping |
-| Error | Processing failed; the recording may need to be re-processed or is unrecoverable |
+The top of the Recordings tab displays four summary cards:
 
-### Playback
+| Stat | Description |
+|------|-------------|
+| **Total Recordings** | Count of all recordings across all folders |
+| **Total Duration** | Sum of all recording durations (displayed as hours and minutes) |
+| **Total Storage** | Sum of all file sizes (displayed in MB or GB) |
+| **Total Views** | Sum of all recording view counts |
 
-- Click on any recording with "Ready" status to open the built-in video player.
-- The player supports standard controls: play/pause, seek, volume, playback speed, and fullscreen.
-- For multi-track recordings, the player may offer track selection to view individual participant feeds.
+### Search and Organization
 
-### Downloading Recordings
+- **Search bar**: Filter recordings by title or room name. Type to filter in real time.
+- **Folders**: Organize recordings into custom folders with color coding.
+  - Click "New Folder" to create a folder.
+  - Click a folder name in the sidebar to filter recordings to that folder.
+  - Click "All Recordings" to show all recordings regardless of folder.
+  - Right-click or use the three-dot menu on folders to edit name/color or delete.
+  - Deleting a folder moves recordings to "All Recordings" (recordings are not deleted).
+  - Move recordings between folders via the three-dot menu on each recording card.
 
-- Click the **Download** button on any ready recording.
-- For single-track recordings, a single MP4 file is downloaded.
-- For multi-track recordings, a ZIP archive containing all individual track files may be provided, or the user can select individual tracks.
+---
 
-### Deleting Recordings
+## Recording Entity
 
-- Select one or more recordings and click **Delete**.
-- Deletion is permanent and frees up cloud storage quota.
-- Recordings with associated clips will prompt a warning before deletion.
+The `Recording` entity stores all data for a recorded session. Key fields:
 
-### Sharing Recordings
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier |
+| `title` | string | Recording title (typically matches the session title) |
+| `description` | string | Description, may include AI-generated transcript summary |
+| `room_name` | string | Name of the room where the recording was made |
+| `file_url` | string | URL of the recording file |
+| `file_size_bytes` | number | File size in bytes |
+| `duration_seconds` | number | Recording duration in seconds |
+| `recorded_at` | datetime | When the recording was captured |
+| `participant_count` | number | Number of participants during the recorded session |
+| `status` | string | `'processing'`, `'ready'`, or `'failed'` |
+| `processing_progress` | number | Progress percentage (0-100) during processing |
+| `folder_id` | string | ID of the folder this recording belongs to (null = root) |
+| `access_type` | string | `'private'`, `'public'`, `'password'`, or `'registered'` |
+| `share_token` | string | Random token for shareable link generation |
+| `view_count` | number | Number of times the recording has been viewed |
+| `download_count` | number | Number of times the recording has been downloaded |
+| `download_enabled` | boolean | Whether download is allowed (default: true) |
+| `expires_at` | datetime | Optional expiration date for the recording |
+| `expired` | boolean | Whether the recording has expired |
 
-- **Share link**: Generate a shareable link for any ready recording. Configure access controls (public, password-protected, or restricted to account members).
-- **Embed code**: Generate an embed snippet to place the recording on an external website.
-- **Email share**: Send the recording link directly via email (uses connected email integration if available).
-- **Cloud storage export**: If Google Drive or Dropbox integration is connected, export recordings directly to cloud storage (see document 27-integrations.md).
+### Recording Status Lifecycle
 
-## Recording Analytics
+1. **Processing** -- Recording is being processed after the session ends. A progress percentage is shown (e.g., "Processing 45%"). The recording is not yet playable or downloadable.
+2. **Ready** -- Processing is complete. The recording can be played, downloaded, shared, and clipped.
+3. **Failed** -- Processing encountered an error. The recording file may be corrupt or unavailable. Contact support.
 
-Cloud recordings include analytics to track engagement.
+### Access Types
 
-- **View count**: Total number of times the recording has been viewed.
-- **Unique viewers**: Number of distinct viewers.
-- **Average watch time**: How long viewers watch on average.
-- **Drop-off points**: Identify where viewers stop watching.
-- **Engagement graph**: Visual timeline showing viewer engagement density across the recording duration.
-- **Viewer details**: If viewers are identified (e.g., via registration or login), see individual viewer watch data.
+| Type | Description |
+|------|-------------|
+| `private` | Only the account owner and team members with recording permissions can access |
+| `public` | Anyone with the share link can view the recording |
+| `password` | Viewers must enter a password to access the recording |
+| `registered` | Viewers must register (provide name/email) before watching |
 
-## Clips
+---
 
-### What Are Clips?
+## Recording Modes
 
-Clips are short video segments extracted from full recordings. They are managed in the **Clips** tab (`ClipsTab` component) and are useful for creating highlight reels, social media content, or focused training snippets.
+R-Link supports two recording modes:
 
-### Creating Clips Manually
+### Local Recording
 
-1. Open a recording from the **Recordings** tab.
-2. Use the playback timeline to set the **start point** and **end point** for the clip.
-3. Click **Create Clip**.
-4. Enter a clip title and optional description.
-5. The clip is processed and appears in the **Clips** tab once ready.
+- Recordings are stored locally on the host's machine.
+- Files are captured in the browser and saved directly to the local file system.
+- No cloud storage usage is consumed.
+- Useful for environments with limited bandwidth or strict data residency requirements.
+- Local recordings must be manually uploaded if sharing is needed.
 
-### AI-Powered Clip Generation
+### Cloud Recording
 
-R-Link includes AI-powered clip generation that automatically identifies and extracts highlights from recordings.
+- Recordings are stored in R-Link's cloud infrastructure.
+- Files are automatically uploaded after the session ends.
+- Processing is handled server-side (encoding, optimization).
+- Cloud recordings appear automatically in the Recordings tab once processing completes.
+- Cloud recordings support sharing, embedding, and analytics.
 
-**How AI clips work:**
-1. Navigate to a recording and select **Generate AI Clips** (or use the AI clips option in the Clips tab).
-2. The AI analyzes the recording for:
-   - Key discussion topics and transitions.
-   - High-engagement moments (audience reactions, Q&A segments).
-   - Speaker highlights and quotable statements.
-   - Natural segment boundaries.
-3. The AI generates a set of suggested clips with recommended start/end points and auto-generated titles.
-4. Review the suggested clips: accept, reject, or adjust the boundaries.
-5. Accepted clips are processed and added to the Clips tab.
+---
 
-**AI clip settings:**
-- **Target clip length**: Set preferred clip duration range (e.g., 30 seconds to 3 minutes).
-- **Number of clips**: Suggest a maximum number of clips to generate.
-- **Focus area**: Optionally specify topics or keywords the AI should prioritize.
+## Multi-Track Recording
 
-### Managing Clips
+R-Link includes a `MultiTrackRecorder` component that captures separate audio and video tracks for each participant in a session. Key capabilities:
 
-1. Navigate to the **Clips** tab in the Admin Sidebar.
-2. All clips are listed with: title, source recording, duration, creation date, and status.
-3. Available actions per clip:
-   - **Play**: Preview the clip in the built-in player.
-   - **Edit**: Adjust the clip boundaries (re-process required).
-   - **Download**: Download the clip as an MP4 file.
-   - **Share**: Generate a share link, embed code, or send via email.
-   - **Delete**: Permanently remove the clip.
+- **Individual tracks**: Each participant's audio and video are recorded as separate tracks.
+- **Post-production flexibility**: Separate tracks allow for independent editing of each participant's audio/video levels, cropping, and positioning.
+- **Higher quality output**: Individual track recording avoids compression artifacts from composite recording.
+- **Clip creation**: Multi-track recordings provide better source material for AI clip generation, as the system can isolate individual speakers.
+- Multi-track recording is initiated from the Studio interface during an active session.
+
+---
+
+## Recording Actions
+
+For recordings with `status: 'ready'`:
+
+### Play
+- Click the **Play** button to open the built-in video player modal.
+- The video player supports standard playback controls (play/pause, seek, volume, fullscreen).
+
+### Download
+- Click the **Download** button to save the recording file locally.
+- The download counter is automatically incremented.
+- Downloads can be disabled per-recording via the settings modal.
+
+### Share
+- Click the **Share** button to generate a shareable link.
+- If no `share_token` exists, one is auto-generated.
+- The share URL format is: `{origin}/recording/{share_token}`
+- The link is automatically copied to the clipboard.
+- Private recordings are changed to public access when shared.
+
+### Settings
+- Click the **Settings** button to open the recording settings modal.
+- Configure access type, expiration, download permissions, and other metadata.
+
+### Generate AI Transcript Summary
+- From the three-dot overflow menu, select "Generate Transcript Summary".
+- The system uses AI (LLM integration) to generate a comprehensive summary including:
+  - Executive summary (2-3 sentences)
+  - Main topics covered with approximate timestamps
+  - Key takeaways and action items (5-7 bullet points)
+  - Notable quotes and moments with timestamps
+  - Clip-worthy segments (3-5 suggestions with time ranges)
+  - Target audience and use cases
+- The generated summary is appended to the recording's description field.
+
+### Move to Folder
+- From the three-dot overflow menu, select a destination folder.
+- Select "Move to All Recordings" to remove from any folder.
+
+### Delete
+- From the three-dot overflow menu, select "Delete".
+- Confirm the deletion. This action is permanent and cannot be undone.
+
+---
+
+## Clips Tab
+
+### Accessing Clips
+
+1. Navigate to the Admin Dashboard.
+2. Click the **Clips** tab in the left sidebar (or navigate from within the Recordings tab).
+
+### Dashboard Statistics
+
+The Clips tab displays four summary cards:
+
+| Stat | Description |
+|------|-------------|
+| **Total Clips** | Count of all repurposed clips |
+| **Ready** | Number of clips with `status: 'ready'` |
+| **Processing** | Number of clips currently being generated |
+| **Total Duration** | Sum of all clip durations |
 
 ### Clip Organization
 
-- **Search**: Search clips by title or source recording name.
-- **Filter**: Filter by date range, source recording, or creation method (manual vs. AI-generated).
-- **Sort**: Sort by date created, title, duration, or view count.
+#### Folders
+- Create folders with custom names and colors to organize clips.
+- Filter by folder using the folder buttons at the top.
+- "All Clips" shows everything; "Uncategorized" shows clips without a folder.
+- Delete a folder without deleting its clips.
 
-## Settings and Options
+#### Tags
+- Clips can be tagged with keywords for categorization.
+- Tags appear as purple badges on clip cards.
+- Use the tag filter section to filter clips by one or more tags.
+- Click a tag to toggle it on/off in the filter.
+- Click "Clear" to remove all tag filters.
 
-### Recording Settings
+### Search and Filtering
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| Default recording mode | Local or Cloud | Cloud (Business), Local (Basic) |
-| Auto-record | Automatically start recording when a session begins | Off |
-| Recording notification | Notify participants that the session is being recorded | On |
-| Multi-track recording | Record each participant as a separate track | Off |
-| Cloud storage region | Preferred storage region for cloud recordings | Auto |
+- **Search bar**: Search by clip title, description, tags, or parent recording title.
+- **Status filter**: Filter by `all`, `pending`, `processing`, `ready`, or `failed`.
+- **Platform filter**: Filter by `all`, `youtube`, `instagram`, `tiktok`, `linkedin`, `twitter`, `facebook`, or `custom`.
 
-### Clip Settings
+---
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| Default clip format | Output format for clips | MP4 |
-| AI clip generation | Enable AI-powered clip suggestions | On (Business) |
-| Target clip length | Preferred duration range for AI clips | 30s - 180s |
-| Max AI clips per recording | Maximum number of AI-suggested clips | 10 |
+## RepurposedClip Entity
 
-## Troubleshooting
+The `RepurposedClip` entity stores clip data. Key fields:
 
-### Recording did not save
-- **Local recording**: Check the host's Downloads folder or browser download settings. Some browsers may block large file downloads.
-- **Cloud recording**: Verify the session ended properly (abrupt disconnections may interrupt cloud recording upload). Check the Recordings tab for entries with "Error" status.
-- Ensure cloud storage quota has not been exceeded.
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier |
+| `title` | string | Clip title |
+| `description` | string | Clip description |
+| `recording_id` | string | ID of the source recording |
+| `file_url` | string | URL of the rendered clip file |
+| `thumbnail_url` | string | URL of the clip thumbnail |
+| `duration_seconds` | number | Clip duration in seconds |
+| `platform` | string | Target platform: `'youtube'`, `'instagram'`, `'tiktok'`, `'linkedin'`, `'twitter'`, `'facebook'`, `'custom'` |
+| `aspect_ratio` | string | Video aspect ratio (e.g., `'16:9'`, `'9:16'`, `'1:1'`) |
+| `status` | string | `'pending'`, `'processing'`, `'ready'`, or `'failed'` |
+| `error_message` | string | Error details if status is `'failed'` |
+| `tags` | array | Array of string tags for categorization |
+| `folder_id` | string | ID of the clip folder (null = uncategorized) |
+| `created_date` | datetime | When the clip was created |
 
-### Recording is stuck in "Processing" status
-- Cloud recordings typically process within a few minutes for short sessions, but long recordings (2+ hours) may take longer.
-- If processing takes more than 1 hour, contact support -- the recording may need manual re-processing.
-- Do not delete a recording that is still processing.
+### Clip Status Lifecycle
 
-### Multi-track recording missing participant tracks
-- Multi-track recording requires all participants to have stable connections. If a participant disconnects mid-session, their track may be incomplete.
-- Verify that multi-track recording was enabled before the session started, not mid-session.
+1. **Pending** -- Clip has been defined but processing has not started. Gray badge.
+2. **Processing** -- Clip is being rendered/generated. Yellow badge with spinner.
+3. **Ready** -- Clip is fully processed and available for playback, download, and sharing. Green badge.
+4. **Failed** -- Clip generation failed. Red badge. Error message displayed on the card.
 
-### AI clips not generating
-- AI clip generation requires a cloud recording with "Ready" status. Local recordings must be uploaded first.
-- Ensure the account is on a Business plan (AI clips are a Business feature).
-- Very short recordings (under 5 minutes) may not produce AI clip suggestions.
+### Platform Icons and Colors
 
-### Clip has poor quality
-- Clip quality is derived from the source recording quality. If the recording was low resolution, clips will also be low resolution.
-- Multi-track recordings generally produce higher-quality clips since individual tracks can be used.
+| Platform | Icon Color | Badge Color |
+|----------|-----------|-------------|
+| YouTube | #FF0000 (red) | Red |
+| Instagram | #E4405F (pink) | Pink |
+| TikTok | #000000 (black) | Black |
+| LinkedIn | #0A66C2 (blue) | Blue |
+| Twitter | #1DA1F2 (light blue) | Light blue |
+| Facebook | #1877F2 (blue) | Blue |
+| Custom | #6a1fbf (purple) | Purple |
 
-### Cannot share recording or clip
-- Verify the recording/clip has "Ready" status.
-- Check that the share settings allow the intended audience (public vs. restricted).
-- If using email sharing, ensure an email integration is connected.
+---
 
-### Cloud storage quota exceeded
-- Navigate to **Billing & Usage** in the Admin Sidebar to check current storage usage.
-- Delete old recordings or clips to free up space.
-- Upgrade to a higher plan tier for more storage.
+## Creating Clips
 
-## FAQ
+There are three methods to create clips from a recording:
 
-**Q: Can I record a session in both local and cloud modes simultaneously?**
-A: Yes. The host can enable both local and cloud recording for the same session. The local copy saves to the host's device while the cloud copy is uploaded and processed separately.
+### 1. Manual Clip Editor
 
-**Q: How long are cloud recordings retained?**
-A: Cloud recordings are retained as long as the account is active and within its storage quota. There is no automatic expiration, but storage limits may require cleanup over time.
+- From the Recordings tab, click "Create Clip" on any ready recording, then select "Manual Clip Editor".
+- Opens the `ClipEditorModal` with timeline-based editing controls.
+- Manually set start and end times for the clip.
+- Configure clip title, description, platform, aspect ratio, and tags.
+- Preview the clip before saving.
+- Save to generate the clip as a `RepurposedClip` entity.
 
-**Q: Can I convert a local recording to a cloud recording?**
-A: Not directly through automatic sync. However, you can upload a local recording file to the platform if an upload mechanism is provided, or export it to connected cloud storage (Google Drive, Dropbox).
+### 2. AI Clip Generator
 
-**Q: Who can access recordings?**
-A: Access is controlled by the `recordings` permission category. Team members with `recordings.view` permission can see recordings. Shared links can be configured for public or restricted access.
+- From the Recordings tab, click "Create Clip" on any ready recording, then select "AI Clip Generator".
+- Also accessible from the Clips tab via the "AI Generate Clips" button.
+- Opens the `AIClipGeneratorModal`.
+- The AI analyzes the recording content and automatically identifies the most engaging, shareable moments.
+- AI suggests clip boundaries, titles, descriptions, and optimal platform/aspect ratio.
+- Select which AI-suggested clips to generate.
+- Assign clips to folders during generation.
+- Generated clips are created as `RepurposedClip` entities and appear in the Clips tab.
 
-**Q: Can I create clips from a live session (not a recording)?**
-A: No. Clips are created from completed recordings. The session must end and the recording must reach "Ready" status before clips can be generated.
+### 3. From Transcript
 
-**Q: How does AI clip generation decide what to highlight?**
-A: The AI analyzes audio transcription, speaker changes, audience engagement signals (reactions, chat activity), and topic transitions to identify the most relevant segments. You can influence results by setting focus keywords.
+- From the Recordings tab, click "Create Clip" on any ready recording, then select "From Transcript".
+- Opens the `TranscriptSegmentSelector`.
+- Browse the recording's transcript to identify interesting segments.
+- Select transcript segments to define clip boundaries.
+- The system calculates corresponding video timestamps from transcript positions.
+- Assign clips to folders.
+- Created clips appear in the Clips tab.
 
-**Q: Can I edit the AI-generated clip titles?**
-A: Yes. AI-generated titles are suggestions and can be edited before or after the clip is created.
+---
 
-**Q: What happens to clips if I delete the source recording?**
-A: Clips are independent files once created. Deleting the source recording does not delete existing clips, but you will no longer be able to create new clips from that recording.
+## Clip Actions
 
-## Known Limitations
+### Play
+- Click **Play** on any clip with `status: 'ready'` to open the video player modal.
 
-- Local recordings are not managed centrally and do not appear in the Recordings tab unless manually uploaded.
-- Multi-track recording increases storage usage proportionally to the number of participants.
-- AI clip generation is only available for cloud recordings with audio content (screen-only recordings without audio may not produce meaningful clips).
-- Cloud recording processing time is variable and cannot be expedited.
-- Recording quality cannot exceed the session's live streaming resolution.
-- Clips cannot span across multiple recordings; each clip must come from a single source recording.
-- The maximum recording duration for cloud recordings may be subject to plan-based limits.
+### Download
+- Click the **Download** button to save the clip file locally as MP4.
 
-## Plan Requirements
+### Edit
+- Click **Edit** to reopen the clip in the clip editor modal.
+- Modify title, description, timestamps, platform, and other metadata.
+- Save changes to update the `RepurposedClip` entity.
 
-| Feature | Basic Plan | Business Plan |
-|---------|-----------|---------------|
-| Local recording | Yes | Yes |
-| Cloud recording | Limited storage | Extended storage |
-| Multi-track recording (`MultiTrackRecorder`) | No | Yes |
-| Recording playback | Yes | Yes |
-| Download recordings | Yes | Yes |
-| Share recordings | Basic sharing | Advanced sharing with analytics |
-| Recording analytics | No | Yes |
-| Manual clip creation | Limited | Yes |
-| AI-powered clip generation | No | Yes |
-| Cloud storage export (Drive/Dropbox) | No | Yes |
+### Repurpose
+- Click **Repurpose** to open the `ClipRepurposingModal`.
+- Create derivative clips from an existing clip, optimized for different platforms.
+- For example, convert a 16:9 YouTube clip into a 9:16 TikTok/Reels clip.
+- Repurposed clips are created as new `RepurposedClip` entities linked to the same source recording.
 
-## Related Documents
+### Share
+- Click **Share** to open the `ClipSharingModal`.
+- Generate shareable links, embed codes, or social media posts.
+- Share directly to connected social platforms.
 
-- **22-scheduling.md** -- Scheduling sessions that will be recorded
-- **24-brand-kits.md** -- Branding applied to recordings and clips
-- **27-integrations.md** -- Cloud storage, email, and streaming integrations for recordings
-- **21-admin-panel-navigation.md** -- Navigating the admin panel sidebar
+### Delete
+- Click the **Delete** (trash) button on any clip card.
+- Confirm the deletion. This action is permanent and cannot be undone.
+
+---
+
+## Clip Analytics
+
+- Toggle the analytics dashboard by clicking "Show Analytics" / "Hide Analytics" at the top of the Clips tab.
+- The `ClipAnalyticsDashboard` component displays performance metrics for clips.
+- Metrics may include views, engagement rates, platform performance comparisons, and trending clips.
+- Analytics help identify which types of clips perform best for future content strategy.
+
+---
+
+## Recording Folders
+
+### Creating a Folder
+1. Click "New Folder" in the Recordings tab.
+2. Enter a folder name.
+3. Optionally choose a color.
+4. Click "Save" to create.
+
+### Editing a Folder
+1. Hover over the folder in the sidebar.
+2. Click the three-dot menu icon.
+3. Select "Edit" to change name or color.
+
+### Deleting a Folder
+1. Hover over the folder in the sidebar.
+2. Click the three-dot menu icon.
+3. Select "Delete".
+4. Confirm the deletion. Recordings in this folder are moved to "All Recordings" -- they are not deleted.
+
+---
+
+## Clip Folders
+
+### Creating a Clip Folder
+1. Click "New Folder" in the Clips tab.
+2. Enter a folder name in the inline form.
+3. Choose a color using the color picker.
+4. Click "Save" to create.
+
+### Deleting a Clip Folder
+1. Hover over the folder button.
+2. Click the red "X" button that appears.
+3. Confirm the deletion. Clips in this folder become "Uncategorized" -- they are not deleted.
+
+---
+
+## Common Troubleshooting
+
+### Q: My recording is stuck in "Processing" status.
+**A:** Recording processing typically takes a few minutes depending on the recording length and server load. If a recording remains in "Processing" for more than 30 minutes, there may be a server-side issue. Try refreshing the page. If the issue persists, contact support with the recording ID.
+
+### Q: I cannot play or download my recording.
+**A:** Recordings must have `status: 'ready'` and a valid `file_url` to be playable or downloadable. Also check that the recording has not expired (check the `expires_at` field). Expired recordings display a red "Expired" badge and cannot be accessed.
+
+### Q: My recording shows "Failed" status.
+**A:** A failed recording means the processing pipeline encountered an error. This can happen due to corrupted source files, server issues, or unsupported formats. Contact support to investigate. The source file may need to be re-recorded.
+
+### Q: How do I make a recording private after sharing it?
+**A:** Open the recording's Settings modal and change the access type back to "private". Note that the share token remains in the system but the recording will no longer be accessible via the shared link.
+
+### Q: AI clip generation is not finding good moments in my recording.
+**A:** The AI clip generator works best with recordings that have clear audio, varied content, and distinguishable segments. Short recordings (under 5 minutes) or recordings with poor audio quality may not yield optimal clip suggestions. Try using the manual clip editor or transcript selector instead.
+
+### Q: How do I move a clip to a different folder?
+**A:** Currently, clip folder assignment is done during creation (in the AI generator or transcript selector). To change a clip's folder, edit the clip and update the folder assignment.
+
+### Q: What video format are clips exported in?
+**A:** Clips are exported as MP4 files. The aspect ratio depends on the target platform selected during clip creation (16:9 for YouTube, 9:16 for TikTok/Reels/Shorts, 1:1 for Instagram feed).
+
+### Q: Can I create clips from local recordings?
+**A:** Clips can only be created from recordings that have been uploaded to the cloud and have `status: 'ready'`. Local recordings must be uploaded first before clip generation is available.
+
+### Q: How does repurposing differ from creating a new clip?
+**A:** Repurposing takes an existing ready clip and re-renders it for a different platform/aspect ratio without going back to the source recording. It is faster and preserves any edits made to the original clip. Creating a new clip goes back to the source recording for fresh extraction.
+
+---
+
+## API Reference
+
+### Recordings
+
+```
+// List all recordings (newest first)
+Recording.list('-recorded_at')
+
+// Delete a recording
+Recording.delete(id)
+
+// Update recording metadata
+Recording.update(id, { title: 'New Title', access_type: 'public' })
+```
+
+### Recording Folders
+
+```
+// List folders sorted by order
+RecordingFolder.list('order')
+
+// Create a folder
+RecordingFolder.create({ name: 'Webinars', color: '#6a1fbf', order: 0 })
+
+// Update a folder
+RecordingFolder.update(id, { name: 'Updated Name' })
+
+// Delete a folder
+RecordingFolder.delete(id)
+```
+
+### Repurposed Clips
+
+```
+// List all clips (newest first)
+RepurposedClip.list('-created_date')
+
+// Create a clip
+RepurposedClip.create({
+  title: 'Key Moment',
+  recording_id: 'rec_abc123',
+  platform: 'youtube',
+  aspect_ratio: '16:9',
+  status: 'pending',
+  tags: ['highlight', 'keynote']
+})
+
+// Update a clip
+RepurposedClip.update(id, { title: 'Updated Title', tags: ['updated'] })
+
+// Delete a clip
+RepurposedClip.delete(id)
+```
+
+### Clip Folders
+
+```
+// List clip folders sorted by order
+ClipFolder.list('order')
+
+// Create a clip folder
+ClipFolder.create({ name: 'Social Media', color: '#00c853', order: 0 })
+
+// Update a clip folder
+ClipFolder.update(id, { name: 'Updated Name', color: '#ff0000' })
+
+// Delete a clip folder
+ClipFolder.delete(id)
+```
+
+---
+
+## Related Features
+
+- **Scheduling**: Sessions with `recording_enabled: true` auto-generate recordings. See `22-scheduling.md`.
+- **Brand Kits**: Clips can be styled with brand overlays (lower thirds, watermarks). See `24-brand-kits.md`.
+- **Integrations**: Cloud storage integrations (Google Drive, Dropbox) can auto-sync recordings. See `27-integrations.md`.
+- **Studio**: The multi-track recorder is controlled from the Studio interface during live sessions.

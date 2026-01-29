@@ -2,329 +2,387 @@
 
 ## Overview
 
-Every R-Link organization is represented by an `Account` entity in Base44. The account stores the organization's profile information, subscription plan, billing details, usage metrics, and resource limits. Accounts are managed through two admin tabs: the **Account** tab (`/admin?tab=account`) for profile editing and the **Settings** tab (`/admin?tab=settings`) for security, notifications, and streaming configuration.
-
-R-Link automatically creates an account for new users who sign up and do not yet have one. This auto-creation process also generates a default Brand Kit, ensuring every account starts with a fully functional configuration.
+Every R-Link user belongs to an account. The Account entity stores organization-level information including company details, subscription plan, billing, usage limits, security policies, and notification preferences. Accounts are automatically created during user registration and can be managed through the **AccountTab** and **SettingsTab** in the Admin Dashboard.
 
 ---
 
-## Account Entity Fields
+## Account Entity
 
-The `Account` entity contains the following fields:
+The `Account` entity is the top-level organizational unit in R-Link. All resources (rooms, templates, recordings, team members, etc.) are scoped to an account.
 
-### Core Identity Fields
+### Entity Fields
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `id` | string | Auto-generated | Unique account identifier |
-| `company_name` | string | `"{full_name}'s Organization"` or `"My Organization"` | Organization display name |
-| `owner_email` | string | User's email | Email of the account owner |
-| `owner_name` | string | User's `full_name` or `""` | Name of the account owner |
-| `phone` | string | `""` | Contact phone number (optional) |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier (auto-generated) |
+| `company_name` | string | Organization display name |
+| `owner_email` | string | Email address of the account owner |
+| `owner_name` | string | Full name of the account owner |
+| `plan` | string | Current subscription plan (e.g., `basic`, `pro`, `enterprise`) |
+| `plan_status` | string | Status of the plan (e.g., `active`, `trialing`, `past_due`, `canceled`) |
+| `billing_cycle` | string | Billing frequency (`monthly` or `annual`) |
+| `usage` | object | Current usage metrics (rooms created, storage used, minutes consumed, etc.) |
+| `limits` | object | Plan-specific limits (max rooms, max storage, max participants, etc.) |
+| `payment_method` | object | Stored payment method details (card type, last 4 digits, expiration) |
+| `next_renewal_date` | datetime | Date of the next billing cycle renewal |
+| `security_settings` | object | Security configuration (2FA enforcement, domain restrictions, session timeout) |
+| `notification_preferences` | object | Email and in-app notification settings |
+| `created_date` | datetime | When the account was created |
+| `updated_date` | datetime | When the account was last modified |
 
-### Subscription Fields
+### Plan Values
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `plan` | string | `"basic"` | Subscription tier: `"basic"` or `"business"` |
-| `plan_status` | string | `"active"` | Status: `"active"`, `"past_due"`, `"cancelled"`, etc. |
-| `billing_cycle` | string | `"monthly"` | Billing frequency: `"monthly"` or `"annual"` |
-| `payment_method` | object | null | Stored payment method details |
-| `next_renewal_date` | string | null | ISO date of next billing cycle renewal |
+| Plan | Description |
+|------|-------------|
+| `basic` | Free tier with limited features and usage |
+| `pro` | Professional tier with expanded limits and advanced features |
+| `enterprise` | Full-featured tier with custom limits, SSO, and dedicated support |
 
-### Usage Tracking Fields
+### Plan Status Values
 
-| Field | Type | Default Values | Description |
-|---|---|---|---|
-| `usage` | object | See below | Current usage metrics |
-| `usage.active_rooms` | number | `2` | Number of active rooms |
-| `usage.storage_used_gb` | number | `1.5` | Storage consumed in gigabytes |
-| `usage.attendees_this_month` | number | `45` | Total attendees in current billing period |
-| `usage.hours_streamed` | number | `12` | Total streaming hours in current period |
-
-### Resource Limits Fields
-
-| Field | Type | Default Values | Description |
-|---|---|---|---|
-| `limits` | object | See below | Plan resource limits |
-| `limits.max_rooms` | number | `5` | Maximum concurrent rooms |
-| `limits.max_storage_gb` | number | `10` | Maximum storage in GB |
-| `limits.max_attendees` | number | `100` | Maximum attendees per session |
-| `limits.max_team_members` | number | `3` | Maximum team members |
-
-### Regional Settings Fields
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `timezone` | string | `"UTC"` | Account timezone |
-| `locale` | string | `"en-US"` | Default language/locale |
-
-### Security Settings Fields
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `security_settings` | object | See below | Security configuration |
-| `security_settings.enforce_2fa` | boolean | `false` | Require two-factor authentication for all team members |
-| `security_settings.allowed_email_domains` | array | `[]` | Restrict team member emails to specific domains (Business only) |
-| `security_settings.session_timeout_minutes` | number | `480` | Auto-logout timeout in minutes |
-
-### Notification Preferences Fields
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `notification_preferences` | object | See below | Email notification settings |
-| `notification_preferences.email_upcoming_events` | boolean | `true` | Reminders for scheduled meetings |
-| `notification_preferences.email_recording_ready` | boolean | `true` | When recordings finish processing |
-| `notification_preferences.email_payment_reminders` | boolean | `true` | Billing and payment notifications |
-| `notification_preferences.email_usage_warnings` | boolean | `true` | Alerts when approaching plan limits |
-| `notification_preferences.notification_frequency` | string | `"instant"` | Digest frequency: `"instant"`, `"daily"`, or `"weekly"` |
+| Status | Description |
+|--------|-------------|
+| `active` | Plan is current and in good standing |
+| `trialing` | User is in a free trial period |
+| `past_due` | Payment failed; account is in a grace period |
+| `canceled` | Plan has been canceled; access may be restricted |
 
 ---
 
-## Auto-Creation Flow for New Users
+## Account Auto-Creation Flow
 
-When a user first accesses the Admin page and no account exists, R-Link automatically creates one. The logic is in `Admin.jsx`:
+When a new user registers on R-Link, an account is automatically created. This flow requires no manual intervention from the user.
 
-### Trigger Conditions
+### Step-by-Step Flow
 
-Auto-creation runs when ALL of the following are true:
-- `currentUser` is loaded and has an `email`
-- The `accounts` query returns an empty array (`accounts.length === 0`)
+```
+1. User completes registration (email + password or OAuth).
+2. System creates a new Account entity with:
+   - plan = 'basic'
+   - company_name = "{full_name}'s Organization"
+     (e.g., "John Smith's Organization")
+   - owner_email = user's registration email
+   - owner_name = user's full name from registration
+   - plan_status = 'active' (or 'trialing' if trial is enabled)
+   - Default security_settings and notification_preferences
+3. System sets the user's account_id via base44.auth.updateMe().
+   - This links the user record to the newly created account.
+   - All subsequent API calls from this user are scoped to this account.
+4. System creates a default BrandKit for the account.
+   - The default BrandKit uses R-Link's standard colors and fonts.
+   - Users can customize the BrandKit later via the BrandKit tab.
+5. User is redirected to the Admin Dashboard.
+```
 
-### Step-by-Step Auto-Creation Process
+### Key Technical Detail: base44.auth.updateMe()
 
-1. **Create Account entity** with these values:
-   - `company_name`: If the user has `full_name`, uses `"{full_name}'s Organization"`. Otherwise, uses `"My Organization"`.
-   - `owner_email`: The user's `email`.
-   - `owner_name`: The user's `full_name` or empty string `""`.
-   - `plan`: `"basic"`
-   - `plan_status`: `"active"`
-   - `billing_cycle`: `"monthly"`
-   - `usage`: `{ active_rooms: 2, storage_used_gb: 1.5, attendees_this_month: 45, hours_streamed: 12 }`
-   - `limits`: `{ max_rooms: 5, max_storage_gb: 10, max_attendees: 100, max_team_members: 3 }`
+After the Account entity is created, the system calls `base44.auth.updateMe()` to set the `account_id` on the authenticated user's profile. This is the mechanism that binds the user to their account. Without this step, the user would not be associated with any account and would not be able to access account-scoped resources.
 
-2. **Set `account_id` on the user**: Calls `base44.auth.updateMe({ account_id: newAccount.id })` to associate the user with the new account for row-level security (RLS).
+### Default BrandKit
 
-3. **Create default Brand Kit** for the new account:
-   - `account_id`: The new account's ID
-   - `name`: `"Default Brand Kit"`
-   - `description`: `"Your starting brand kit - customize it or create new ones"`
-   - `is_default`: `true`
-   - `colors`: `{ primary: '#6a1fbf', accent: '#00c853', background: '#001233', text: '#ffffff', secondary_text: '#9ca3af' }`
-   - `fonts`: `{ heading: 'Inter', body: 'Inter', caption: 'Inter' }`
-   - `logos`: `{}`
-   - `backgrounds`: `[]`
-   - `frame_settings`: `{ style: 'rounded', border_width: 2, border_color: '#6a1fbf', shadow: true }`
-   - `lower_third`: `{ template: 'modern', background_color: '#001233', text_color: '#ffffff', accent_color: '#6a1fbf', show_logo: true }`
-   - `overlay_defaults`: `{ watermark_position: 'bottom-right', watermark_opacity: 0.7 }`
+As part of account creation, a default BrandKit is automatically generated. This BrandKit:
+- Uses R-Link's standard color palette and default fonts.
+- Is automatically associated with any templates or rooms created before the user customizes their branding.
+- Can be fully customized at any time through the BrandKit tab.
+- Remains available even after the user creates additional BrandKits.
 
-4. **Invalidate queries**: React Query caches for `accounts` and `brandKits` are invalidated to refresh the UI.
+### Common Customer Questions About Account Creation
 
-### Missing account_id Recovery
+**Q: I just signed up but my company name shows as "John's Organization." How do I change it?**
+A: Navigate to the Account tab in the Admin Dashboard. You can update your company name in the Company Details section.
 
-If a user already has an account but their user data is missing `account_id`:
-- The system detects `currentUser && account && !currentUser.data?.account_id`
-- Calls `base44.auth.updateMe({ account_id: account.id })` to fix the association
+**Q: I signed up with the wrong email. Can I change the owner email?**
+A: The owner email is the email used during registration. To change it, go to the Account tab and update the email field. Note that this may require email verification.
+
+**Q: I do not see any branding options. Where do I set up my brand?**
+A: A default BrandKit was created when your account was set up. Navigate to the BrandKit tab in the Admin Dashboard to customize colors, fonts, and logos.
 
 ---
 
-## Account Profile Editing (AccountTab)
+## AccountTab
 
-The **Account** tab (`/admin?tab=account`) provides a form for editing the organization's profile.
-
-### Accessing the Account Tab
-
-1. Navigate to **Admin** > **Account** in the sidebar.
-2. The tab is accessible to all authenticated users (public access -- no permission gating).
+The AccountTab is the primary interface for managing account-level information. It is accessible from the Admin Dashboard via the `?tab=account` URL parameter.
 
 ### Editable Fields
 
-The AccountTab displays two sections:
+| Field | Type | Description |
+|-------|------|-------------|
+| `company_name` | string | Organization name displayed throughout the platform |
+| `owner_name` | string | Name of the account owner |
+| `email` | string (email) | Primary contact email for the account |
+| `phone` | string | Contact phone number |
+| `timezone` | string | Account timezone (affects scheduling, event times, analytics) |
+| `locale` | string | Language/locale setting for the account |
 
-#### Organization Details Section
+### Field Behaviors
 
-| Field | Input Type | Placeholder | Description |
-|---|---|---|---|
-| **Company / Organization Name** | Text input | "Enter company name" | The organization's display name |
-| **Owner / Admin Name** | Text input | "Enter name" | Account owner's full name |
-| **Contact Email** | Email input | "email@company.com" | Primary contact email (with Mail icon) |
-| **Phone (Optional)** | Tel input | "+1 (555) 000-0000" | Contact phone number (with Phone icon) |
+- **company_name**: Displayed in room branding, emails, and public-facing pages. Changing this updates all references across the platform.
+- **owner_name**: Used in account correspondence and as the default host name for events.
+- **email**: Used for billing notifications, security alerts, and account recovery. Changing requires verification.
+- **phone**: Optional. Used for SMS-based 2FA if enabled and for account recovery.
+- **timezone**: Affects how dates and times are displayed throughout the dashboard, in scheduled events, and in analytics reports. Does not retroactively change existing scheduled events.
+- **locale**: Determines the language and formatting conventions (date format, number format, etc.) for the dashboard UI.
 
-#### Regional Settings Section
+### Common Customer Questions About AccountTab
 
-| Field | Input Type | Options | Description |
-|---|---|---|---|
-| **Timezone** | Select dropdown | UTC, America/New_York, America/Los_Angeles, America/Chicago, Europe/London, Europe/Paris, Asia/Tokyo, Asia/Singapore, Australia/Sydney, Pacific/Auckland | Account timezone for scheduling and display |
-| **Default Locale / Language** | Select dropdown | en-US (English US), en-GB (English UK), es-ES (Spanish), fr-FR (French), de-DE (German), ja-JP (Japanese), zh-CN (Chinese Simplified) | UI language and locale formatting |
+**Q: I changed my timezone but my scheduled events still show the old time. Why?**
+A: Changing the account timezone affects how times are displayed going forward. Existing scheduled events retain their original time. The actual event time has not changed; only the display format is different.
 
-### Saving Changes
-
-1. Modify any field in the form.
-2. Click the **Save Changes** button (gradient purple-green, bottom right).
-3. The system calls `Account.update(account.id, formData)`.
-4. Button shows "Saving..." during the operation, then "Saved" with a checkmark for 2 seconds.
-
----
-
-## Account-Wide Settings (SettingsTab)
-
-The **Settings** tab (`/admin?tab=settings`) provides security, notification, and streaming configuration.
-
-### Accessing the Settings Tab
-
-1. Navigate to **Admin** > **Settings** in the sidebar.
-2. This tab is permission-gated (requires appropriate role permissions).
-
-### Security Section
-
-| Setting | Type | Description |
-|---|---|---|
-| **Two-Factor Authentication** | Toggle switch | Require 2FA for all team members. Default: off. |
-| **Session Timeout** | Dropdown | Auto-logout after inactivity. Options: 30 minutes, 1 hour, 4 hours, 8 hours (default), 24 hours. |
-| **Email Domain Restriction** | Domain list + input | Restrict team membership to specific email domains (Business plan only). Add domains like "company.com" and click Add. Click a domain badge to remove it. |
-
-### Active Sessions Section
-
-Displays a list of active browser sessions for the current user, showing:
-- Device and browser information
-- Location
-- Last active time
-- Current session indicator (green dot)
-- **Revoke** button for non-current sessions
-- **Log Out All** button (with confirmation dialog) to terminate all sessions except the current one
-
-### Streaming Integrations Section
-
-Quick-access configuration for RTMP streaming platforms:
-- **YouTube**: Configure RTMP URL and stream key
-- **Facebook Live**: Configure RTMP URL and stream key
-- **Twitch**: Configure RTMP URL and stream key
-- **LinkedIn Live**: Configure RTMP URL and stream key
-
-Each platform shows a status badge ("Ready" with green check if configured) and a Configure/Edit button that opens the `RTMPIntegrationModal`.
-
-### Notification Preferences Section
-
-| Setting | Type | Default | Description |
-|---|---|---|---|
-| **Upcoming Events** | Toggle | On | Reminders for scheduled meetings |
-| **Recording Ready** | Toggle | On | When recordings finish processing |
-| **Payment Reminders** | Toggle | On | Billing and payment notifications |
-| **Usage Warnings** | Toggle | On | Alerts when approaching plan limits |
-| **Notification Frequency** | Dropdown | Instant | Digest frequency: Instant, Daily, Weekly |
-
-### Saving Settings
-
-Click the **Save Settings** button. The system calls `Account.update()` with `security_settings` and `notification_preferences` objects.
+**Q: Can multiple people be listed as account owners?**
+A: No. Each account has a single owner. However, you can add team members with administrative roles through the Team tab and Roles tab.
 
 ---
 
-## account_id Association with Users
+## Settings Tab
 
-The `account_id` field on the user record is critical for data isolation and access control:
+The SettingsTab provides access to security configuration, session management, notification preferences, and streaming integrations. It is accessible from the Admin Dashboard via the `?tab=settings` URL parameter.
 
-- **Row-Level Security (RLS)**: Base44 uses `account_id` to filter data queries, ensuring users only see data belonging to their account.
-- **Set during account creation**: `base44.auth.updateMe({ account_id })` is called when the account is first created.
-- **Recovery mechanism**: If `account_id` is missing from the user record but an account exists, the system automatically sets it on the next Admin page load.
-- **Entity filtering**: All entity queries (rooms, templates, brand kits, team members, integrations, etc.) filter by `account_id` to scope results to the current account.
+### Security Settings
 
----
+Security settings control authentication and access policies for all users on the account.
 
-## Settings and Options
+#### Two-Factor Authentication (2FA)
 
-### Account-Level Defaults
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `enforce_2fa` | `false` | When `true`, all account members must enable 2FA to access the platform |
 
-| Setting | Default | Editable Location |
-|---|---|---|
-| Company Name | `"{user_name}'s Organization"` | Account tab |
-| Plan | `basic` | Billing tab (upgrade) |
-| Plan Status | `active` | Managed by billing system |
-| Billing Cycle | `monthly` | Billing tab |
-| Timezone | `UTC` | Account tab |
-| Locale | `en-US` | Account tab |
-| Enforce 2FA | `false` | Settings tab |
-| Session Timeout | 480 minutes (8 hours) | Settings tab |
-| Email Domain Restriction | Empty (no restriction) | Settings tab (Business only) |
-| Notification Frequency | `instant` | Settings tab |
+**Behavior:**
+- When `enforce_2fa` is set to `true`, all existing team members who have not yet enabled 2FA will be prompted to set it up on their next login.
+- New team members invited after enforcement is enabled will be required to set up 2FA during their first login.
+- The account owner can enable/disable this setting at any time.
+- Disabling `enforce_2fa` does not remove 2FA from users who already have it configured; it only stops requiring it for users who do not.
+
+**Common Questions:**
+- **Q: I enabled enforce_2fa but a team member says they were not prompted.** A: The prompt appears on the user's next login. Ask the team member to log out and log back in.
+- **Q: A team member lost their 2FA device. How do they regain access?** A: An account administrator can reset the user's 2FA from the Team tab. The user will be prompted to set up 2FA again on their next login. If the account owner is locked out, contact R-Link support.
+
+#### Allowed Email Domains
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `allowed_email_domains` | `[]` (empty array) | List of email domains allowed to join the account |
+
+**Behavior:**
+- When empty (default), any email address can be invited to the account.
+- When populated (e.g., `["company.com", "partner.org"]`), only users with email addresses matching one of the listed domains can be invited or join the account.
+- Existing team members with non-matching domains are NOT removed; the restriction only applies to new invitations.
+- Domain matching is case-insensitive.
+
+**Common Questions:**
+- **Q: I added a domain restriction but an existing team member with a different domain can still access the account.** A: Domain restrictions only apply to new invitations. Existing members retain access regardless of their email domain.
+- **Q: Can I allow multiple domains?** A: Yes. Add all allowed domains to the `allowed_email_domains` array.
+
+#### Session Timeout
+
+| Setting | Default | Options |
+|---------|---------|---------|
+| `session_timeout_minutes` | `480` | `30`, `60`, `240`, `480`, `1440` |
+
+**Behavior:**
+- Defines how long a user session can remain inactive before automatic logout.
+- The timeout is measured in minutes of inactivity (no clicks, no API calls).
+- Default is 480 minutes (8 hours).
+- Available options and their human-readable equivalents:
+  - `30` = 30 minutes
+  - `60` = 1 hour
+  - `240` = 4 hours
+  - `480` = 8 hours (default)
+  - `1440` = 24 hours
+- Changing the timeout applies to all users on the account, including the owner.
+- Active sessions are not immediately affected; the new timeout applies on the user's next login or session refresh.
+
+**Common Questions:**
+- **Q: I set the timeout to 30 minutes but I keep getting logged out during a live event.** A: Active participation in a live event (sending chat messages, reacting, etc.) counts as activity and resets the timeout. If you are only watching passively, the session may time out. Consider increasing the timeout to 240 or 480 minutes during events.
+- **Q: Can I set different timeouts for different users?** A: No. The session timeout is an account-level setting that applies uniformly to all users.
+
+### Active Sessions
+
+The Active Sessions panel displays all currently active sessions for the account.
+
+#### Session Information
+
+Each active session displays:
+
+| Field | Description |
+|-------|-------------|
+| `device` | Device type and browser (e.g., "Chrome on Windows", "Safari on iPhone") |
+| `location` | Approximate geographic location based on IP address |
+| `lastActive` | Timestamp of the last activity in this session |
+
+#### Revoke Session
+
+- Each session has a "Revoke" action.
+- Revoking a session immediately invalidates it; the user on that device will be logged out.
+- The account owner can revoke any session. Team members can only revoke their own sessions.
+- Revoking a session does not prevent the user from logging in again.
+
+**Common Questions:**
+- **Q: I see a session from a location I do not recognize. Is my account compromised?** A: Location is approximated from the IP address and may not be exact (e.g., VPN usage can show different locations). If you are concerned, revoke the session immediately and change your password. Consider enabling `enforce_2fa` for additional security.
+- **Q: I revoked a session but the user can still access the platform.** A: Revoking a session logs the user out of that specific session. They can still log in again with valid credentials. To prevent access entirely, remove them from the account via the Team tab.
+
+### Notification Preferences
+
+Notification preferences control which email notifications the account owner receives.
+
+#### Email Notification Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `email_upcoming_events` | `true` | Receive email reminders before scheduled events |
+| `email_recording_ready` | `true` | Receive email when a recording has been processed and is ready to view |
+| `email_payment_reminders` | `true` | Receive email reminders about upcoming payments and billing |
+| `email_usage_warnings` | `true` | Receive email when approaching plan usage limits |
+| `notification_frequency` | `'instant'` | How often notification emails are sent |
+
+#### Notification Frequency Options
+
+| Value | Behavior |
+|-------|----------|
+| `'instant'` | Notifications are sent immediately when the triggering event occurs |
+| `'daily'` | Notifications are batched and sent once per day (typically morning, account timezone) |
+| `'weekly'` | Notifications are batched and sent once per week (typically Monday morning, account timezone) |
+
+**Behavior Notes:**
+- Notification preferences apply to the account owner's email.
+- Team members manage their own notification preferences individually.
+- `notification_frequency` applies to all enabled notification types.
+- Critical security notifications (password changes, suspicious login attempts) are always sent instantly regardless of the frequency setting.
+- Usage warnings are triggered when the account reaches 80% and 95% of any plan limit.
+
+**Common Questions:**
+- **Q: I turned off all notifications but I am still getting emails.** A: Security-related notifications (password changes, suspicious activity) cannot be disabled. These are always sent for your protection.
+- **Q: My team members are not getting event reminder emails.** A: Each team member manages their own notification preferences. Ask them to check their settings in the Admin Dashboard.
+- **Q: I set my frequency to daily but I got an instant notification.** A: Payment failure notifications and security alerts are always sent instantly, regardless of the frequency setting. Other notifications will follow the daily schedule.
+
+### Streaming Integrations
+
+The Streaming Integrations section allows users to configure RTMP streaming to external platforms.
+
+#### RTMPIntegrationModal
+
+The RTMPIntegrationModal is a configuration dialog for setting up streaming integrations with external platforms.
+
+**Supported Platforms:**
+
+| Platform | Configuration Required |
+|----------|----------------------|
+| YouTube | RTMP stream key from YouTube Studio |
+| Facebook | RTMP stream key from Facebook Live Producer |
+| Twitch | RTMP stream key from Twitch Dashboard |
+| LinkedIn | RTMP stream key from LinkedIn Live (requires LinkedIn approval) |
+
+**How It Works:**
+1. User opens the Streaming Integrations section in the Settings tab.
+2. User clicks "Add Integration" to open the RTMPIntegrationModal.
+3. User selects the target platform (YouTube, Facebook, Twitch, or LinkedIn).
+4. User enters their RTMP stream key from the external platform.
+5. The integration is saved and can be used when starting a live room.
+6. During a live session, the user can toggle streaming to any configured platform.
+
+**Common Questions:**
+- **Q: Where do I find my RTMP stream key?** A: Each platform has a different location:
+  - **YouTube**: YouTube Studio > Go Live > Stream settings > Stream key
+  - **Facebook**: Facebook Live Producer > Stream setup > Stream key
+  - **Twitch**: Twitch Dashboard > Settings > Stream > Primary Stream Key
+  - **LinkedIn**: LinkedIn Live events dashboard (requires LinkedIn Live approval)
+- **Q: Can I stream to multiple platforms simultaneously?** A: Yes. Configure each platform separately and enable multiple streams during your live session. Note that simultaneous streaming to multiple platforms consumes more bandwidth and may require a higher plan.
+- **Q: My stream is not appearing on YouTube/Facebook/etc.** A: Verify that:
+  1. Your stream key is correct and has not expired.
+  2. You have started the stream on the external platform (some platforms require you to "Go Live" on their end as well).
+  3. Your internet connection has sufficient upload bandwidth.
+  4. Your plan supports RTMP streaming.
 
 ---
 
 ## Troubleshooting
 
-| Issue | Cause | Solution |
-|---|---|---|
-| Account not created for new user | User does not have an email in their profile | Ensure the user completed registration with a valid email address |
-| "My Organization" as company name | User signed up without a `full_name` value | Edit the company name in the Account tab |
-| Brand Kit not appearing after signup | Auto-creation failed or query cache stale | Refresh the page; check the `brandKits` query in browser dev tools |
-| Cannot edit account profile | User does not have permission | The Account tab is public (all roles), but if the user is not authenticated, they cannot access Admin at all |
-| Settings not saving | Network error or API failure | Check network connectivity; retry the save operation; check browser console for error details |
-| Missing account_id on user | Race condition during signup or manual data issue | The system auto-recovers on next Admin page load; if persistent, contact support |
-| Timezone not reflecting in sessions | Timezone change does not retroactively update existing scheduled sessions | Update timezone before creating new sessions; existing sessions retain their original timezone |
-| 2FA enforcement not working | Feature depends on Base44 auth infrastructure | Verify that 2FA is configured at the Base44 platform level; contact support if enforcement is not being applied |
-| Email domain restriction not visible | User is on Basic plan | Email domain restriction is a Business plan feature only |
+### Account Not Found After Registration
+
+**Symptoms:** User registers successfully but sees an error about no account being found, or sees an empty dashboard.
+
+**Possible Causes:**
+- The `base44.auth.updateMe()` call failed during account creation.
+- Network interruption during the registration flow.
+
+**Resolution Steps:**
+1. Ask the customer to log out and log back in.
+2. If the issue persists, check whether the Account entity was created (engineering may need to verify via API).
+3. If the account exists but the user is not linked, engineering can manually call `base44.auth.updateMe()` to set the `account_id`.
+4. If the account was not created, escalate to engineering to trigger the account creation flow.
+
+### Plan Shows "basic" But Customer Purchased a Paid Plan
+
+**Symptoms:** Customer says they purchased a Pro or Enterprise plan but the dashboard shows `plan = 'basic'`.
+
+**Possible Causes:**
+- Payment processing delay.
+- The upgrade was applied to a different account.
+- Payment failed and `plan_status` reverted to `basic`.
+
+**Resolution Steps:**
+1. Check the `plan_status` field. If it shows `past_due`, the payment may have failed.
+2. Verify the `payment_method` is valid and not expired.
+3. Check the `next_renewal_date` to understand the billing timeline.
+4. If the customer has multiple accounts, verify they are logged into the correct one.
+5. Escalate to billing support with the account ID and payment reference.
+
+### 2FA Lockout
+
+**Symptoms:** Account owner or team member cannot access the platform because they lost their 2FA device.
+
+**Resolution Steps:**
+1. If a team member is locked out, an account administrator can reset their 2FA from the Team tab.
+2. If the account owner is locked out:
+   - Check if there is another administrator on the account who can reset the owner's 2FA.
+   - If no other admin exists, the owner must contact R-Link support with identity verification for manual 2FA reset.
+3. After the reset, the user will be prompted to set up 2FA again on their next login.
+
+### Session Timeout Issues During Live Events
+
+**Symptoms:** User gets logged out during a live event despite being "active."
+
+**Resolution Steps:**
+1. Check the `session_timeout_minutes` setting. If set to a low value (30 or 60), recommend increasing it.
+2. Clarify that "activity" means interactive actions (chat, reactions, clicks). Passively watching does not reset the timeout.
+3. Recommend the user keep their dashboard tab active (not minimized or in the background) during events.
+
+### Notification Emails Not Being Received
+
+**Symptoms:** Customer reports not receiving notification emails.
+
+**Resolution Steps:**
+1. Check the notification preferences in the Settings tab. Confirm the relevant notification type is enabled.
+2. Check the `notification_frequency` setting. If set to `daily` or `weekly`, the notification may not have been sent yet.
+3. Ask the customer to check their spam/junk folder.
+4. Verify the account email address is correct in the Account tab.
+5. If all settings are correct, escalate to engineering to check the email delivery service logs.
 
 ---
 
-## FAQ
+## Internal Reference
 
-**Q: What happens when I first sign up for R-Link?**
-A: When you access the Admin portal for the first time, R-Link automatically creates an account for you with the Basic plan, a default Brand Kit, and starter usage values. Your organization name defaults to "{Your Name}'s Organization" or "My Organization" if no name is available.
+### Related Entities
 
-**Q: Can I change my plan from the Account tab?**
-A: No. Plan changes are managed through the **Billing** tab (`/admin?tab=billing`), which is restricted to account owners only.
+- **User**: Linked to Account via `account_id` (set by `base44.auth.updateMe()`)
+- **BrandKit**: Default created during account auto-creation
+- **Team**: Team members are scoped to the account
+- **Role**: Custom roles are scoped to the account
 
-**Q: What are the default usage values on a new account?**
-A: New accounts start with sample usage data: 2 active rooms, 1.5 GB storage used, 45 attendees this month, and 12 hours streamed. These values update as you use the platform.
+### Related Admin Tabs
 
-**Q: Can I change the account owner?**
-A: The account owner is determined by the `owner_email` field. You can edit the owner name and email in the Account tab. The account owner has full access to all features including Billing and Roles tabs.
+- **AccountTab** (`?tab=account`): Company details and owner information
+- **SettingsTab** (`?tab=settings`): Security, sessions, notifications, streaming
+- **BillingTab** (`?tab=billing`): Plan management and payment details
+- **TeamTab** (`?tab=team`): Team member management
+- **RolesTab** (`?tab=roles`): Role and permission management
 
-**Q: What timezone options are available?**
-A: The following timezones are supported: UTC, America/New_York, America/Los_Angeles, America/Chicago, Europe/London, Europe/Paris, Asia/Tokyo, Asia/Singapore, Australia/Sydney, Pacific/Auckland.
+### Data Flow Summary
 
-**Q: What locales are supported?**
-A: English (US), English (UK), Spanish, French, German, Japanese, and Chinese (Simplified).
-
-**Q: How does the email domain restriction work?**
-A: On the Business plan, you can add email domains (e.g., "company.com") in the Settings tab. Only users with email addresses from those domains can be added as team members. If no domains are listed, there is no restriction.
-
-**Q: What is the session timeout?**
-A: The session timeout controls how long a user can be inactive before being automatically logged out. The default is 8 hours (480 minutes). Options range from 30 minutes to 24 hours.
-
----
-
-## Known Limitations
-
-1. **Single account per user**: The current architecture associates one account per user context. Users cannot belong to multiple accounts simultaneously.
-2. **No account deletion**: There is no self-service account deletion workflow in the Admin portal. Account deletion requires contacting support.
-3. **Auto-creation sample data**: New accounts are created with non-zero usage values (2 rooms, 1.5 GB, etc.) that represent sample data rather than actual usage.
-4. **Limited timezone options**: Only 10 timezone options are available; additional timezones may not be selectable.
-5. **Limited locale options**: Only 7 locales are supported. The locale setting affects display formatting but may not translate the entire UI.
-6. **Email domain restriction is Business-only**: Basic plan users cannot restrict team member email domains.
-7. **No multi-language UI**: The locale setting primarily affects date/number formatting. Full UI translation is not currently implemented.
-
----
-
-## Plan Requirements
-
-| Feature | Basic | Business |
-|---|---|---|
-| Account Profile Editing | Yes | Yes |
-| Timezone & Locale Settings | Yes | Yes |
-| Security Settings (2FA, Timeout) | Yes | Yes |
-| Email Domain Restriction | No | Yes |
-| Notification Preferences | Yes | Yes |
-| Streaming Integration Quick Config | Yes | Yes |
-| Active Sessions Management | Yes | Yes |
-
----
-
-## Related Documents
-
-- [01-platform-overview.md](./01-platform-overview.md) -- Platform architecture, entity model, and glossary
-- [02-plans-and-pricing.md](./02-plans-and-pricing.md) -- Plan details, limits, and billing
-- [03-getting-started.md](./03-getting-started.md) -- Signup and onboarding flow
-- [11-brand-kit.md](./11-brand-kit.md) -- Default Brand Kit details and customization
-- [17-team-management.md](./17-team-management.md) -- Team member management
-- [18-roles-and-permissions.md](./18-roles-and-permissions.md) -- Permission system and role definitions
-- [32-admin-dashboard-reference.md](./32-admin-dashboard-reference.md) -- Complete admin tab reference
+```
+User Registration
+  -> Account.create({plan: 'basic', company_name: "{name}'s Organization", ...})
+  -> base44.auth.updateMe({account_id: newAccount.id})
+  -> BrandKit.create({account_id: newAccount.id, is_default: true})
+  -> Redirect to Admin Dashboard
+```

@@ -1,315 +1,293 @@
-# Room Templates
+# Templates
 
 ## Overview
 
-Room Templates in R-Link allow users to create reusable room configurations with preset settings -- including layout, features, branding, and session type. Templates eliminate the need to manually configure a room from scratch each time. They are managed through the **Templates** admin tab (`/admin?tab=templates`) via the `TemplatesTab` component, and are stored as `RoomTemplate` entities in Base44.
-
-Each template belongs to a specific account (via `account_id`) and can optionally be set as the default template. Templates can be created manually, duplicated from existing templates, or generated using the built-in AI assistant. When creating a new room, users can select a template to pre-populate the room's configuration.
+R-Link templates allow users to create, manage, and reuse room configurations across the platform. Templates are managed through the **TemplatesTab** in the Admin Dashboard and are built around the `RoomTemplate` entity. Each template belongs to an account, can be assigned to one of 11 predefined categories, and optionally designated as the default template for new rooms. An AI assistant is integrated to help generate and refine template content.
 
 ---
 
 ## RoomTemplate Entity
 
-The `RoomTemplate` entity stores the following key fields:
+The `RoomTemplate` entity is the core data model for all template operations.
+
+### Entity Fields
 
 | Field | Type | Description |
-|---|---|---|
+|-------|------|-------------|
 | `id` | string | Unique identifier (auto-generated) |
 | `account_id` | string | The account that owns this template |
 | `name` | string | Display name of the template |
-| `description` | string | Optional description text (shown on template card, truncated to 2 lines) |
-| `category` | string | Template category (see categories below) |
-| `layout` | string | Default layout for rooms created from this template |
-| `is_default` | boolean | Whether this is the account's default template |
-| `is_system_template` | boolean | Whether this is a system-provided template (cannot be edited) |
-| `brand_kit_id` | string | Optional associated Brand Kit ID |
-| `core_features` | object | Feature toggles: `recording`, `chat`, `waiting_room`, `breakout_rooms`, `reactions`, `screen_share`, `polls`, `q_and_a`, `transcription` |
-| `commerce_features` | object | Commerce toggles: `product_showcase`, `checkout`, `auctions`, `tipping` |
-| `created_date` | string | ISO timestamp of creation |
+| `description` | string | Description of the template purpose |
+| `category` | string | One of the 11 predefined categories |
+| `is_default` | boolean | Whether this is the default template for the account |
+| `brand_kit_id` | string | Associated BrandKit entity ID |
+| `room_config` | object | Full room configuration snapshot |
+| `created_date` | datetime | When the template was created |
+| `updated_date` | datetime | When the template was last modified |
+
+### Key Behaviors
+
+- Every template must belong to exactly one account (via `account_id`).
+- The `is_default` field determines which template is automatically applied when creating new rooms.
+- Only one template per account can have `is_default = true` at any time.
+- Templates store a complete room configuration snapshot that can be applied to new or existing rooms.
 
 ---
 
 ## Template Categories
 
-Templates are organized by category. Each category has an associated icon and color gradient displayed on the template card header.
+R-Link supports 11 template categories. Each category represents a common use case and provides sensible defaults for room layout, features, and interaction settings.
 
-| Category ID | Label | Description |
-|---|---|---|
-| `podcast` | Podcast Studio | Optimized for podcast-style recordings |
-| `webinar` | Webinar | Presentation and webinar events |
-| `meeting` | Team Meeting | Collaborative team meetings |
-| `workshop` | Workshop | Interactive training and workshops |
-| `event` | Live Event | Live streaming events |
-| `sales` | Sales Demo | Sales demonstrations and pitches |
-| `interview` | Interview | One-on-one or panel interviews |
-| `auction` | Auction | Live auction and bidding sessions |
-| `office_hours` | Office Hours | Q&A and open office hours |
-| `conference` | Conference | Multi-speaker conference events |
-| `custom` | Custom | User-defined custom configuration |
+| # | Category | Typical Use Case |
+|---|----------|-----------------|
+| 1 | `podcast` | Audio-first or audio/video recording sessions with host and guest layouts |
+| 2 | `webinar` | One-to-many presentation format with audience Q&A and registration |
+| 3 | `meeting` | Standard collaborative meeting with equal participant access |
+| 4 | `workshop` | Interactive session with breakout rooms, polls, and hands-on activities |
+| 5 | `event` | Large-scale virtual event with stage, backstage, and audience areas |
+| 6 | `sales` | Sales demo format with screen sharing, CTA overlays, and lead capture |
+| 7 | `interview` | Two-person interview format with recording and transcript focus |
+| 8 | `auction` | Live auction format with bidding overlays and countdown timers |
+| 9 | `office_hours` | Drop-in format with queue management and scheduling |
+| 10 | `conference` | Multi-track conference with sessions, speakers, and networking |
+| 11 | `custom` | Blank slate for fully customized configurations |
 
-If a template has no recognized category, it defaults to `custom`.
+### Category Selection
 
----
+- Users select a category when creating a new template.
+- The category determines the initial configuration defaults but can be fully customized afterward.
+- The `custom` category starts with minimal defaults, giving the user complete control.
+- Changing a template's category after creation does not reset the configuration; it only updates the category label.
 
-## Template Layouts
+### Common Customer Questions About Categories
 
-Each template specifies a default layout. Available layout values:
+**Q: Can I change a template's category after creating it?**
+A: Yes. Changing the category updates the label but does not reset any configuration you have already customized.
 
-| Layout ID | Display Label |
-|---|---|
-| `gallery` | Gallery View |
-| `speaker_top` | Speaker Top |
-| `focus` | Focus Mode |
-| `sidebar` | Sidebar |
-| `theater` | Theater Mode |
-| `split` | Split Screen |
-| `pip` | Picture-in-Picture |
-| `boardroom` | Boardroom |
+**Q: What is the difference between "event" and "conference"?**
+A: "Event" is designed for single-track live events with a stage/backstage model. "Conference" supports multi-track sessions with multiple speakers and networking features.
 
----
-
-## Creating a Template
-
-### Step-by-Step: Manual Creation
-
-1. Navigate to **Admin** > **Templates** tab (`/admin?tab=templates`).
-2. Click the **Create Template** button (purple-green gradient, top right).
-3. The `RoomTemplateModal` dialog opens with the following fields:
-   - **Name** (required): Enter a descriptive template name.
-   - **Description** (optional): Brief description of the template's purpose.
-   - **Category**: Select from the category dropdown.
-   - **Layout**: Choose the default layout.
-   - **Brand Kit**: Associate a Brand Kit from the account's available kits (passed as `brandKits` prop).
-   - **Core Features**: Toggle recording, chat, waiting room, breakout rooms, etc.
-   - **Commerce Features**: Toggle product showcase, checkout, auctions, tipping.
-4. Click **Save**. The system calls `RoomTemplate.create()` with the template data plus `account_id`.
-5. The new template appears in the grid.
-
-### Step-by-Step: Duplicate an Existing Template
-
-1. On any template card, click the **three-dot menu** (MoreVertical icon).
-2. Select **Duplicate**.
-3. A copy is created with the name `"{Original Name} (Copy)"` and `is_default: false`, `is_system_template: false`.
-4. Edit the duplicate as needed.
+**Q: Which category should I use for a product demo?**
+A: The "sales" category is optimized for product demos. It includes screen sharing defaults, CTA overlays, and lead capture integration.
 
 ---
 
-## Editing a Template
+## Template Operations
 
-1. On the template card, click the **three-dot menu**.
-2. Select **Edit**.
-3. The `RoomTemplateModal` opens pre-populated with the template's current settings.
-4. Modify any fields.
-5. Click **Save**. The system calls `RoomTemplate.update(id, data)`.
+### Create Template
 
----
+Creating a new template involves:
 
-## Deleting a Template
+1. User navigates to the Templates tab in the Admin Dashboard.
+2. User clicks "Create Template" or selects a category to start from.
+3. User provides a name, description, and selects a category.
+4. The template is saved with `account_id` set to the current user's account.
+5. If no other templates exist, the new template is automatically set as default (`is_default = true`).
 
-1. On the template card, click the **three-dot menu**.
-2. Select **Delete** (shown in red).
-3. The system calls `RoomTemplate.delete(id)`.
-4. The template is removed from the grid.
+### Read / List Templates
 
-**Note:** There is no confirmation dialog for deletion in the current implementation. Deletion is immediate.
+- Templates are listed in the TemplatesTab, filtered by `account_id`.
+- Templates can be filtered by category.
+- The default template is visually distinguished in the list.
 
----
+### Update Template
 
-## Setting a Default Template
+- Users can edit any field of a template they own.
+- Updating a template does not retroactively change rooms that were created from it.
+- The `updated_date` field is automatically refreshed on save.
 
-Only one template per account can be the default. When a user sets a template as default:
+### Delete Template
 
-1. On the template card, click the **three-dot menu**.
-2. Select **Set as Default** (only visible if the template is not already the default).
-3. The system updates ALL templates for the account: sets `is_default: true` on the selected template and `is_default: false` on all others.
-4. The default template displays a yellow star icon next to its name.
+- Users can delete any non-default template.
+- If the default template is deleted, no template is automatically promoted to default; the user must manually set a new default.
+- Deleting a template does not affect rooms that were previously created from it.
 
-**Technical detail:** The `setDefaultTemplateMutation` calls `Promise.all(templates.map(...))` to update every template in the account, ensuring only one default exists.
+### Set Default Template
 
----
+Setting a template as the default uses a specific mechanism to ensure only one template is default at a time:
 
-## AI Assistant for Template Generation
+```
+1. User selects "Set as Default" on a template.
+2. System retrieves all templates for the account.
+3. Using Promise.all(), the system simultaneously:
+   a. Sets is_default = false on ALL templates for the account.
+   b. Sets is_default = true on the SELECTED template.
+4. The UI refreshes to reflect the new default.
+```
 
-The Templates tab includes an AI assistant (`TemplateAIAssistant` component) with three modes:
+**Technical Detail:** The `Promise.all()` approach ensures atomicity -- all updates happen concurrently, minimizing the window where multiple templates could have `is_default = true`. The selected template's `is_default` is set to `true` as part of the same batch.
 
-### AI Generate (New Template)
+**Customer-Facing Explanation:** When you set a new default template, the system instantly updates all templates so that only your chosen template is marked as the default. This default template will be automatically applied whenever you create a new room.
 
-1. Click the **AI Generate** button (sparkles icon, purple outline) in the Templates header.
-2. The AI assistant modal opens in `generate` mode.
-3. Describe the type of room you want (e.g., "a podcast studio for 3 hosts with chat and recording").
-4. The AI generates a complete template configuration.
-5. Click **Apply** to create the template.
+### Duplicate Template
 
-### AI Variations (From Existing Template)
-
-1. On a template card, click the **three-dot menu**.
-2. Select **AI Variations** (purple refresh icon).
-3. The AI assistant opens in `variations` mode with the existing template as context.
-4. The AI generates alternative configurations based on the original template.
-5. Click **Apply** to create a new template from the variation.
-
-### AI Suggestions (Improve Existing Template)
-
-1. On a template card, click the **three-dot menu**.
-2. Select **AI Suggestions** (green lightbulb icon).
-3. The AI assistant opens in `suggestions` mode with the existing template as context.
-4. The AI analyzes the template and recommends improvements.
-5. Click **Apply** to update the existing template with the suggestions (merges changes).
-
----
-
-## Applying a Template to a Room
-
-Templates can be applied when creating or launching rooms:
-
-### Quick Launch from Template Card
-
-1. On any template card, click the **Launch Room** button at the bottom.
-2. The system navigates to the Studio page with the template ID and session type:
-   - `webinar` category templates launch as `?type=webinar`
-   - `event` category templates launch as `?type=livestream`
-   - All other categories launch as `?type=meeting`
-   - URL format: `/Studio?template={template_id}&type={session_type}`
-
-### Apply During Room Creation
-
-1. Navigate to **Admin** > **Rooms** tab.
-2. Click **Create Room**.
-3. In the room creation dialog, select a template from the templates dropdown.
-4. The room is pre-populated with the template's configuration.
-
----
-
-## Searching and Filtering Templates
-
-The Templates tab provides:
-
-### Search
-
-- A search bar at the top filters templates by **name** and **description** (case-insensitive substring match).
-
-### Category Filter
-
-- A dropdown filter next to the search bar allows filtering by category.
-- Options: "All Categories" plus each of the 11 category types.
-- Only templates matching the selected category are displayed.
+- Users can duplicate any template.
+- The duplicated template receives a new `id` and has `is_default` set to `false`.
+- The name is appended with " (Copy)" or a similar suffix.
+- All configuration from the original template is copied to the duplicate.
+- The duplicate belongs to the same account as the original.
 
 ---
 
 ## Template-BrandKit Association
 
-Templates can be linked to Brand Kits:
+Templates can be associated with a BrandKit to apply consistent visual branding.
 
-- The `RoomTemplateModal` receives the full list of `brandKits` available to the account.
-- When creating or editing a template, users can select an associated Brand Kit.
-- This Brand Kit is applied when a room is created from the template, giving rooms consistent visual branding.
-- Brand Kits shown include account-owned kits, global defaults, and template-specific kits.
+### How It Works
 
----
+- Each template has an optional `brand_kit_id` field.
+- When a template is applied to a room, the associated BrandKit's styles (colors, fonts, logos) are applied to the room.
+- If no `brand_kit_id` is set, the account's default BrandKit is used.
+- Changing a BrandKit after room creation does not retroactively update existing rooms unless the user explicitly re-applies the template.
 
-## TemplatesTab Interface
+### Common Customer Questions About BrandKit Association
 
-### Props Received
+**Q: If I change my BrandKit, do existing rooms update automatically?**
+A: No. The BrandKit is applied at the time a room is created from the template. To update an existing room, you would need to re-apply the template or manually update the room's branding.
 
-| Prop | Type | Description |
-|---|---|---|
-| `templates` | array | List of `RoomTemplate` objects for the current account |
-| `brandKits` | array | List of `BrandKit` objects available |
-| `onCreate` | function | Callback to create a new template (adds `account_id` automatically) |
-| `onUpdate` | function | Callback to update a template `(id, data)` |
-| `onDelete` | function | Callback to delete a template `(id)` |
-| `onSetDefault` | function | Callback to set a template as default `(id)` |
-
-### UI Layout
-
-- **Header**: Title ("Room Templates"), subtitle, AI Generate button, Create Template button.
-- **Search/Filter bar**: Search input + category dropdown.
-- **Template Grid**: 3-column responsive grid (1 col mobile, 2 col tablet, 3 col desktop).
-- **Empty State**: When no templates exist, shows a centered prompt with a Create Template button.
-- **Template Cards**: Each card shows a colored gradient header (based on category), star icon if default, name, layout badge with category icon, description (2-line clamp), enabled features icons (up to 4), and a Launch Room button.
+**Q: Can different templates use different BrandKits?**
+A: Yes. Each template can reference a different BrandKit, allowing you to maintain distinct visual identities for different types of events.
 
 ---
 
-## Settings and Options
+## AI Assistant (TemplateAIAssistant)
 
-| Setting | Location | Description |
-|---|---|---|
-| Template Name | Template modal | Required. Display name shown on the card. |
-| Template Description | Template modal | Optional. Shown truncated on the card. |
-| Category | Template modal | One of 11 categories (determines icon and color). |
-| Layout | Template modal | Default layout preset. |
-| Brand Kit | Template modal | Associated brand kit for visual configuration. |
-| Core Features | Template modal | Toggle switches for recording, chat, waiting room, etc. |
-| Commerce Features | Template modal | Toggle switches for product showcase, auctions, etc. |
-| Is Default | Three-dot menu | Set as the account's default template. |
+The TemplateAIAssistant is an integrated AI tool that helps users create and refine template configurations. It operates in three distinct modes.
+
+### Generate Mode
+
+**Purpose:** Create a complete template configuration from a text description.
+
+**How It Works:**
+1. User provides a natural language description of their desired template (e.g., "A professional webinar template for software demos with Q&A and lead capture").
+2. The AI generates a full template configuration including:
+   - Room layout settings
+   - Feature toggles (chat, Q&A, polls, etc.)
+   - Overlay configurations
+   - Branding suggestions
+3. User reviews the generated configuration and can accept, modify, or regenerate.
+
+**When to Recommend:** Suggest Generate mode when a customer is starting from scratch and knows what they want but is unsure how to configure it manually.
+
+### Variations Mode
+
+**Purpose:** Create multiple variations of an existing template for A/B testing or different audience segments.
+
+**How It Works:**
+1. User selects an existing template as the base.
+2. User specifies how many variations they want and optionally describes the desired differences.
+3. The AI generates distinct variations that maintain the core structure but differ in specific aspects (layout, color scheme, interaction settings, etc.).
+4. User can save any or all variations as new templates.
+
+**When to Recommend:** Suggest Variations mode when a customer wants to test different configurations for the same type of event, or when they need slightly different setups for different audiences.
+
+### Suggestions Mode
+
+**Purpose:** Get AI-powered recommendations to improve an existing template.
+
+**How It Works:**
+1. User opens Suggestions mode on an existing template.
+2. The AI analyzes the current configuration and provides specific, actionable suggestions for improvement.
+3. Suggestions may include:
+   - Enabling features that are commonly used with the template's category
+   - Layout optimizations for better audience engagement
+   - Interaction settings that match best practices for the use case
+   - Branding improvements
+4. User can accept individual suggestions or dismiss them.
+
+**When to Recommend:** Suggest Suggestions mode when a customer has a working template but wants to optimize it, or when they report that their events are not getting the engagement they expect.
+
+### Common Customer Questions About AI Assistant
+
+**Q: Does the AI assistant cost extra?**
+A: The AI assistant is included with your plan. There are no additional charges for using Generate, Variations, or Suggestions modes.
+
+**Q: Can I undo changes made by the AI?**
+A: Yes. All AI-generated changes are presented as suggestions before being applied. You can also revert to a previous version of your template at any time.
+
+**Q: The AI generated a template that does not match what I described. What should I do?**
+A: Try providing more specific details in your description. For example, instead of "a webinar template," try "a webinar template for 200+ attendees with screen sharing, live polls, and a Q&A panel on the right side." You can also use Suggestions mode to refine the generated output.
+
+**Q: Can I use the AI to modify just one part of my template?**
+A: Yes. Use Suggestions mode, which analyzes your existing template and provides targeted improvements. You can accept only the suggestions that address the part you want to change.
 
 ---
 
 ## Troubleshooting
 
-| Issue | Cause | Solution |
-|---|---|---|
-| "No templates yet" empty state | Account has no templates created | Click **Create Template** or **AI Generate** to create the first template |
-| Template not appearing after creation | Query cache not invalidated | Refresh the page; the `templates` query key should auto-invalidate |
-| Cannot set as default | Template is already the default | The "Set as Default" option only appears for non-default templates |
-| Duplicate has same name | Expected behavior | Duplicates are named `"{Original Name} (Copy)"` -- rename after duplicating |
-| AI assistant not opening | JavaScript error or modal state issue | Refresh the page and try again; check browser console for errors |
-| Template features not reflecting in room | Template was changed after room creation | Templates set initial configuration only; changing a template does not retroactively update rooms |
-| Search returns no results | Search query does not match name or description | Clear the search field or adjust the query; search is case-insensitive |
-| Category filter shows no templates | No templates in the selected category | Switch to "All Categories" or create a template in that category |
+### Template Not Appearing in Room Creation
+
+**Possible Causes:**
+- The template belongs to a different account. Templates are scoped to `account_id`.
+- The template was recently created and the UI has not refreshed. Ask the customer to refresh the page.
+- The template was deleted by another team member.
+
+**Resolution Steps:**
+1. Verify the template exists in the Templates tab.
+2. Confirm the user is logged into the correct account.
+3. Refresh the page.
+4. If the template is missing, it may have been deleted. Check with other account administrators.
+
+### Default Template Not Being Applied
+
+**Possible Causes:**
+- No template has `is_default = true` for the account.
+- The default template assignment failed (rare; usually a network issue during the `Promise.all` operation).
+
+**Resolution Steps:**
+1. Navigate to the Templates tab and verify which template shows the default indicator.
+2. If no template is marked as default, select the desired template and click "Set as Default."
+3. If the issue persists after setting a default, ask the customer to log out and log back in to refresh their session.
+
+### AI Assistant Not Generating Results
+
+**Possible Causes:**
+- Network connectivity issues.
+- The AI service is temporarily unavailable.
+- The input description is too vague for the AI to generate a meaningful configuration.
+
+**Resolution Steps:**
+1. Check if other platform features are working (to rule out network issues).
+2. Ask the customer to try again with a more detailed description.
+3. If the issue persists, escalate to engineering with the error message (if any) and the user's account ID.
+
+### Template Duplication Creates Unexpected Results
+
+**Possible Causes:**
+- The original template referenced a BrandKit that was subsequently deleted.
+- The original template's configuration includes deprecated settings.
+
+**Resolution Steps:**
+1. Create a new template from scratch using the same category.
+2. Use the AI assistant in Generate mode to recreate the configuration.
+3. If the issue persists, escalate to engineering with the original and duplicate template IDs.
 
 ---
 
-## FAQ
+## Internal Reference
 
-**Q: Can I create a room template without a Brand Kit?**
-A: Yes. The Brand Kit association is optional. If no Brand Kit is selected, the room will use the account's default Brand Kit.
+### API Operations Summary
 
-**Q: How many templates can I create?**
-A: There is no documented limit on the number of templates per account.
+| Operation | Method | Key Parameters |
+|-----------|--------|---------------|
+| Create template | POST | `account_id`, `name`, `category`, `room_config` |
+| List templates | GET | `account_id`, optional `category` filter |
+| Update template | PUT | `id`, updated fields |
+| Delete template | DELETE | `id` |
+| Set default | PUT (batch) | All templates for account: `is_default = false`; selected: `is_default = true` |
+| Duplicate | POST | Source `id`; new `id` generated, `is_default = false` |
+| AI Generate | POST | `description`, `category` |
+| AI Variations | POST | `template_id`, `count`, optional `description` |
+| AI Suggestions | POST | `template_id` |
 
-**Q: Can I share templates between accounts?**
-A: No. Templates are scoped to a single account via `account_id`. System templates (where `is_system_template: true`) may be available across accounts.
+### Related Entities
 
-**Q: Does changing a template update existing rooms?**
-A: No. Templates define the initial configuration when a room is created or launched. Existing rooms retain their current settings.
+- **Account**: Owner of all templates (via `account_id`)
+- **BrandKit**: Visual branding applied to templates (via `brand_kit_id`)
+- **Room**: Created from templates; inherits configuration at creation time
 
-**Q: Can I use AI to generate a template if I'm on the Basic plan?**
-A: The AI assistant button appears on the Templates tab regardless of plan. However, features that are Business-only (like webinar and livestream capabilities) may not be fully functional on the Basic plan even if included in an AI-generated template.
+### Related Admin Tabs
 
-**Q: What happens if I delete the default template?**
-A: The default template is deleted and no template will have `is_default: true`. The next room creation will proceed without a pre-selected template.
-
----
-
-## Known Limitations
-
-1. **No confirmation on delete**: Template deletion is immediate with no undo or confirmation dialog.
-2. **Single default per account**: Only one template can be the default at a time. Setting a new default clears the previous one.
-3. **No template versioning**: Changes to templates overwrite the previous state with no revision history.
-4. **AI assistant availability**: The AI assistant relies on the Base44 AI infrastructure and may not be available during outages.
-5. **Template features exceed plan**: A template may include features (e.g., webinar, breakout rooms) that the user's plan does not support. The room will be created but those features will be gated.
-
----
-
-## Plan Requirements
-
-| Feature | Basic | Business |
-|---|---|---|
-| Access Templates Tab | Yes | Yes |
-| Create Templates | Yes | Yes |
-| AI Template Generation | Yes | Yes |
-| Set Default Template | Yes | Yes |
-| Launch Room from Template (Meeting) | Yes | Yes |
-| Launch Room from Template (Webinar) | No | Yes |
-| Launch Room from Template (Live Stream) | No | Yes |
-
----
-
-## Related Documents
-
-- [01-platform-overview.md](./01-platform-overview.md) -- Platform architecture and entity model
-- [04-account-management.md](./04-account-management.md) -- Account setup and Brand Kit auto-creation
-- [11-brand-kit.md](./11-brand-kit.md) -- Brand Kit configuration details
-- [04-rooms.md](./04-rooms.md) -- Room creation and configuration
-- [32-admin-dashboard-reference.md](./32-admin-dashboard-reference.md) -- Complete admin tab reference
+- **TemplatesTab**: Primary management interface for templates
+- **BrandKitTab**: Manage BrandKits that can be associated with templates
+- **RoomsTab**: Where templates are applied during room creation

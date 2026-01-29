@@ -1,281 +1,476 @@
-# Studio Recording System
+# 16 - Studio Recording
 
 ## Overview
 
-The R-Link Studio Recording system allows hosts to capture their sessions for later review, editing, and distribution. The system supports two recording modes -- local recording (saved directly to the host's device) and cloud recording (uploaded to R-Link's cloud storage). A key feature is the `MultiTrackRecorder`, which captures separate audio and video tracks for each participant, enabling professional post-production editing. Recording is available across all session types (Meeting, Webinar, Live Stream) and operates independently of the streaming system, meaning hosts can record without being live and vice versa.
+The R-Link Studio Recording system enables hosts to capture their live sessions as high-quality video and audio files. The system supports two recording modes: **local recording** (captured directly in the browser and downloaded to the host's device) and **cloud recording** (automatically uploaded to a cloud storage provider). Additionally, R-Link provides **multi-track recording** that captures each participant's audio on a separate track for professional post-production mixing. Recording controls are accessible from the studio bottom controls and the streaming configuration modal.
+
+---
+
+## Accessing Recording Controls
+
+1. Enter any R-Link Studio session.
+2. Locate the **Bottom Controls** bar at the bottom of the studio.
+3. Click the **Record** button to start/stop recording.
+4. For advanced recording options:
+   - Open the **Streaming Config Modal** and expand the "Local Recording Controls" section.
+   - Access **Cloud Storage Settings** from the recording settings panel.
+
+---
 
 ## Recording Modes
 
-### Local Recording
-- **`recordingMode: 'local'`**
-- Recording is captured and saved directly to the host's local device
-- Uses the browser's `MediaRecorder` API via the `localRecorder` instance
-- Audio and video data is collected in `recordedChunks` as the recording progresses
-- When recording stops, the chunks are assembled into a downloadable file
-- No upload bandwidth is required; recording happens entirely on the client side
+### Local Recording (`recordingMode: 'local'`)
 
-### Cloud Recording
-- **`recordingMode: 'cloud'`**
-- Recording is captured and uploaded to R-Link's cloud storage in real-time or upon completion
-- Recordings are accessible from the R-Link dashboard after the session ends
-- Requires sufficient upload bandwidth alongside any active streams
-- Cloud recordings may include additional processing (transcription, highlights, etc.)
+Local recording captures the studio canvas output directly in the browser using the `MediaRecorder` API.
 
-### Choosing a Recording Mode
-1. Before starting a recording, open the recording settings panel
-2. Select the recording mode:
-   - **Local** for maximum reliability and no bandwidth impact
-   - **Cloud** for automatic storage, sharing, and post-processing features
-3. The selected mode is stored in the `recordingMode` state
+#### VideoRecorder Component
 
-## Starting and Stopping a Recording
+The `VideoRecorder` component handles local video recording with these features:
 
-### Starting a Recording
-1. Click the **"Record"** button in the Studio toolbar or recording panel
-2. The `isRecording` state is set to `true`
-3. Based on the `recordingMode`:
-   - **Local:** The `localRecorder` (a `MediaRecorder` instance) begins capturing media; `recordedChunks` starts accumulating data
-   - **Cloud:** The recording stream is initiated and data is sent to cloud storage
-4. If `multiTrackEnabled` is `true` (default), the `MultiTrackRecorder` is activated to capture individual tracks
-5. The recording indicator appears in the Studio UI (typically a red dot or "REC" badge)
-6. The `MultiTrackStatus` component updates to show active recording tracks
+| Feature | Description |
+|---------|-------------|
+| **Quality presets** | Low (1 Mbps), Medium (2.5 Mbps), High (5 Mbps), Ultra (10 Mbps) |
+| **Format options** | WebM (`video/webm;codecs=vp9`) or MP4 (`video/mp4`) |
+| **Frame rate** | 30 FPS (captured from the studio canvas) |
+| **Timer display** | Real-time recording duration counter (MM:SS format) |
+| **Download** | One-click download of the recorded file |
 
-### Stopping a Recording
-1. Click the **"Stop Recording"** button
-2. The `isRecording` state is set to `false`
-3. Based on the `recordingMode`:
-   - **Local:** The `localRecorder` stops capturing; `recordedChunks` are finalized and assembled into a downloadable file; the browser prompts the user to save or the file is automatically saved to the downloads folder
-   - **Cloud:** The recording stream is finalized; the recording is processed and made available in the R-Link dashboard
-4. The `MultiTrackRecorder` stops all track captures
-5. The recording indicator is removed from the UI
+#### Local Recording Workflow
 
-### Recording State Properties
+1. The `VideoRecorder` receives a `canvasRef` pointing to the studio's video canvas element.
+2. Click **Start Recording** to begin:
+   - The canvas stream is captured at 30 FPS via `canvas.captureStream(30)`.
+   - A `MediaRecorder` instance is created with the selected quality and format settings.
+   - Data is collected every 100ms via `ondataavailable` events.
+   - A recording timer starts, counting elapsed seconds.
+   - A red pulsing dot indicates active recording.
+3. Click **Stop Recording** to end:
+   - The `MediaRecorder` stops and collects remaining data chunks.
+   - The timer stops.
+   - A "Recording ready" message appears with the total duration.
+4. Click **Download** to save:
+   - The recorded chunks are combined into a `Blob`.
+   - The file downloads as `recording-[timestamp].webm` or `recording-[timestamp].mp4`.
+   - After download, the recording buffer is cleared.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `isRecording` | Boolean | Whether a recording is currently active |
-| `recordingMode` | String | `'local'` or `'cloud'` |
-| `localRecorder` | MediaRecorder | Browser MediaRecorder instance for local recording |
-| `recordedChunks` | Array | Accumulated media data chunks during local recording |
-| `multiTrackEnabled` | Boolean | Whether multi-track recording is active (default: `true`) |
-| `multiTrackStatus` | Object | Current status of multi-track recording |
+#### Quality Settings
 
-## MultiTrackRecorder
+| Quality | Bits Per Second | File Size Estimate (1 hour) |
+|---------|----------------|----------------------------|
+| Low | 1,000,000 (1 Mbps) | ~450 MB |
+| Medium | 2,500,000 (2.5 Mbps) | ~1.1 GB |
+| High | 5,000,000 (5 Mbps) | ~2.2 GB |
+| Ultra | 10,000,000 (10 Mbps) | ~4.5 GB |
 
-### Overview
-The `MultiTrackRecorder` class provides professional-grade recording by capturing separate audio and video tracks for each participant in the session. This enables post-production workflows where individual tracks can be independently edited, mixed, and processed.
+#### Format Support
 
-### How It Works
-1. When recording starts with `multiTrackEnabled: true`, the `MultiTrackRecorder` initializes
-2. It creates individual recording tracks for each participant's audio and video streams
-3. Each track is captured independently and synchronized by timestamps
-4. When recording stops, all tracks are finalized and available for download or cloud processing
+| Format | MIME Type | Browser Support | Notes |
+|--------|-----------|-----------------|-------|
+| WebM | `video/webm;codecs=vp9` | Chrome, Firefox, Edge | Default, best compatibility |
+| MP4 | `video/mp4` | Limited browser support | Falls back to WebM if unsupported |
 
-### Multi-Track Status
-The `multiTrackStatus` object provides real-time information about the multi-track recording:
+The system checks `MediaRecorder.isTypeSupported(mimeType)` before using the selected format. If the chosen format is not supported, it falls back to `video/webm`.
+
+### Cloud Recording (`recordingMode: 'cloud'`)
+
+Cloud recording automatically uploads the finished recording to a configured cloud storage provider.
+
+#### CloudStorageSettings Component
+
+The `CloudStorageSettings` component manages cloud recording configuration:
+
+##### Storage Providers
+
+| Provider | ID | Default | Connection |
+|----------|-----|---------|------------|
+| **R-Link Cloud** | `rlink` | Yes (default) | Pre-connected |
+| **Google Drive** | `gdrive` | No | Requires OAuth |
+| **Dropbox** | `dropbox` | No | Requires OAuth |
+| **Amazon S3** | `s3` | No | Requires credentials |
+| **Local Download** | `local` | No | Always available |
+
+##### Cloud Storage Settings
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `provider` | string | `'rlink'` | Selected storage provider |
+| `autoUpload` | boolean | true | Automatically upload recordings when they end |
+| `retentionDays` | number | 30 | Days to keep recordings (7, 30, 90, 365, or -1 for forever) |
+| `folderPath` | string | `'/Recordings'` | Storage folder path for uploaded files |
+| `encryptAtRest` | boolean | true | AES-256 encryption for stored files |
+
+##### Storage Usage Display
+
+The settings panel shows current storage usage:
+- Visual progress bar (percentage used).
+- Text showing used / total storage (e.g., "2.4 GB / 10 GB").
+- Available space display (e.g., "7.6 GB available").
+
+##### Connecting Cloud Providers
+
+1. Select a provider in the Cloud Storage Settings.
+2. If not connected, a yellow warning banner appears.
+3. Click **Connect [Provider Name]** to begin the OAuth or credential flow.
+4. Once connected, the provider shows a green "Connected" label.
+5. Click **Save Settings** to persist the configuration.
+
+---
+
+## Multi-Track Recording
+
+The `MultiTrackRecorder` class provides per-participant audio recording for professional post-production workflows.
+
+### Concept
+
+Unlike standard recording which captures a single mixed audio output, multi-track recording creates **separate audio files for each participant**. This allows post-production editors to:
+- Adjust individual volume levels.
+- Apply noise reduction per speaker.
+- Remove or mute specific participants.
+- Create professional podcast-quality mixes.
+
+### MultiTrackRecorder Class
+
+The `MultiTrackRecorder` is a JavaScript class (not a React component) that manages individual audio tracks.
+
+#### Internal Data Structure
 
 ```
-multiTrackStatus: {
-  isRecording: true/false,       // Whether multi-track recording is active
-  tracks: [                       // Array of individual track statuses
+tracks: Map<participantId, {
+  recorder: MediaRecorder,    // Individual MediaRecorder instance
+  chunks: Array<Blob>,        // Recorded audio data chunks
+  stream: MediaStream,        // Audio-only MediaStream
+  name: string,               // Participant display name
+  startedAt: string           // ISO timestamp when track was added
+}>
+```
+
+#### Methods
+
+| Method | Parameters | Description |
+|--------|-----------|-------------|
+| `addTrack` | `(participantId, stream, participantName)` | Add a participant's audio track. Extracts audio tracks from the MediaStream and creates a separate MediaRecorder. |
+| `removeTrack` | `(participantId)` | Stop and remove a participant's track. |
+| `startRecording` | -- | Start recording all added tracks simultaneously. |
+| `stopRecording` | -- | Stop recording all tracks and trigger download. |
+| `getStatus` | -- | Return recording status object (see below). |
+| `exportBundle` | -- | Export all tracks as an array of blob objects. |
+| `destroy` | -- | Stop recording and clean up all resources. |
+
+#### Adding a Track
+
+```
+await recorder.addTrack(participantId, participantMediaStream, 'Jane Doe');
+```
+
+1. Checks if a track for this participant already exists (warns and returns if duplicate).
+2. Extracts audio tracks from the participant's `MediaStream`.
+3. Creates an audio-only `MediaStream` with those tracks.
+4. Creates a `MediaRecorder` with `audio/webm;codecs=opus` format.
+5. Sets up `ondataavailable` to collect chunks and `onstop` to trigger download.
+6. If recording is already in progress, the new track starts recording immediately.
+7. Returns `true` on success, `false` on failure.
+
+#### Track Completion
+
+When a track stops recording (either individually or when all tracks are stopped):
+
+1. Recorded chunks are combined into a `Blob` (`audio/webm`).
+2. A download URL is created via `URL.createObjectURL`.
+3. The file auto-downloads as `[ParticipantName]_[timestamp].webm`.
+4. The temporary URL is revoked after download.
+
+#### Recording Status
+
+The `getStatus()` method returns:
+
+```
+{
+  isRecording: boolean,        // Whether multi-track recording is active
+  trackCount: number,          // Number of participant tracks
+  tracks: [
     {
-      participantId: "user_123",
-      trackType: "audio",         // "audio" or "video"
-      status: "recording",        // "recording", "paused", "stopped"
-      duration: 1234,             // Duration in milliseconds
-      size: 5678900               // Approximate data size in bytes
-    },
-    // ... additional tracks
+      participantId: string,   // Unique participant ID
+      name: string,            // Display name
+      state: string,           // MediaRecorder state: 'recording', 'inactive', 'paused'
+      startedAt: string        // ISO timestamp
+    }
   ]
 }
 ```
 
-### MultiTrackStatus Component
-The `MultiTrackStatus` component provides a visual display of the current multi-track recording status:
-- Shows each track being recorded with participant name and track type
-- Displays recording duration per track
-- Indicates track health (recording, paused, error)
-- Shows approximate file size per track
-- Visible to hosts in the recording panel during an active recording
+#### Export Bundle
 
-### Multi-Track Recording Benefits
-- **Individual audio control:** Adjust volume levels for each participant in post-production
-- **Noise removal:** Remove background noise from one participant without affecting others
-- **Flexible editing:** Cut or rearrange individual participant contributions independently
-- **Professional output:** Create polished recordings with proper audio mixing and video compositing
+The `exportBundle()` method returns an array of all recorded tracks:
 
-## Local Recording Details
-
-### MediaRecorder and Recorded Chunks
-- The `localRecorder` is an instance of the browser's native `MediaRecorder` API
-- As recording progresses, the `MediaRecorder` fires `dataavailable` events
-- Each event provides a chunk of recorded data (a `Blob`)
-- These chunks are accumulated in the `recordedChunks` array
-- When recording stops, all chunks are concatenated into a single file
-
-### Local Recording Workflow
 ```
-Start Recording --> localRecorder.start() --> dataavailable events --> recordedChunks[] accumulates
-                                                                            |
-Stop Recording  --> localRecorder.stop()  --> Final chunk added --> Assemble file --> Download prompt
+[
+  {
+    participantId: string,
+    name: string,
+    blob: Blob,               // Audio data (audio/webm)
+    startedAt: string
+  }
+]
 ```
 
-### File Output
-- Local recordings are typically saved in WebM format (browser-dependent)
-- The assembled file is offered as a browser download
-- File size depends on recording duration, resolution, and number of participants
-- Multi-track recordings produce multiple files (one per track)
+### Multi-Track Enabled State
 
-## Cloud Recording Details
+The studio tracks multi-track recording state via:
 
-### Cloud Recording Workflow
+| State Variable | Type | Default | Description |
+|----------------|------|---------|-------------|
+| `multiTrackEnabled` | boolean | true | Whether multi-track recording is available/enabled |
+| `multiTrackStatus` | object | `{ isRecording: false, tracks: [] }` | Current multi-track recording status |
+| `isRecording` | boolean | false | Global recording state |
+| `recordingMode` | string | `'local'` | Active recording mode: `'local'` or `'cloud'` |
+
+---
+
+## MultiTrackStatus Component
+
+The `MultiTrackStatus` component displays a floating status panel during active multi-track recording.
+
+### Display
+
+- **Position:** Fixed at the bottom-center of the studio (`fixed bottom-24 left-1/2 -translate-x-1/2`).
+- **Appearance:** Dark panel with backdrop blur, white border, rounded corners.
+- **Visibility:** Only appears when `isRecording` is true and tracks exist.
+
+### Elements
+
+| Element | Description |
+|---------|-------------|
+| **Spinning disc icon** | Red animated disc icon indicating active recording (3s rotation) |
+| **Title** | "Multi-Track Recording" |
+| **Timer** | Red monospace timer showing elapsed recording time (MM:SS) |
+| **Track list** | Scrollable list (max 32px height) of individual tracks |
+| **Track item** | Shows "Track N: [Name]" with a recording indicator and state label |
+| **Footer** | "Each track recording separately for post-production mixing" |
+
+### Post-Recording Export
+
+When recording stops (`isRecording` becomes false) but tracks exist:
+- The recording panel is replaced with a green **Download All Tracks (N)** button.
+- Clicking the button triggers the `onExport` callback to download all track files.
+
+---
+
+## Per-Participant Recording Controls
+
+The Streaming Config Modal includes per-participant recording toggles:
+
+### Accessing Controls
+
+1. Open the Streaming Config Modal.
+2. Expand the "Local Recording Controls" section.
+3. A scrollable list of all session participants appears.
+
+### Per-Participant Options
+
+Each participant row shows:
+- **Red pulsing dot** -- appears when the participant is being recorded (`isLocalRecording: true`).
+- **Participant name** -- display name.
+- **HOST badge** -- purple badge for host participants (`role === 'host'`).
+- **Toggle switch** -- enable/disable recording for this specific participant.
+
+### Behavior
+
+- Toggling a switch calls `onToggleParticipantRecording(participantId)`.
+- Each toggled participant creates a separate audio track in the `MultiTrackRecorder`.
+- The footer note explains: "Multi-track: Each participant records separate audio track for post-production mixing."
+
+---
+
+## Recording State Management
+
+### Global Recording State
+
+| State | Type | Description |
+|-------|------|-------------|
+| `isRecording` | boolean | Master recording toggle -- true when any recording is active |
+| `recordingMode` | string | `'local'` or `'cloud'` |
+| `multiTrackEnabled` | boolean | Whether multi-track recording is active (default: true) |
+| `multiTrackStatus` | object | `{ isRecording: boolean, tracks: Array }` |
+
+### Recording Flow
+
+1. **Pre-recording:**
+   - Select recording mode (local or cloud).
+   - Configure quality settings (for local recording).
+   - Configure cloud storage settings (for cloud recording).
+   - Optionally enable per-participant multi-track recording.
+
+2. **Start recording:**
+   - Set `isRecording = true`.
+   - For local: `VideoRecorder.startRecording()` captures the canvas.
+   - For multi-track: `MultiTrackRecorder.startRecording()` begins all participant tracks.
+   - Recording timer starts.
+   - Visual indicators appear (red dot, timer display, multi-track status panel).
+
+3. **During recording:**
+   - Data chunks accumulate in memory.
+   - Timer increments every second.
+   - Multi-track status panel shows individual track states.
+   - New participants joining mid-recording can be added to multi-track.
+
+4. **Stop recording:**
+   - Set `isRecording = false`.
+   - For local: `VideoRecorder.stopRecording()` finalizes the recording.
+   - For multi-track: `MultiTrackRecorder.stopRecording()` triggers per-track downloads.
+   - Download/export buttons appear.
+
+5. **Post-recording:**
+   - Local: Click "Download" to save the video file.
+   - Multi-track: Click "Download All Tracks" to export all audio files.
+   - Cloud: Recording is automatically uploaded to the configured provider.
+   - Clear recording buffers for the next session.
+
+---
+
+## AI Highlight Generator
+
+The `AIHighlightGenerator` component uses AI to automatically identify and extract highlights from recordings:
+
+- Analyzes the recording for key moments (high engagement, reactions, topic changes).
+- Generates short clips from the highlights.
+- Available for post-processing after the recording completes.
+
+---
+
+## Clip Editor
+
+The `ClipEditorModal` component provides in-session clip editing:
+
+- Trim recordings to specific time ranges.
+- Create short clips from longer recordings.
+- Export clips in the same format as the main recording.
+
+---
+
+## Recording Editor
+
+The `RecordingEditor` component provides basic post-recording editing capabilities:
+
+- Timeline view of the recording.
+- Trim start/end points.
+- Export the edited version.
+
+---
+
+## Common Troubleshooting
+
+### Q: My recording file is empty or zero bytes.
+**A:** This can happen if the recording was stopped too quickly after starting, or if the browser does not support the selected format. Ensure you record for at least a few seconds. Try switching from MP4 to WebM format, which has broader browser support.
+
+### Q: The recording quality is poor.
+**A:** Check the quality setting in the VideoRecorder controls. The default is "High" (5 Mbps). For better quality, select "Ultra" (10 Mbps). Note that higher quality produces larger files and requires more processing power.
+
+### Q: Multi-track files are downloading individually. Can I get them in one file?
+**A:** Multi-track recording intentionally creates separate files per participant for post-production flexibility. After recording stops, use the "Download All Tracks" button to download all tracks at once. To combine them into a single file, use a DAW (Digital Audio Workstation) like Audacity, Adobe Audition, or GarageBand.
+
+### Q: I do not see the multi-track recording option.
+**A:** Multi-track recording is enabled by default (`multiTrackEnabled: true`). Ensure you have at least one participant on stage. Access per-participant recording controls through the Streaming Config Modal under "Local Recording Controls."
+
+### Q: Cloud recording is not uploading.
+**A:** Verify your cloud storage provider is connected (check for the green "Connected" label in Cloud Storage Settings). Ensure `autoUpload` is enabled. If using a third-party provider (Google Drive, Dropbox, S3), re-authenticate the connection. Check that you have sufficient storage space.
+
+### Q: The recording timer shows but no file is created.
+**A:** The recording file is only created when you click "Stop Recording." If you close the browser or navigate away before stopping, the recording data is lost because it is held in browser memory. Always stop recording before leaving the session.
+
+### Q: Can I record and stream at the same time?
+**A:** Yes. Recording and streaming are independent systems that can run simultaneously. Local recording captures the canvas output while streaming sends it to external platforms. Multi-track recording captures individual audio tracks regardless of streaming status.
+
+### Q: What audio format does multi-track use?
+**A:** Multi-track recording uses `audio/webm;codecs=opus` format. Opus is a high-quality, open-source audio codec suitable for voice recording. The files can be imported into any modern audio editor.
+
+### Q: How do I change the cloud storage retention period?
+**A:** Open Cloud Storage Settings, select a retention period from the dropdown (7 days, 30 days, 90 days, 1 year, or Forever), and click "Save Settings." Recordings older than the retention period are automatically deleted from the cloud provider.
+
+### Q: Is cloud storage encrypted?
+**A:** Yes, by default. The "Encrypt at rest" setting is enabled by default, using AES-256 encryption for all stored recording files. You can toggle this in Cloud Storage Settings, though disabling encryption is not recommended.
+
+---
+
+## API Reference
+
+### Recording State
+
 ```
-Start Recording --> Stream data to cloud --> Cloud processes in real-time or on completion
-                                                    |
-Stop Recording  --> Finalize upload --> Cloud processing --> Available in dashboard
+{
+  isRecording: boolean,          // Global recording state
+  recordingMode: 'local' | 'cloud',
+  multiTrackEnabled: boolean,    // Default: true
+  multiTrackStatus: {
+    isRecording: boolean,
+    tracks: [
+      {
+        participantId: string,
+        name: string,
+        state: 'recording' | 'inactive' | 'paused',
+        startedAt: string        // ISO datetime
+      }
+    ]
+  }
+}
 ```
 
-### Cloud Recording Features
-- Automatic storage without manual file management
-- Accessible from any device via the R-Link dashboard
-- May include post-processing: transcription, thumbnail generation, highlight extraction
-- Shareable via link or embedded player
-- Stored securely with access controls based on account permissions
+### VideoRecorder Quality Options
 
-## Settings and Options
+```
+qualitySettings = {
+  low:    { videoBitsPerSecond: 1000000 },   // 1 Mbps
+  medium: { videoBitsPerSecond: 2500000 },   // 2.5 Mbps
+  high:   { videoBitsPerSecond: 5000000 },   // 5 Mbps
+  ultra:  { videoBitsPerSecond: 10000000 }   // 10 Mbps
+}
+```
 
-| Setting | Description | Default | Options |
-|---------|-------------|---------|---------|
-| `recordingMode` | Where the recording is saved | `'local'` | `'local'`, `'cloud'` |
-| `multiTrackEnabled` | Capture individual participant tracks | `true` | `true`, `false` |
-| `isRecording` | Current recording state | `false` | `true`, `false` |
-| Recording format | Output file format (local) | WebM (browser-dependent) | Browser-determined |
-| Recording quality | Encoding quality/bitrate | Auto-determined | May vary by plan |
+### CloudStorageSettings Object
 
-## Recording with Streaming
+```
+{
+  provider: 'rlink' | 'gdrive' | 'dropbox' | 's3' | 'local',
+  autoUpload: boolean,           // Default: true
+  retentionDays: number,         // 7, 30, 90, 365, or -1 (forever)
+  folderPath: string,            // Default: '/Recordings'
+  encryptAtRest: boolean         // Default: true (AES-256)
+}
+```
 
-### Independent Operation
-- Recording and streaming are independent systems -- you can record without streaming and stream without recording
-- When both are active simultaneously, the recording captures the same stage output as the stream
-- Local recording does not consume additional upload bandwidth
-- Cloud recording alongside multi-stream requires sufficient bandwidth for both
+### MultiTrackRecorder Methods
 
-### Recommended Configurations
-| Scenario | Recording Mode | Multi-Track | Notes |
-|----------|---------------|-------------|-------|
-| Meeting (internal) | Local | Enabled | No bandwidth concerns |
-| Webinar (large audience) | Cloud | Enabled | Cloud for easy sharing |
-| Live Stream + Recording | Local | Enabled | Preserve bandwidth for streams |
-| Post-production workflow | Local | Enabled | Multi-track for editing |
-| Quick archive | Cloud | Disabled | Simple single-file recording |
+```
+const recorder = new MultiTrackRecorder();
 
-## Troubleshooting
+// Add participant track
+await recorder.addTrack(participantId, mediaStream, 'Participant Name');
 
-### Recording fails to start
-1. **Browser permissions:** Ensure the browser has permission to access the microphone and camera
-2. **MediaRecorder support:** Verify your browser supports the `MediaRecorder` API (Chrome, Firefox, Edge recommended)
-3. **Disk space (local):** Ensure sufficient disk space for local recording
-4. **Network (cloud):** Verify internet connection for cloud recording upload
-5. **Concurrent limits:** Check if your plan has a limit on simultaneous recording and streaming
+// Start all tracks
+recorder.startRecording();
 
-### Recording file is empty or corrupted
-1. Ensure the recording ran for more than a few seconds -- very short recordings may not produce valid files
-2. Check that `recordedChunks` accumulated data during the recording (if local)
-3. Verify no browser crash or tab closure interrupted the recording
-4. Try a different browser if the issue persists
-5. For cloud recordings, check the R-Link dashboard for processing status -- the file may still be processing
+// Get status
+const status = recorder.getStatus();
+// { isRecording: true, trackCount: 3, tracks: [...] }
 
-### Multi-track recording shows missing tracks
-1. Verify all participants had active audio/video when the recording started
-2. Participants who join after recording starts may not have tracks captured from the beginning
-3. Check `multiTrackStatus.tracks` to see which tracks are active
-4. If a participant's camera or microphone was off, their track will not contain data for that period
-5. Ensure `multiTrackEnabled` was `true` when the recording started
+// Stop all tracks (triggers auto-download)
+recorder.stopRecording();
 
-### Local recording file too large
-1. Multi-track recording produces larger files than single-track
-2. Consider disabling `multiTrackEnabled` if post-production editing is not needed
-3. Lower the recording quality if available in settings
-4. Record shorter segments and combine them in post-production
-5. Use cloud recording to avoid local storage concerns
+// Export as bundle
+const bundle = await recorder.exportBundle();
+// [{ participantId, name, blob, startedAt }, ...]
 
-### Cloud recording not appearing in dashboard
-1. Cloud recordings require processing time after the session ends -- allow several minutes
-2. Check your internet connection during the session -- interrupted uploads may fail
-3. Verify your plan includes cloud recording
-4. Check the session's recording status in the dashboard for any error messages
-5. Contact support if the recording does not appear within 30 minutes of session end
+// Remove individual track
+recorder.removeTrack(participantId);
 
-### Recording indicator visible but no data captured
-1. The `isRecording` state may be `true` but the actual `MediaRecorder` may have failed to initialize
-2. Refresh the Studio page and restart the recording
-3. Check browser console for MediaRecorder errors
-4. Ensure no other application has exclusive access to the camera/microphone
+// Clean up
+recorder.destroy();
+```
 
-## FAQ
+---
 
-**Q: What is the difference between local and cloud recording?**
-A: Local recording saves the file directly to your computer using the browser's MediaRecorder API. Cloud recording uploads the data to R-Link's servers, where it is stored, processed, and made available in your dashboard. Local recording has no bandwidth impact; cloud recording requires upload bandwidth.
+## Related Features
 
-**Q: What is multi-track recording?**
-A: Multi-track recording captures separate audio and video tracks for each participant, rather than a single mixed output. This enables post-production editing where you can independently adjust each participant's audio volume, remove noise, or edit their video. It is enabled by default (`multiTrackEnabled: true`).
-
-**Q: Can I record and stream at the same time?**
-A: Yes. Recording and streaming are independent. You can have a local recording running while streaming to multiple destinations. Cloud recording alongside streaming will require additional upload bandwidth.
-
-**Q: What format are local recordings saved in?**
-A: Local recordings are typically saved in WebM format, though the exact format depends on the browser being used. Multi-track recordings produce separate files for each track.
-
-**Q: How long can a recording be?**
-A: There is no hard time limit on recordings, but local recordings are limited by available disk space and browser memory. Cloud recordings may have duration limits based on your plan tier.
-
-**Q: Can attendees start recordings?**
-A: No. Recording controls are available only to hosts and co-hosts. Attendees do not have access to the recording interface.
-
-**Q: Where are cloud recordings stored?**
-A: Cloud recordings are stored on R-Link's secure cloud infrastructure and accessible from your R-Link dashboard. They are associated with the session and can be shared, downloaded, or embedded.
-
-**Q: What happens if my browser crashes during a local recording?**
-A: If the browser crashes, any `recordedChunks` not yet assembled into a file will be lost. For critical recordings, cloud recording provides better reliability as data is continuously uploaded. Some browsers may support partial recovery of MediaRecorder data.
-
-**Q: Can I switch between local and cloud recording mid-session?**
-A: The `recordingMode` should be set before starting the recording. Switching modes requires stopping the current recording and starting a new one with the desired mode.
-
-**Q: Does multi-track recording work with all session types?**
-A: Yes. Multi-track recording works in Meeting, Webinar, and Live Stream session types, capturing individual tracks for all participants with active audio/video.
-
-## Known Limitations
-
-- Local recording format is browser-dependent (typically WebM); direct MP4 output is not guaranteed
-- Multi-track recording increases file sizes significantly compared to single-track recording
-- The `localRecorder` relies on the browser's `MediaRecorder` API, which has varying levels of support and codec options across browsers
-- Cloud recording requires a stable internet connection throughout the session; interruptions may cause data loss
-- Participants joining mid-recording may have incomplete tracks (no data from before they joined)
-- Very long recordings (multiple hours) may encounter browser memory limits with local recording
-- Multi-track recordings produce separate files that must be synchronized in post-production software
-- Recording quality options may be limited compared to dedicated recording software
-- The `recordedChunks` array is held in browser memory; extremely long recordings may consume significant RAM
-- Cloud recording processing time varies based on recording length and server load
-- There is no built-in editing interface within R-Link; post-production requires external software
-
-## Plan Requirements
-
-| Feature | Basic Plan | Business Plan |
-|---------|-----------|---------------|
-| Local recording | Yes | Yes |
-| Cloud recording | No | Yes |
-| Multi-track recording | No | Yes |
-| MultiTrackStatus display | No | Yes |
-| Recording during streaming | Yes (local only) | Yes (local + cloud) |
-| Post-session cloud access | No | Yes |
-| Recording download | Local file only | Local + Cloud download |
-| Transcription of recordings | No | Yes (cloud recordings) |
-| Maximum recording duration | Plan-dependent | Extended limits |
-
-## Related Documents
-
-- [00-index.md](00-index.md) -- Knowledge base index
-- [15-studio-streaming.md](15-studio-streaming.md) -- Streaming system (recording alongside streaming)
-- [14-studio-overlays-scenes.md](14-studio-overlays-scenes.md) -- Overlays and scenes (captured in recordings)
-- [10-studio-elements.md](10-studio-elements.md) -- Studio elements (visible in recordings)
-- [13-studio-chat.md](13-studio-chat.md) -- Chat system (chat overlay in recordings)
+- **Streaming:** Recording can run alongside streaming. See `15-studio-streaming.md`.
+- **Overlays and Scenes:** Active overlays and scenes are captured in local recordings. See `14-studio-overlays-scenes.md`.
+- **Elements:** Active elements appear in recordings. See `10-studio-elements.md`.
+- **Scheduling:** Sessions with `recording_enabled: true` auto-start recording. See `22-scheduling.md`.

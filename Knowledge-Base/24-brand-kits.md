@@ -1,398 +1,410 @@
-# Brand Kits
+# 24 - Brand Kits
 
 ## Overview
 
-The Brand Kit system in R-Link allows accounts to define and manage comprehensive visual identities that are applied across rooms, sessions, recordings, and public-facing elements like Event Landing Pages. Brand Kits are located in Group 2 of the Admin Sidebar (alongside Room Templates and Elements Library).
+Brand Kits in R-Link allow users to define and manage complete visual identities for their rooms, webinars, and recordings. The Brand Kit system supports multiple brand identities per account, with defaults, templates, and granular permissions. The Brand Kit tab is powered by the `BrandKitTab` component and manages `BrandKit` entities. Each brand kit encapsulates colors, fonts, logos, backgrounds, frame styles, lower third overlays, and watermark settings.
 
-A `BrandKit` entity contains colors, fonts, logos, backgrounds, frame settings, lower third templates, and overlay defaults. Brand Kits are permission-gated and support default designation at both the account level and a global level (owner only).
+---
 
-### BrandKit Entity Structure
+## Accessing Brand Kits
 
-```
-BrandKit {
-  account_id        // The account this brand kit belongs to
-  name              // Display name of the brand kit
-  description       // Optional description
-  is_default        // Whether this is the account's default brand kit
-  is_global_default // Whether this is the global default (owner-only setting)
-  is_template       // Whether this kit is a template available to other accounts
-  colors            // Color configuration object
-  fonts             // Font configuration object
-  logos             // Logo storage object
-  backgrounds       // Array of background images
-  frame             // Frame appearance settings
-  lower_third       // Lower third overlay configuration
-  overlay           // Overlay default settings (watermark)
-}
-```
+1. Log in to your R-Link account.
+2. Navigate to the Admin Dashboard.
+3. Click the **Brand Kits** tab in the left sidebar.
+4. The tab displays two sub-tabs: **My Brand Kits** and **Templates**.
 
-## Color Configuration
+---
 
-Brand Kits define five color fields that are applied throughout the R-Link interface for rooms and sessions.
+## BrandKit Entity
 
-| Color Field | Purpose | Default Value |
-|------------|---------|---------------|
-| `primary` | Primary brand color, used for buttons, accents, and key UI elements | `#6a1fbf` (purple) |
-| `accent` | Secondary accent color for highlights, links, and interactive elements | `#00c853` (green) |
-| `background` | Main background color for the room and overlays | `#001233` (dark navy) |
-| `text` | Primary text color | `#ffffff` (white) |
-| `secondary_text` | Secondary/muted text color for labels, captions, and less prominent text | `#9ca3af` (gray) |
+The `BrandKit` entity stores the complete visual identity configuration. Below is the full schema with default values:
 
-### Setting Colors
+### Top-Level Fields
 
-1. Navigate to **Brand Kits** in the Admin Sidebar.
-2. Create a new brand kit or edit an existing one.
-3. In the **Colors** section, click on any color swatch to open the color picker.
-4. Enter a hex value directly or use the visual color picker.
-5. Changes preview in real time within the editor.
-6. Click **Save** to apply.
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `id` | string | (auto) | Unique identifier |
+| `account_id` | string | (auto) | Owner account ID |
+| `name` | string | '' | Display name for the brand kit |
+| `description` | string | '' | Optional description |
+| `is_default` | boolean | false | Whether this is the account's default brand kit |
+| `is_global_default` | boolean | false | Whether this is the global default for all new accounts |
+| `is_template` | boolean | false | Whether this brand kit is available as a template |
+| `colors` | object | (see below) | Color palette |
+| `fonts` | object | (see below) | Typography settings |
+| `logos` | object | {} | Logo file URLs |
+| `backgrounds` | array | [] | Background image URLs |
+| `frame` | object | (see below) | Video frame styling |
+| `lower_third` | object | (see below) | Name/title overlay styling |
+| `overlay` | object | (see below) | Watermark and overlay settings |
 
-### Color Application
+### colors Object
 
-- **Room UI**: The primary and accent colors style buttons, controls, and interactive elements within the room.
-- **Lower thirds**: Background and text colors are used for participant name overlays.
-- **Event Landing Pages**: Colors are applied to the registration page, buttons, and text.
-- **Recordings/Clips**: Branded overlays in recordings use the brand kit colors.
+| Field | Type | Default Value | Description |
+|-------|------|---------------|-------------|
+| `primary` | string | `#6a1fbf` | Primary brand color (purple) -- used for buttons, highlights, and accents |
+| `accent` | string | `#00c853` | Accent color (green) -- used for secondary highlights and gradients |
+| `background` | string | `#001233` | Background color (dark navy) -- used for page and modal backgrounds |
+| `text` | string | `#ffffff` | Primary text color (white) |
+| `secondary_text` | string | `#9ca3af` | Secondary/muted text color (gray) |
 
-## Font Configuration
+### fonts Object
 
-Brand Kits define three font settings for text rendered in the R-Link platform.
+| Field | Type | Default Value | Description |
+|-------|------|---------------|-------------|
+| `heading` | string | `Inter` | Font family for headings (H1-H6) |
+| `body` | string | `Inter` | Font family for body text and paragraphs |
+| `caption` | string | `Inter` | Font family for captions, labels, and small text |
 
-| Font Field | Purpose | Default Value |
-|-----------|---------|---------------|
-| `heading` | Font for headings, titles, and prominent text | `Inter` |
-| `body` | Font for body text, descriptions, and general content | `Inter` |
-| `caption` | Font for captions, labels, and small text elements | `Inter` |
+Available font options: `Inter`, `Roboto`, `Open Sans`, `Poppins`, `Montserrat`, `Lato`, `Playfair Display`.
 
-### Setting Fonts
+### logos Object
 
-1. In the brand kit editor, navigate to the **Fonts** section.
-2. For each font field (heading, body, caption), select from the available font list.
-3. The font list includes web-safe fonts and popular Google Fonts.
-4. Preview how each font appears in context.
-5. Click **Save** to apply.
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `main_logo_url` | string | '' | Primary logo image URL |
+| `secondary_logo_url` | string | '' | Secondary/alternate logo URL |
+| `favicon_url` | string | '' | Favicon/icon URL |
 
-## Logo Management
+The logos object defaults to an empty object `{}`. Logo URLs are populated when users upload images through the brand kit editor.
 
-The `logos` field is stored as an empty object `{}` by default and supports uploading multiple logo assets for different contexts.
+### backgrounds Array
 
-### Logo Types
+Default: `[]` (empty array)
 
-- **Primary logo**: The main brand logo displayed in the room header, lower thirds (if `show_logo` is enabled), and Event Landing Pages.
-- **Secondary logo**: An alternate logo for lighter or darker backgrounds.
-- **Favicon/Icon**: A small icon version used for browser tabs and compact displays.
+Each entry is a string URL pointing to a background image. Background images can be uploaded through the brand kit editor and are used for room backgrounds, webinar stages, and waiting rooms.
 
-### Uploading Logos
+### frame Object
 
-1. In the brand kit editor, navigate to the **Logos** section.
-2. Click **Upload Logo** for the desired logo slot.
-3. Select an image file (PNG, SVG, or JPG recommended; PNG with transparency preferred).
-4. The logo is uploaded and stored in the brand kit's `logos` object.
-5. Adjust positioning or sizing if options are available.
-6. Click **Save**.
+| Field | Type | Default Value | Description |
+|-------|------|---------------|-------------|
+| `style` | string | `rounded` | Frame corner style: `'rounded'`, `'square'`, `'circle'` |
+| `border_width` | number | `2` | Border width in pixels |
+| `border_color` | string | `#6a1fbf` | Border color (matches primary by default) |
+| `shadow` | boolean | `true` | Whether to apply drop shadow to frames |
 
-### Logo Usage
+### lower_third Object
 
-- Logos appear in the room interface based on room template settings.
-- The lower third overlay displays the logo when `show_logo` is set to `true`.
-- Event Landing Pages use the primary logo in the header area.
+The lower third is the name/title overlay that appears at the bottom of participant video feeds during sessions.
 
-## Background Images
+| Field | Type | Default Value | Description |
+|-------|------|---------------|-------------|
+| `template` | string | `modern` | Lower third style template |
+| `bg` | string | `#001233` | Background color of the lower third bar |
+| `text` | string | `#ffffff` | Text color for name/title |
+| `accent` | string | `#6a1fbf` | Accent color for decorative elements |
+| `show_logo` | boolean | `true` | Whether to display the logo in the lower third |
 
-The `backgrounds` field is stored as an empty array `[]` by default and holds references to uploaded background images.
+### overlay Object
 
-### Managing Backgrounds
+| Field | Type | Default Value | Description |
+|-------|------|---------------|-------------|
+| `watermark_position` | string | `bottom-right` | Position of the watermark overlay. Options: `'top-left'`, `'top-right'`, `'bottom-left'`, `'bottom-right'`, `'center'` |
+| `watermark_opacity` | number | `0.7` | Opacity of the watermark (0.0 to 1.0) |
 
-1. In the brand kit editor, navigate to the **Backgrounds** section.
-2. Click **Add Background** to upload a new background image.
-3. Supported formats: JPG, PNG, WebP.
-4. Recommended resolution: Match your session's target resolution (e.g., 1920x1080 for full HD).
-5. Multiple backgrounds can be uploaded; hosts select which one to use during sessions.
-6. To remove a background, click the delete icon on the background thumbnail.
-7. Click **Save**.
+---
 
-### Background Application
+## Brand Kit Flags
 
-- Backgrounds are available as virtual backgrounds during live sessions.
-- Hosts and participants (depending on room settings) can select from the brand kit's backgrounds.
-- Backgrounds can also be used as backdrop images for the room layout.
+### is_default
 
-## Frame Settings
+- When `true`, this brand kit is automatically applied to new rooms and sessions for the account.
+- Only one brand kit per account can be the default.
+- Setting a new default automatically removes the flag from the previous default.
+- The default brand kit displays a yellow star icon next to its name.
+- The default brand kit cannot be deleted. To delete it, first set another kit as default.
 
-Frame settings control the visual appearance of participant video frames within the room.
+### is_global_default
 
-| Frame Setting | Purpose | Default Value |
-|--------------|---------|---------------|
-| `style` | Frame shape/style | `rounded` |
-| `border_width` | Width of the frame border in pixels | `2` |
-| `border_color` | Color of the frame border | `#6a1fbf` (matches primary) |
-| `shadow` | Whether a drop shadow is applied to frames | `true` |
+- When `true`, this brand kit is automatically applied to all **new accounts** when they are created.
+- Only one brand kit across the entire platform can be the global default.
+- Setting a global default requires confirmation dialog: "Set [Name] as the global default for all new accounts?"
+- The global default is displayed in a highlighted banner at the top of the Brand Kits tab.
+- The banner shows: "Global Default: [Kit Name] -- This brand kit will be automatically applied to all new accounts."
 
-### Configuring Frame Settings
+### is_template
 
-1. In the brand kit editor, navigate to the **Frame** section.
-2. **Style**: Choose from available frame styles (e.g., `rounded`, `square`, `circle`, `pill`).
-3. **Border Width**: Use a slider or input field to set the border width (0 for no border, up to a maximum value).
-4. **Border Color**: Click the color swatch to choose a border color. By default this matches the primary brand color.
-5. **Shadow**: Toggle the drop shadow on or off. Shadows add depth to video frames against the background.
-6. Preview the frame appearance in the editor.
-7. Click **Save**.
+- When `true`, this brand kit appears in the Templates gallery.
+- Templates are available for other users to browse and use as starting points.
+- Using a template creates a copy -- the original template is not modified.
+- Templates section is accessible via the "Templates" sub-tab in the Brand Kits tab.
 
-### Frame Application
+---
 
-- Frame settings apply to all participant video tiles in the room.
-- During recording, the frame settings are baked into the recorded output.
-- Multi-track recordings preserve frame settings per track.
+## Permissions
 
-## Lower Third Configuration
+Brand Kit operations are governed by role-based permissions:
 
-Lower thirds are overlay graphics that display participant names, titles, and optionally a logo at the bottom of the video feed.
+| Permission | Action | Description |
+|-----------|--------|-------------|
+| `brand_kits.view` | View | Can see brand kits in the tab |
+| `brand_kits.create` | Create | Can create new brand kits and duplicate existing ones |
+| `brand_kits.edit` | Edit | Can modify brand kit settings, set as default, set as global default |
+| `brand_kits.delete` | Delete | Can delete brand kits (except the current default) |
 
-| Lower Third Setting | Purpose | Default Value |
-|--------------------|---------|---------------|
-| `template` | Lower third design template | `modern` |
-| `background_color` | Background color of the lower third bar | `#001233` (dark navy) |
-| `text_color` | Text color for name and title | `#ffffff` (white) |
-| `accent_color` | Accent color for decorative elements | `#6a1fbf` (purple) |
-| `show_logo` | Whether to display the brand logo in the lower third | `true` |
+The `BrandKitTab` component receives these as props:
+- `canCreate` (default: true) -- Controls visibility of "Create Brand Kit" button and "Duplicate" menu item.
+- `canEdit` (default: true) -- Controls visibility of "Edit" button, "Set as Default", and "Set as Global Default" menu items.
+- `canDelete` (default: true) -- Controls visibility of "Delete" menu item.
 
-### Configuring Lower Thirds
-
-1. In the brand kit editor, navigate to the **Lower Third** section.
-2. **Template**: Select a design template (e.g., `modern`, `minimal`, `bold`, `classic`). Each template has a different layout and animation style.
-3. **Background Color**: Set the background color of the lower third overlay.
-4. **Text Color**: Set the color for participant name and title text.
-5. **Accent Color**: Set the color for accent elements (lines, borders, decorative shapes depending on template).
-6. **Show Logo**: Toggle whether the brand logo appears in the lower third.
-7. Preview the lower third with sample data.
-8. Click **Save**.
-
-### Lower Third Usage
-
-- Lower thirds appear during live sessions when enabled in room settings.
-- They display the participant's name and optional title/role.
-- Lower thirds are included in recordings.
-- Different templates have different animations (slide in, fade in, etc.).
-
-## Overlay Defaults
-
-Overlay defaults control persistent visual elements layered over the session video.
-
-| Overlay Setting | Purpose | Default Value |
-|----------------|---------|---------------|
-| `watermark_position` | Screen position for the watermark | `bottom-right` |
-| `watermark_opacity` | Opacity of the watermark (0 to 1) | `0.7` |
-
-### Configuring Overlay Defaults
-
-1. In the brand kit editor, navigate to the **Overlay** section.
-2. **Watermark Position**: Select where the watermark appears on screen. Options typically include: `top-left`, `top-right`, `bottom-left`, `bottom-right`, `center`.
-3. **Watermark Opacity**: Adjust the slider from 0 (fully transparent) to 1 (fully opaque). Default is `0.7`.
-4. The watermark image is sourced from the brand kit's logo.
-5. Preview the watermark position and opacity.
-6. Click **Save**.
-
-### Overlay Application
-
-- Watermarks appear during live sessions and are included in recordings.
-- Watermark position and opacity persist across all sessions using the brand kit.
-- Participants see the watermark but cannot modify it.
+---
 
 ## Creating a Brand Kit
 
-### Step-by-Step
+### From Scratch
+1. Click **Create Brand Kit** in the top-right corner.
+2. The `BrandKitEditorModal` opens with default values.
+3. Configure each section:
+   - **Colors**: Set primary, accent, background, text, and secondary text colors.
+   - **Fonts**: Choose heading, body, and caption fonts from the available options.
+   - **Logos**: Upload main logo, secondary logo, and favicon images.
+   - **Backgrounds**: Upload one or more background images.
+   - **Frame**: Set frame style, border width, border color, and shadow.
+   - **Lower Third**: Choose template style, background/text/accent colors, and logo visibility.
+   - **Overlay**: Set watermark position and opacity.
+4. Enter a name and optional description.
+5. Click **Save** to create the brand kit.
 
-1. Navigate to **Brand Kits** in the Admin Sidebar.
-2. Click **Create Brand Kit**.
-3. Enter a **Name** for the brand kit (required).
-4. Enter an optional **Description**.
-5. Configure each section: Colors, Fonts, Logos, Backgrounds, Frame, Lower Third, Overlay.
-6. Click **Save** to create the brand kit.
+### From Template
+1. Switch to the **Templates** sub-tab.
+2. Browse available templates in the `BrandTemplatesSection`.
+3. Click "Use Template" on any template.
+4. A copy of the template is created as a new brand kit in your account.
+5. The view automatically switches to the "My Brand Kits" tab.
+6. Edit the new kit to customize it further.
 
-### Permission Requirement
+### By Duplicating
+1. On any existing brand kit card, click the three-dot menu.
+2. Select **Duplicate**.
+3. A copy is created with the name "[Original Name] (Copy)".
+4. The duplicate has `is_default: false` regardless of the original.
+5. Edit the duplicate to make changes.
 
-Creating a brand kit requires the `brand_kits.create` permission (`canCreate`). If you do not see the Create button, your role does not have this permission. Contact your account owner or an admin to update your role.
+---
 
 ## Editing a Brand Kit
 
-1. Navigate to **Brand Kits** in the Admin Sidebar.
-2. Click on the brand kit you want to edit.
-3. Modify any settings as needed.
-4. Click **Save** to apply changes.
+### Grid View
+1. In the grid view, click **Edit Brand Kit** on any card.
+2. Or click the three-dot menu and select **Edit**.
+3. The `BrandKitEditorModal` opens with the kit's current values.
+4. Modify any settings.
+5. Click **Save** to apply changes.
 
-### Permission Requirement
+### List View
+1. In the list view, click the **Edit** button on any row.
+2. The same `BrandKitEditorModal` opens.
+3. Modify and save.
 
-Editing requires the `brand_kits.edit` permission (`canEdit`).
+---
 
-### Impact of Edits
+## Managing Brand Kits
 
-Changes to a brand kit take effect immediately for all rooms and sessions using that brand kit. Existing recordings are not retroactively updated.
+### Setting as Default
+1. Click the three-dot menu on any brand kit.
+2. Select **Set as Default**.
+3. The kit is marked with a yellow star icon.
+4. All new rooms and sessions will use this kit's visual identity.
+5. The previous default (if any) is automatically unset.
 
-## Deleting a Brand Kit
+### Setting as Global Default
+1. Click the three-dot menu on any brand kit.
+2. Select **Set as Global Default**.
+3. Confirm the action in the dialog.
+4. A banner appears at the top of the tab showing the global default.
 
-1. Navigate to **Brand Kits** in the Admin Sidebar.
-2. Select the brand kit to delete.
-3. Click **Delete** and confirm the action.
-4. If the brand kit is in use by rooms, you may be prompted to assign a replacement.
+### Deleting a Brand Kit
+1. Click the three-dot menu on any brand kit.
+2. Select **Delete**.
+3. If the kit is the current default, deletion is blocked with the message: "Cannot delete default brand kit. Please set another as default first."
+4. Otherwise, confirm the deletion.
+5. The kit is permanently removed. This cannot be undone.
 
-### Permission Requirement
+---
 
-Deleting requires the `brand_kits.delete` permission (`canDelete`).
+## View Modes
 
-### Impact of Deletion
+### Grid View
+- Brand kits are displayed as cards in a responsive grid (1-3 columns depending on screen width).
+- Each card shows:
+  - Color gradient header (primary to accent colors).
+  - Logo preview (if uploaded) overlaid on the gradient.
+  - Kit name with default star indicator.
+  - Description (truncated to 2 lines).
+  - Feature counts (number of colors, fonts, logos configured).
+  - Color swatch dots (up to 5 colors).
+  - "Edit Brand Kit" button.
+  - Three-dot overflow menu (edit, duplicate, set default, set global default, delete).
 
-- Rooms using the deleted brand kit will fall back to the account default brand kit or platform defaults.
-- The default brand kit cannot be deleted until another kit is designated as default.
+### List View
+- Brand kits are displayed as horizontal rows.
+- Each row shows:
+  - Small color gradient square (primary to accent).
+  - Kit name with default star indicator.
+  - Description (truncated).
+  - Color swatch dots (up to 5, hidden on small screens).
+  - Edit button.
+  - Three-dot overflow menu.
 
-## Setting Default Brand Kit
+Toggle between views using the Grid/List icons in the search bar area.
 
-The default brand kit is automatically applied to new rooms and sessions unless a different kit is explicitly selected.
+---
 
-1. Navigate to **Brand Kits**.
-2. Click the **Set as Default** option on the desired brand kit.
-3. The previous default kit loses its default status.
-4. The `is_default` field is set to `true` on the selected kit.
+## Search and Filtering
 
-Any team member with `brand_kits.edit` permission can set the account default.
+- Use the search bar to filter brand kits by name or description.
+- Search is real-time (filters as you type).
+- Searching applies to the "My Brand Kits" sub-tab only.
 
-## Setting Global Default (Owner Only)
+---
 
-The global default brand kit is a special designation that makes a brand kit available and default across all accounts in a multi-account context (e.g., whitelabel or enterprise deployments).
+## Business Plan Features
 
-1. Only the **account owner** can set the global default.
-2. Navigate to **Brand Kits**.
-3. Select the desired brand kit and click **Set as Global Default**.
-4. The `is_global_default` field is set to `true`.
+The `BrandKitTab` receives a `plan` prop. When `plan === 'business'`:
+- Additional features or templates may be unlocked.
+- The `isBusinessPlan` flag is available for conditional rendering.
+- Business plan users may have access to premium templates and advanced branding options.
 
-**Important**: This is an owner-only operation. Non-owner users, including admins, cannot set the global default.
+---
 
-## Brand Kit Filtering and Visibility
+## Brand Kit Application
 
-The Brand Kits list shows kits based on the following criteria:
+Brand kits are applied in several contexts across R-Link:
 
-- Brand kits where `account_id` matches the current account (kits created by this account).
-- Brand kits where `is_global_default` is `true` (global defaults visible to all accounts).
-- Brand kits where `is_template` is `true` (template kits available as starting points).
+### Studio / Rooms
+- The `BrandingPanel` in the Studio interface allows hosts to select and apply a brand kit during live sessions.
+- Colors, fonts, frames, and lower thirds are applied to the room's visual presentation.
+- Background images from the brand kit can be used as room backgrounds.
 
-This means users may see brand kits they did not create if those kits are global defaults or templates.
+### Webinar Templates
+- The `TemplateBrandingStep` in the webinar scheduling wizard allows selecting a brand kit for the webinar.
+- The `ReviewScheduleStep` shows how the brand kit will appear in the webinar.
 
-## Settings and Options
+### Recordings and Clips
+- Brand kit overlays (watermarks, lower thirds) are burned into recordings and clips.
+- The overlay watermark position and opacity settings control the watermark appearance.
 
-| Setting | Field | Default | Notes |
-|---------|-------|---------|-------|
-| Primary Color | `colors.primary` | `#6a1fbf` | Purple |
-| Accent Color | `colors.accent` | `#00c853` | Green |
-| Background Color | `colors.background` | `#001233` | Dark navy |
-| Text Color | `colors.text` | `#ffffff` | White |
-| Secondary Text Color | `colors.secondary_text` | `#9ca3af` | Gray |
-| Heading Font | `fonts.heading` | `Inter` | |
-| Body Font | `fonts.body` | `Inter` | |
-| Caption Font | `fonts.caption` | `Inter` | |
-| Logos | `logos` | `{}` | Empty object |
-| Backgrounds | `backgrounds` | `[]` | Empty array |
-| Frame Style | `frame.style` | `rounded` | |
-| Frame Border Width | `frame.border_width` | `2` | Pixels |
-| Frame Border Color | `frame.border_color` | `#6a1fbf` | Matches primary |
-| Frame Shadow | `frame.shadow` | `true` | Drop shadow on frames |
-| Lower Third Template | `lower_third.template` | `modern` | |
-| Lower Third BG Color | `lower_third.background_color` | `#001233` | Dark navy |
-| Lower Third Text Color | `lower_third.text_color` | `#ffffff` | White |
-| Lower Third Accent | `lower_third.accent_color` | `#6a1fbf` | Purple |
-| Lower Third Logo | `lower_third.show_logo` | `true` | |
-| Watermark Position | `overlay.watermark_position` | `bottom-right` | |
-| Watermark Opacity | `overlay.watermark_opacity` | `0.7` | Range 0-1 |
-| Is Default | `is_default` | `false` | Account default |
-| Is Global Default | `is_global_default` | `false` | Owner only |
-| Is Template | `is_template` | `false` | Template visibility |
+---
 
-## Troubleshooting
+## Complete Default BrandKit Object
 
-### Brand kit changes not appearing in room
-- Verify the room is using the correct brand kit (check room settings).
-- Hard refresh the browser to clear cached styles.
-- Changes apply immediately to new sessions but do not retroactively affect active sessions. The host may need to refresh or rejoin.
+For reference, here is the complete default brand kit configuration:
 
-### Cannot create or edit brand kits
-- Your role must have the `brand_kits.create` or `brand_kits.edit` permission. Check with your account owner or admin.
-- If you see brand kits but cannot modify them, they may be global defaults or templates owned by another account.
+```json
+{
+  "name": "",
+  "description": "",
+  "is_default": false,
+  "is_global_default": false,
+  "is_template": false,
+  "colors": {
+    "primary": "#6a1fbf",
+    "accent": "#00c853",
+    "background": "#001233",
+    "text": "#ffffff",
+    "secondary_text": "#9ca3af"
+  },
+  "fonts": {
+    "heading": "Inter",
+    "body": "Inter",
+    "caption": "Inter"
+  },
+  "logos": {},
+  "backgrounds": [],
+  "frame": {
+    "style": "rounded",
+    "border_width": 2,
+    "border_color": "#6a1fbf",
+    "shadow": true
+  },
+  "lower_third": {
+    "template": "modern",
+    "bg": "#001233",
+    "text": "#ffffff",
+    "accent": "#6a1fbf",
+    "show_logo": true
+  },
+  "overlay": {
+    "watermark_position": "bottom-right",
+    "watermark_opacity": 0.7
+  }
+}
+```
 
-### Logo not displaying
-- Verify the logo was uploaded successfully (check the Logos section in the brand kit editor).
-- Ensure the file format is supported (PNG, SVG, JPG).
-- Very large logo files may fail to upload; try reducing file size.
-- For lower thirds, confirm `show_logo` is set to `true`.
+---
 
-### Colors look different in recording vs. live session
-- Recordings encode the colors as rendered at session time. If the brand kit was changed after the session, the recording reflects the old colors.
-- Monitor calibration differences between devices can also cause perceived color differences.
+## Common Troubleshooting
 
-### Cannot set global default
-- Only the account owner can set the global default. Admin role users and custom roles cannot perform this action. Verify you are logged in as the account owner.
+### Q: I cannot create a brand kit.
+**A:** Creating brand kits requires the `brand_kits.create` permission. Check your role in the Team tab or ask an admin to grant you this permission. See `26-team-and-roles.md`.
 
-### Background image not appearing as option in session
-- Verify the background image was added to the brand kit's `backgrounds` array.
-- Ensure the room is using the brand kit that contains the background.
-- Check that the image format is supported (JPG, PNG, WebP).
+### Q: I cannot delete a brand kit.
+**A:** There are two possible reasons:
+1. The kit is the current account default (`is_default: true`). You must set another kit as default first.
+2. Your role does not have the `brand_kits.delete` permission.
 
-### "Set as Default" button not visible
-- The `brand_kits.edit` permission is required to set the default. Check your role permissions.
+### Q: My brand kit colors are not showing in the studio.
+**A:** Ensure the brand kit is selected in the Studio's Branding Panel. The studio must be refreshed or the brand kit re-applied if changes were made after the session started.
 
-## FAQ
+### Q: The logo is not appearing in my lower third.
+**A:** Check that:
+1. A logo has been uploaded in the brand kit's logos section (main_logo_url must be populated).
+2. The lower third `show_logo` setting is set to `true`.
+3. The brand kit is selected and applied to the current session.
 
-**Q: How many brand kits can I create?**
-A: The number of brand kits depends on your plan. Basic plans may be limited to 1-2 brand kits, while Business plans support unlimited brand kits.
+### Q: I want to use the same branding across multiple accounts.
+**A:** Set the brand kit as the **Global Default**. This applies the brand kit to all new accounts. For existing accounts, you can export the brand kit configuration and import it, or use the Templates feature to share brand kits.
 
-**Q: Can I duplicate a brand kit?**
-A: Yes. Open an existing brand kit and use the Duplicate option to create a copy with all settings pre-filled. This is useful for creating variations of an existing brand.
+### Q: What is the difference between "Default" and "Global Default"?
+**A:**
+- **Default** (`is_default`) -- The brand kit automatically applied to new rooms and sessions within YOUR account.
+- **Global Default** (`is_global_default`) -- The brand kit automatically applied to ALL NEW ACCOUNTS on the platform. This is typically used by platform administrators.
 
-**Q: What is the difference between "default" and "global default"?**
-A: The **default** (`is_default`) brand kit is the account-level default applied to new rooms in that account. The **global default** (`is_global_default`) is visible and available across all accounts (useful in enterprise/whitelabel setups) and can only be set by the account owner.
+### Q: How do I change the watermark position?
+**A:** Edit the brand kit and navigate to the Overlay section. Change the `watermark_position` field to one of: `top-left`, `top-right`, `bottom-left`, `bottom-right`, or `center`. Adjust `watermark_opacity` (0.0 = invisible, 1.0 = fully opaque) as needed.
 
-**Q: What are template brand kits?**
-A: Brand kits with `is_template` set to `true` are available as starting points for all accounts. They appear in the brand kit list for any account, but users create their own copy when they want to customize them.
+### Q: Can I use different brand kits for different rooms?
+**A:** Yes. Each room can be assigned a different brand kit. The default brand kit is used when no specific kit is assigned, but you can override this in the room settings or in the Studio's Branding Panel.
 
-**Q: Can different rooms use different brand kits?**
-A: Yes. Each room can be assigned a specific brand kit. If no brand kit is explicitly assigned, the account default is used.
+### Q: What fonts are available?
+**A:** R-Link currently supports the following fonts: Inter, Roboto, Open Sans, Poppins, Montserrat, Lato, and Playfair Display. All fonts are loaded from Google Fonts.
 
-**Q: Do brand kit changes affect existing recordings?**
-A: No. Recordings capture the brand kit settings as they were at the time of recording. Changing a brand kit after a session does not alter the recording.
+### Q: How do I make my brand kit available as a template?
+**A:** Set the `is_template` flag to `true` on the brand kit. This makes it appear in the Templates gallery for other users to browse and copy. Note that templates are read-only -- using a template creates a copy.
 
-**Q: Can I export or import brand kits?**
-A: Brand kit export/import is not currently available as a user-facing feature. Template brand kits serve a similar purpose for sharing brand configurations.
+---
 
-**Q: What fonts are available?**
-A: The platform supports a curated list of web-safe fonts and popular Google Fonts. Custom font uploads are not currently supported.
+## API Reference
 
-## Known Limitations
+### Brand Kit Operations
 
-- Custom font uploads are not supported; only the platform's font library is available.
-- Brand kit changes do not retroactively update existing recordings or clips.
-- The `logos` object structure does not enforce specific logo slots, so logo management depends on the UI implementation.
-- Background images do not have automatic resizing; users should upload images at the recommended resolution.
-- Lower third template options are fixed; custom lower third designs are not supported.
-- Global default and template brand kits are read-only for non-owning accounts.
-- Watermark image is sourced from the brand logo; custom watermark images separate from the logo are not supported.
+Brand kit entities are managed through the standard entity CRUD pattern. The BrandKitTab component uses callback props:
 
-## Plan Requirements
+```
+// Create a brand kit
+onCreate(data)  // data = { name, colors, fonts, logos, backgrounds, frame, lower_third, overlay, ... }
 
-| Feature | Basic Plan | Business Plan |
-|---------|-----------|---------------|
-| Create brand kits | Limited (1-2) | Unlimited |
-| Edit brand kits | Yes | Yes |
-| Custom colors | Yes | Yes |
-| Custom fonts | Yes | Yes |
-| Logo upload | Yes | Yes |
-| Background images | Limited | Unlimited |
-| Frame customization | Basic | Full (all settings) |
-| Lower third templates | 1 template | All templates |
-| Overlay/watermark | Basic | Full control |
-| Set default | Yes | Yes |
-| Set global default | N/A | Owner only |
-| Template brand kits | View only | Create and manage |
+// Update a brand kit
+onUpdate(kitId, data)  // Partial update -- only include changed fields
 
-## Related Documents
+// Delete a brand kit
+onDelete(kitId)
 
-- **21-admin-panel-navigation.md** -- Admin panel sidebar structure and Group 2 navigation
-- **23-recordings-and-clips.md** -- How brand kit settings apply to recordings
-- **26-team-and-roles.md** -- Permission system for brand kit operations
-- **22-scheduling.md** -- Sessions inherit brand kits from their associated rooms
+// Set as account default
+onSetDefault(kitId)
+
+// Set as global default
+onSetGlobalDefault(kitId)
+
+// Duplicate a brand kit
+onDuplicate(kitData)  // Pass the full kit object; id is stripped and name gets "(Copy)" suffix
+```
+
+---
+
+## Related Features
+
+- **Rooms**: Brand kits are applied to rooms via the Studio's BrandingPanel. See rooms documentation.
+- **Recordings and Clips**: Overlay settings (watermark, lower third) appear in recordings. See `23-recordings-and-clips.md`.
+- **Webinar Scheduling**: Brand kits can be selected during webinar setup. See `22-scheduling.md`.
+- **Roles and Permissions**: Brand kit CRUD is governed by the `brand_kits` permission category. See `26-team-and-roles.md`.

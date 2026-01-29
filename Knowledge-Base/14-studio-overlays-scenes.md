@@ -1,354 +1,591 @@
-# Studio Overlays and Scenes System
+# 14 - Studio Overlays and Scenes
 
 ## Overview
 
-The R-Link Studio Overlays and Scenes system provides hosts with powerful tools for layering visual content on top of the live stage and organizing multi-scene productions. Overlays include Talking Points, Calls-to-Action (CTA), Stream Overlays, Featured Comments, and Q&A Display -- all managed through the `OverlayManager` and tracked in the `activeOverlays` state array. The Scenes system, primarily used in Live Stream mode, allows hosts to create and switch between multiple visual layouts using `LayoutCanvasEditor`, manage stage items through `StagePanel`, and configure per-scene audio settings. Together, overlays and scenes give hosts full creative control over their broadcast output.
+The R-Link Studio Overlays and Scenes system controls the visual composition of live sessions. Overlays are dynamic visual elements layered on top of the video stage (talking points, CTAs, featured comments, Q&A displays, stream decorations, and Rally/Web3 overlays). Scenes define the spatial arrangement of participants, screen shares, and media sources on the stage canvas. Together, they enable hosts to create professional broadcast-quality productions with multiple layouts, visual effects, and interactive elements. The system is managed through the `OverlayManager`, `LayoutCanvasEditor`, `StagePanel`, and related components.
+
+---
+
+## Accessing Overlays and Scenes
+
+1. Enter any R-Link Studio session.
+2. **Overlays** are managed through:
+   - The **Elements Tab** (left sidebar) -- activate overlay-type elements.
+   - The **OverlayManager** -- automatically renders active overlays on the stage.
+   - The **RallyOverlaysPanel** -- add and manage Web3/Rally overlays.
+3. **Scenes** are managed through:
+   - The **Layout Switcher** bar (below the stage or in the bottom controls).
+   - The **LayoutCanvasEditor** -- renders the current scene layout on the stage.
+   - The **AdvancedSceneManager** -- advanced scene configuration with transitions.
+   - The **StagePanel** -- add/remove participants and media from the stage.
+
+---
 
 ## Overlay Types
 
-### TalkingPointOverlay
-- **Components:** `TalkingPointOverlay` (renderer), `TalkingPointModal` (configuration)
-- **Purpose:** Display key talking points or bullet points on the live stage to guide the host and inform the audience
-- **Use case:** Structured presentations, agenda items, keynote highlights, discussion topics
-- **Behavior:** Renders text content as an overlay on the stage; hosts control when talking points appear and disappear
-- **Configuration:** Set the talking point text, visual style, position, and display duration in `TalkingPointModal`
+### 1. Talking Point Overlay
 
-### CTAOverlay (Call-to-Action)
-- **Components:** `CTAOverlay` (renderer), `CTAModal` (configuration)
-- **State:** `activeCTA` -- holds the currently active CTA object
-- **Purpose:** Display a call-to-action banner or button overlay on the stage to drive viewer engagement
-- **Use case:** "Sign up now," "Visit our website," "Use code SAVE20," product purchase links
-- **Behavior:**
-  - When a CTA is activated, the `activeCTA` state is set to the CTA configuration object
-  - The `CTAOverlay` renders the CTA on the live stage with text, links, and optional styling
-  - Deactivating the CTA sets `activeCTA` to `null`
-- **Configuration:** Set CTA text, URL/link, button text, visual style, and position in `CTAModal`
+The `TalkingPointOverlay` component renders a full-width lower-third bar at the bottom of the stage.
 
-### StreamOverlayRenderer
-- **Component:** `StreamOverlayRenderer`
-- **Purpose:** Render custom visual overlays on the stream output, including branding elements, lower thirds, logos, and custom graphics
-- **Managed by:** `OverlayManager`
-- **Behavior:** Processes and renders overlays from the `activeOverlays` array onto the stream video output
-- **Use case:** Brand watermarks, lower-third name bars, custom graphics, sponsor logos
+#### Rendering
 
-### FeaturedCommentOverlay
-- **Component:** `FeaturedCommentOverlay`
-- **State:** `featuredComment` -- holds the currently featured chat message
-- **Purpose:** Highlight a specific chat message on the live stage so all viewers (including external stream viewers) can see it
-- **Behavior:**
-  - When a host features a chat message, the `featuredComment` state is set to that message object
-  - The `FeaturedCommentOverlay` renders the commenter's name and message content in a styled overlay
-  - The overlay is visible on the live stage and burned into any active stream output
-  - Clearing the feature sets `featuredComment` to `null`
-- **Use case:** Highlighting audience questions, showcasing positive comments, acknowledging viewers
+- **Position:** Absolute bottom of the stage (`bottom-0 left-0 right-0`), z-index 50.
+- **Appearance:** Full-width gradient bar using session branding colors.
+- **Content:** Optional emoji icon + text message.
+- **Animation:** Slides up from below (`y: 60` to `y: 0`) with 300ms ease-out transition. Exits by sliding back down.
 
-### QADisplayOverlay
-- **Component:** `QADisplayOverlay`
-- **State:** `displayedQuestion` -- holds the currently displayed Q&A question
-- **Purpose:** Display a selected Q&A question prominently on the live stage
-- **Behavior:**
-  - When a host selects a question to display, the `displayedQuestion` state is set
-  - The `QADisplayOverlay` renders the question text and asker's name on the stage
-  - The overlay is visible to all participants and stream viewers
-  - Clearing the display sets `displayedQuestion` to `null`
-- **Use case:** Q&A segments, audience question highlights, panel discussions
+#### Properties
 
-## OverlayManager
+| Property | Type | Description |
+|----------|------|-------------|
+| `talkingPoint.text` | string | Main display text |
+| `talkingPoint.icon` | string | Optional emoji/icon displayed before the text |
+| `talkingPoint.auto_hide_ms` | number | Auto-dismiss timer in milliseconds. 0 = manual dismiss only. |
 
-### Overview
-The `OverlayManager` is the central component responsible for coordinating all active overlays on the stage. It manages the rendering order, positioning, and lifecycle of overlays.
+#### Auto-Hide Behavior
 
-### activeOverlays State
-The `activeOverlays` state is an array that tracks all currently active overlays:
+1. When `auto_hide_ms > 0`, a timeout is set for that duration.
+2. After the timeout, `isVisible` is set to false, triggering the exit animation.
+3. After the exit animation completes (300ms), the `onAutoHide` callback fires.
+4. If a new talking point is set before the timer expires, the timer resets.
+
+#### Branding Integration
+
+The overlay uses session branding values:
+- `font` -- Font family (default: `'Inter'`).
+- `primaryColor` -- Gradient start color (default: `'#6a1fbf'`).
+- `accentColor` -- Gradient end color (default: `'#00c853'`).
+- `backgroundColor` -- Fallback background (default: `'#001233'`).
+
+Text renders as white (`#ffffff`) with `text-xl md:text-2xl` sizing and `font-medium` weight.
+
+---
+
+### 2. CTA Overlay (`activeCTA`)
+
+Call-to-action banners that appear on the stage when a CTA element is activated.
+
+- **Activation:** Set via `activeElements.cta` in the element system.
+- **Display:** Banner overlay with customizable text, button, and link.
+- **Branding:** Uses session primary and accent colors.
+- **Z-index:** Managed by the overlay layer system.
+
+---
+
+### 3. Stream Overlays
+
+The `StreamOverlayRenderer` component handles decorative and informational overlays during streaming:
+
+- Custom overlay graphics and frames.
+- Lower-third graphics.
+- Bug/watermark logos.
+- Custom HTML/CSS overlays via the `CustomOverlayEditor`.
+
+---
+
+### 4. Featured Comment Overlay
+
+The `FeaturedCommentOverlay` component displays a highlighted chat message on the stage.
+
+#### Rendering
+
+- **Position:** Absolute bottom-left of the stage (`bottom-20 left-6`), z-index 50.
+- **Appearance:** Rounded card with gradient background, user avatar, name, and message text.
+- **Animation:** Slides in from the left (`x: -40` to `x: 0`) with 300ms ease-out transition.
+- **Interaction:** Clicking the overlay calls `onUnfeature` to remove it.
+
+#### Content
+
+| Element | Description |
+|---------|-------------|
+| **Avatar** | 48x48px rounded circle. Uses `comment.avatar` URL if available, otherwise shows initial letter with user's color. |
+| **User name** | Bold white text, `text-base` size. |
+| **Message** | White text at 95% opacity, `text-sm`, max 2 lines with `line-clamp-2`. |
+| **Background** | `linear-gradient(135deg, primaryColor, accentColor)` with `ee` opacity suffix and backdrop blur. |
+
+---
+
+### 5. Q&A Display Overlay
+
+The `QADisplayOverlay` component renders audience questions prominently on the stage.
+
+#### Rendering
+
+- **Position:** Fixed bottom-center of the viewport (`fixed bottom-24 left-1/2 -translate-x-1/2`), z-index 30.
+- **Appearance:** Purple-to-indigo gradient card with purple border accent.
+- **Max width:** `max-w-2xl` (672px).
+- **Animation:** Slides up from below (`y: 50` to `y: 0`).
+
+#### Content
+
+| Element | Description |
+|---------|-------------|
+| **Header** | "Question from Audience" title with purple MessageSquare icon |
+| **Asker name** | Purple-tinted text showing who asked the question |
+| **Question text** | White text, `text-lg` size, in a dark bordered box |
+| **Upvote count** | Shows number of upvotes if > 0 (arrow emoji + count) |
+| **Close button** | X button for the host to dismiss the question |
+
+---
+
+### 6. Rally/Web3 Overlays (11 Types)
+
+Managed by the `OverlayManager` component, Rally overlays are draggable widgets on the stage.
+
+#### Available Rally Overlay Types
+
+| Type | Component | Description |
+|------|-----------|-------------|
+| `price_tracker` | `RLYPriceTracker` | Live RLY token price with chart |
+| `leaderboard` | `TokenLeaderboard` | Top token holders ranking |
+| `token_drop` | `TokenRewardDrop` | Animated token reward drops |
+| `nft_showcase` | `NFTShowcase` | NFT collection gallery |
+| `rally_badge` | `RallyBadge` | "Powered by Rally" branding |
+| `token_balance` | `TokenBalance` | Wallet token balance display |
+| `wallet_status` | `WalletStatus` | Wallet connection indicator |
+| `mint_counter` | `MintCounter` | NFT minting progress |
+| `gas_tracker` | `GasTracker` | Current gas fees |
+| `volume_display` | `VolumeDisplay` | Trading volume metrics |
+| `community_stats` | `CommunityStats` | Community engagement stats |
+| `staking_rewards` | `StakingRewards` | Staking reward tracking |
+
+#### Overlay Manager System
+
+The `OverlayManager` component handles rendering and interaction for all Rally overlays:
+
+1. **Data source:** Fetches `UserOverlay` entities filtered by `room_id` and `is_visible: true`.
+2. **Rendering:** Each overlay renders at its absolute position (`left: x px`, `top: y px`) with its `z_index`.
+3. **Component mapping:** Uses `OVERLAY_COMPONENTS` map to look up the React component for each `template.overlay_type`.
+4. **Drag-and-drop:** Overlays are draggable on the stage:
+   - `mouseDown` on an overlay starts dragging, capturing the offset.
+   - `mouseMove` updates the overlay position in real time (optimistic local update).
+   - `mouseUp` persists the new position to the database via `UserOverlay.update`.
+5. **Controls:** Each overlay has floating buttons:
+   - **Settings** (purple gear icon) -- Opens the `OverlayCustomizationModal` for styling.
+   - **Close** (red X icon) -- Sets `is_visible: false` to hide the overlay.
+
+#### Overlay Customization
+
+The `OverlayCustomizationModal` provides per-overlay styling controls:
+
+| Setting | Type | Description |
+|---------|------|-------------|
+| `font_family` | string | Font selection (default: Inter) |
+| `font_size` | number | Text size in pixels |
+| `font_weight` | string | Text weight (e.g., medium) |
+| `text_color` | string | Primary text color |
+| `secondary_text_color` | string | Secondary/label text color |
+| `accent_color` | string | Highlight/accent color |
+| `background_color` | string | Background color |
+| `background_opacity` | number | Background opacity (0-100) |
+| `border_enabled` | boolean | Show/hide border |
+| `border_width` | number | Border thickness in pixels |
+| `border_color` | string | Border color |
+| `border_opacity` | number | Border opacity (0-100) |
+| `border_radius` | number | Corner radius in pixels |
+| `shadow_enabled` | boolean | Show/hide drop shadow |
+| `shadow_intensity` | string | Shadow size: `'sm'`, `'md'`, `'lg'`, `'xl'` |
+
+---
+
+### 7. Enhanced Overlay Manager
+
+The `EnhancedOverlayManager` provides additional overlay management features beyond the base `OverlayManager`:
+
+- Extended overlay types.
+- Grouping and layering controls.
+- Overlay presets and templates.
+
+---
+
+### 8. Overlay Marketplace and Packs
+
+- **OverlayMarketplace:** Browse community-created overlay templates.
+- **OverlayPacksModal:** Install themed overlay collections.
+
+---
+
+### 9. Web Overlay Renderer
+
+The `WebOverlayRenderer` component embeds external web pages as iframes on the stage:
+
+- Supports any URL.
+- Configurable dimensions and position.
+- Opacity control.
+- Used when `web_overlay` elements are activated.
+
+---
+
+### 10. Celebration Overlay
+
+The `CelebrationOverlay` component renders animated effects triggered by chat commands or host actions:
+
+- Confetti, fireworks, hearts, and other particle effects.
+- Triggered by `!confetti`, `!fireworks`, `!hearts` chat commands.
+- Full-screen overlay with timed auto-dismiss.
+
+---
+
+## Active Overlays Array
+
+The studio maintains an `activeOverlays` array tracking all currently visible overlays:
 
 ```
-activeOverlays: [
-  { type: "talking_point", id: "tp_1", data: { text: "Key Point #1", ... } },
-  { type: "cta", id: "cta_1", data: { text: "Sign Up Now", url: "...", ... } },
-  { type: "featured_comment", id: "fc_1", data: { user: "John", message: "...", ... } },
-  { type: "qa_display", id: "qa_1", data: { question: "...", asker: "Jane", ... } },
-  { type: "stream_overlay", id: "so_1", data: { imageUrl: "...", position: "bottom-left", ... } }
+activeOverlays = [
+  { type: 'talking_point', data: {...}, id: '...' },
+  { type: 'featured_comment', data: {...}, id: '...' },
+  { type: 'qa_display', data: {...}, id: '...' },
+  { type: 'cta', data: {...}, id: '...' },
+  { type: 'stream_overlay', data: {...}, id: '...' }
 ]
 ```
 
-### Managing Overlays
-1. **Activating an overlay:** Add an overlay object to the `activeOverlays` array
-2. **Deactivating an overlay:** Remove the overlay object from the `activeOverlays` array
-3. **Updating an overlay:** Replace the overlay object in the array with updated data
-4. **Rendering:** The `OverlayManager` iterates through `activeOverlays` and renders each overlay using the appropriate component (`TalkingPointOverlay`, `CTAOverlay`, `FeaturedCommentOverlay`, `QADisplayOverlay`, `StreamOverlayRenderer`)
+Overlays are added when activated and removed when deactivated. The rendering layer iterates over this array to display all active overlays on the stage.
 
-### Overlay Layering
-- Multiple overlays can be active simultaneously
-- Overlays are layered on top of the stage content in the order they appear in the `activeOverlays` array
-- Positioning of each overlay is determined by its configuration (top, bottom, left, right, center, etc.)
-- Care should be taken to avoid overlapping overlays that obscure important content
+---
 
-## Using Overlays Step-by-Step
+## Scenes and Layouts
 
-### Activating a Talking Point
-1. Open the **Overlays** section in the Studio sidebar
-2. Click **"Talking Point"** or open the `TalkingPointModal`
-3. Enter the talking point text and configure visual options
-4. Click **"Activate"** to display the talking point on stage
-5. The talking point appears on the live stage and in any active streams
+### LayoutCanvasEditor
 
-### Activating a Call-to-Action (CTA)
-1. Open the **Overlays** section or the CTA panel
-2. Click **"Add CTA"** or open the `CTAModal`
-3. Configure the CTA:
-   - **Text:** The main CTA message (e.g., "Visit our store!")
-   - **URL:** The target link
-   - **Button text:** The action button label (e.g., "Shop Now")
-   - **Style:** Visual styling options
-4. Click **"Activate"** to set the `activeCTA` state and display on stage
-5. To remove, click **"Deactivate"** to set `activeCTA` to `null`
+The `LayoutCanvasEditor` component is the primary scene renderer for the R-Link Studio. It renders the current layout with all stage participants and screen shares.
 
-### Featuring a Chat Comment
-1. Browse the chat feed in the Chat panel
-2. Find the message you want to feature
-3. Click the **"Feature"** button on the message
-4. The `featuredComment` state is set and the `FeaturedCommentOverlay` renders on stage
-5. To remove, click **"Unfeature"** or feature a different message
+#### Props
 
-### Displaying a Q&A Question
-1. Open the **Q&A** panel in the Studio
-2. Browse submitted questions
-3. Click **"Display on Stage"** for the desired question
-4. The `displayedQuestion` state is set and the `QADisplayOverlay` renders on stage
-5. To remove, click **"Hide from Stage"** to clear the displayed question
+| Prop | Type | Description |
+|------|------|-------------|
+| `layout` | string | Current layout name |
+| `stageItems` | array | Participants and media currently on stage |
+| `isScreenSharing` | boolean | Whether screen sharing is active |
+| `screenStream` | MediaStream | Screen share stream (if active) |
+| `sceneImages` | object | Background images for scenes |
 
-## Scenes System (Live Stream Mode)
+#### Available Layouts
 
-### Overview
-The Scenes system is a core feature of Live Stream session mode, allowing hosts to pre-configure multiple visual layouts and switch between them during a broadcast. In Live Stream mode, the standard `VideoCanvas` is replaced by `LayoutCanvasEditor`, providing a more flexible canvas for scene composition.
+| Layout | Description | Grid Structure |
+|--------|-------------|----------------|
+| `solo` | Single centered participant (16:9) | 1 video, 80% width, max 1200px |
+| `dual-horizontal` | Two side-by-side participants | 2-column grid, 90% width, max 1400px |
+| `cropped` | Single portrait participant (9:16) | 1 video, 40% width, max 600px |
+| `news` | Person (9:16) + content (16:9) | 2-column: 1fr + 2fr, 95% width |
+| `three-person` | Three side-by-side participants | 3-column grid, 95% width |
+| `spotlight` | One large + thumbnails sidebar | Main + sidebar layout |
+| `screen` | Screen share primary layout | Screen share focused |
+| `demo-screen` | Screen share with presenter PIP | Screen share + picture-in-picture |
+| `pip` | Picture-in-picture | Main video + small overlay |
+| `cinema` | Cinematic wide format | Ultra-wide aspect ratio |
 
-### Key State Properties
+#### Keyboard Shortcuts
 
-| State | Type | Description |
-|-------|------|-------------|
-| `currentScene` | String/Number | Identifier for the currently active scene |
-| `sceneImages` | Object | Mapping of scene IDs to their preview thumbnails/images |
-| `sceneVisibility` | Object | Mapping of scene IDs to their visibility status (shown/hidden) |
+Layouts can be quickly switched using keyboard shortcuts:
+- **Shift+1** through **Shift+9** maps to the layouts in order:
+  1. Solo
+  2. Dual Horizontal
+  3. Cropped
+  4. Three Person
+  5. News
+  6. Screen
+  7. Demo Screen
+  8. PIP
+  9. Cinema
 
-### Scene Components
+#### Empty Stage
 
-#### LayoutCanvasEditor
-- Replaces `VideoCanvas` in Live Stream mode
-- Provides a drag-and-drop canvas editor for composing scene layouts
-- Hosts can position and resize video feeds, overlays, images, and other visual elements on the canvas
-- Each scene has its own independent layout configuration
-- Changes to one scene do not affect other scenes
+When no items are on stage (`stageItems.length === 0`), the canvas displays:
+- Large user icon (placeholder).
+- "No participants on stage" message.
+- "Add people or media from Stage Manager below" instruction.
 
-#### LayoutSwitcherBar
-- Displays a horizontal bar of scene thumbnails/buttons for quick switching
-- Shows the `currentScene` highlighted
-- Click a scene thumbnail to switch to that scene instantly
-- May display scene preview images from the `sceneImages` state
-- Supports reordering scenes by drag-and-drop
+---
 
-#### StagePanel
-- Manages the items displayed on the current scene's stage
-- Key functions:
-  - **`addToStage(item)`**: Add a participant, media source, or element to the stage
-  - **`removeFromStage(item)`**: Remove an item from the stage
-  - **`addAvailableItem(item)`**: Register a new item as available for staging (e.g., a new participant joining)
-- Provides a list of available items (participants, screen shares, media) and currently staged items
-- Drag items from the available list to the stage, or use buttons to add/remove
+### Stage Panel (addToStage / removeFromStage)
 
-### Scene Workflow
+The `StagePanel` component manages which participants and media sources appear on the stage.
 
-#### Creating a Scene
-1. Open the **Scenes** panel or `LayoutSwitcherBar` in Live Stream mode
-2. Click **"Add Scene"** to create a new scene
-3. The new scene is added with a default empty layout
-4. Use `LayoutCanvasEditor` to compose the scene layout:
-   - Add video feeds (participants, screen shares)
-   - Add overlays and graphics
-   - Position and resize elements on the canvas
-5. Optionally name the scene for easy identification
+#### Adding to Stage
 
-#### Switching Scenes
-1. During a live session, use the `LayoutSwitcherBar` at the bottom/top of the Studio
-2. Click on the target scene's thumbnail or button
-3. The `currentScene` state updates to the new scene
-4. The stage immediately transitions to the new scene's layout
-5. All active streams reflect the scene change in real-time
+- Click "Add to Stage" on a participant or media source.
+- The item is added to the `stageItems` array.
+- The `LayoutCanvasEditor` re-renders with the new item.
+- Layout auto-adjusts based on the number of stage items.
 
-#### Managing Scene Visibility
-- The `sceneVisibility` state controls which scenes are visible in the `LayoutSwitcherBar`
-- Hide scenes that are not currently needed to keep the switcher bar clean
-- Hidden scenes are not deleted and can be made visible again at any time
+#### Removing from Stage
 
-### Scene Audio Configuration
+- Click "Remove from Stage" on an active stage item.
+- The item is removed from the `stageItems` array.
+- The layout re-adjusts to accommodate the remaining items.
 
-#### handleSceneAudioChange
-Each scene can have independent audio configuration. The `handleSceneAudioChange` function manages per-scene audio settings:
+---
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `audioTrackId` | String | Identifier for the audio track being configured |
-| `volume` | Number | Volume level (0-100 or 0.0-1.0) |
-| `fadeIn` | Number | Duration in milliseconds for audio to fade in when the scene becomes active |
-| `fadeOut` | Number | Duration in milliseconds for audio to fade out when switching away from the scene |
+### Advanced Scene Manager
 
-#### Configuring Scene Audio
-1. Select the scene you want to configure
-2. Open the audio settings for that scene
-3. For each audio track in the scene:
-   - Set the **volume** level
-   - Set the **fade-in** duration (how long audio takes to reach full volume when the scene activates)
-   - Set the **fade-out** duration (how long audio takes to silence when switching away from the scene)
-4. Save the audio configuration
-5. When switching between scenes, audio fades in and out according to these settings, creating smooth transitions
+The `AdvancedSceneManager` component provides professional scene management features:
 
-### Stage Management with StagePanel
+- **Scene presets** -- Save and load custom scene configurations.
+- **Scene transitions** -- Configure transition effects between scene switches.
+- **Scene scheduling** -- Pre-program scene switches for automated broadcasts.
+- **Macro Manager** -- Create macro commands that trigger multiple scene changes and actions.
 
-#### Adding Items to Stage
-1. Open the **StagePanel** in the Studio
-2. Browse the list of available items:
-   - Participant video feeds
-   - Screen shares
-   - Media sources (cameras, capture cards)
-   - Elements (videos, presentations)
-3. Click **"Add to Stage"** or drag the item onto the stage canvas
-4. The `addToStage(item)` function places the item on the current scene's layout
-5. Position and resize the item using `LayoutCanvasEditor`
+---
 
-#### Removing Items from Stage
-1. Select the item on the stage canvas or in the `StagePanel` list
-2. Click **"Remove from Stage"** or drag it off the canvas
-3. The `removeFromStage(item)` function removes the item from the current scene
-4. The item returns to the available items list for potential future use
+### Scene Layer Editor
 
-#### Adding Available Items
-- When a new participant joins or a new media source becomes available, `addAvailableItem(item)` registers it
-- The item appears in the `StagePanel`'s available items list
-- It is not automatically added to any scene; the host must explicitly add it to the stage
+The `SceneLayerEditor` component provides layer-based editing for scene composition:
 
-## Settings and Options
+- Z-order management for overlapping elements.
+- Per-layer visibility controls.
+- Layer grouping and locking.
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `activeOverlays` | Array of currently active overlay objects | `[]` (empty) |
-| `activeCTA` | Currently active CTA configuration | `null` |
-| `featuredComment` | Currently featured chat message | `null` |
-| `displayedQuestion` | Currently displayed Q&A question | `null` |
-| `currentScene` | Active scene identifier | First scene |
-| `sceneImages` | Scene preview thumbnails | Auto-generated |
-| `sceneVisibility` | Scene visibility in switcher bar | All visible |
-| Scene audio `volume` | Per-track volume level | 100% |
-| Scene audio `fadeIn` | Audio fade-in duration (ms) | 0 (instant) |
-| Scene audio `fadeOut` | Audio fade-out duration (ms) | 0 (instant) |
+---
 
-## Troubleshooting
+### Layout Presets
 
-### Overlay not appearing on stage
-1. Verify the overlay is in the `activeOverlays` array (check the Overlays panel for an active indicator)
-2. Confirm the overlay is not positioned off-screen or behind another overlay
-3. For `featuredComment` or `displayedQuestion`, verify the state is not `null`
-4. Check if the stream is active -- some overlays only render on the stream output
-5. Refresh the Studio page and reactivate the overlay
+The `LayoutPresetsModal` provides pre-configured layout templates:
 
-### Multiple overlays overlapping
-1. Reposition overlays using their configuration modals to avoid overlap
-2. Deactivate overlays that are no longer needed
-3. Prioritize which overlays are most important and remove others
-4. Adjust overlay sizing or positioning to accommodate multiple simultaneous overlays
+- Quick-apply common layout combinations.
+- Save custom layouts as presets.
+- Share presets between rooms.
 
-### CTA not displaying
-1. Check that `activeCTA` is not `null`
-2. Verify the CTA was activated through the `CTAModal`, not just configured
-3. Ensure the CTA text and URL are properly filled in
-4. Try deactivating and reactivating the CTA
+---
 
-### Scene switch not working
-1. Verify you are in **Live Stream** session mode (scenes are Live Stream-specific)
-2. Check the `LayoutSwitcherBar` for available scenes
-3. Ensure the target scene is not hidden (`sceneVisibility`)
-4. Verify the target scene has a valid layout configured
-5. Try clicking the scene button again; there may be a brief processing delay
+### Custom Layout Builder
 
-### Scene audio not fading properly
-1. Check the `fadeIn` and `fadeOut` values for the audio tracks in the scene
-2. Values of 0 mean instant transitions (no fade)
-3. Ensure the audio tracks have valid `audioTrackId` references
-4. Verify the audio source is active and producing sound
-5. Test with longer fade durations (e.g., 2000ms) to observe the effect more clearly
+The `CustomLayoutBuilder` and `DynamicGridEditor` components enable freeform layout creation:
 
-### LayoutCanvasEditor not responding
-1. Ensure you are in Live Stream mode (LayoutCanvasEditor replaces VideoCanvas only in live mode)
-2. Check for browser performance issues -- the canvas editor is resource-intensive
-3. Try reducing the number of items on the stage
-4. Refresh the page and re-enter the scene editor
+- Drag and resize video tiles to custom positions.
+- Create asymmetric layouts.
+- Save custom layouts for reuse.
 
-### StagePanel shows no available items
-1. Verify participants have joined the session with camera/microphone active
-2. Check if media sources (cameras, screen shares) are available
-3. The `addAvailableItem` function must register items before they appear
-4. Refresh the StagePanel or the Studio page
+---
 
-## FAQ
+## Scene Audio
 
-**Q: Can I use overlays in Meeting and Webinar modes, or only Live Stream?**
-A: Overlays (TalkingPoint, CTA, FeaturedComment, QADisplay, StreamOverlay) are available across all session types. The Scenes system (LayoutCanvasEditor, LayoutSwitcherBar, StagePanel, scene audio) is specific to Live Stream mode.
+Each scene can have its own audio configuration:
 
-**Q: How many overlays can be active simultaneously?**
-A: There is no hard limit on the number of items in the `activeOverlays` array. However, having too many overlays active at once can clutter the stage and confuse viewers. It is recommended to keep only 2-3 overlays active at any time.
+| Property | Type | Description |
+|----------|------|-------------|
+| `audioTrackId` | string | ID of the audio track assigned to this scene |
+| `volume` | number | Volume level (0-100) |
+| `fadeIn` | number | Fade-in duration in milliseconds when scene becomes active |
+| `fadeOut` | number | Fade-out duration in milliseconds when scene transitions out |
 
-**Q: What is the difference between VideoCanvas and LayoutCanvasEditor?**
-A: `VideoCanvas` is used in Meeting and Webinar modes and provides a standard video grid layout. `LayoutCanvasEditor` is used in Live Stream mode and provides a flexible, drag-and-drop canvas where hosts can freely position and resize video feeds, graphics, and overlays anywhere on the stage.
+Scene audio allows different background music or audio beds for different layouts. When switching scenes, the audio fades out from the previous scene and fades in to the new scene's audio track, providing smooth professional transitions.
 
-**Q: Can I save and reuse scene layouts?**
-A: Scene layouts are saved within the session configuration. Global folders and elements can be reused across sessions, but full scene layout presets may require recreating the layout in each new session.
+---
 
-**Q: How does scene audio fading work during transitions?**
-A: When you switch from Scene A to Scene B, Scene A's audio fades out over its configured `fadeOut` duration, and Scene B's audio fades in over its configured `fadeIn` duration. This creates a smooth audio transition between scenes, preventing jarring audio cuts.
+### Scene Visibility
 
-**Q: Can attendees see which scene is active?**
-A: Attendees see the output of the active scene but do not see the scene switching interface, scene names, or the `LayoutSwitcherBar`. Scene management is host-only.
+The studio tracks `sceneVisibility` state to control which scene elements are visible:
 
-**Q: What items can be added to the stage?**
-A: The `StagePanel` supports adding participant video feeds, screen shares, media sources (cameras, capture cards), and activated elements (videos, presentations, etc.) to the stage.
+```
+sceneVisibility = {
+  overlays: true,       // Show/hide all overlays
+  chat: true,           // Show/hide chat overlay
+  captions: true,       // Show/hide captions overlay
+  branding: true,       // Show/hide branding elements
+  watermark: true       // Show/hide watermark
+}
+```
 
-**Q: Can I use overlays during scene transitions?**
-A: Yes. Overlays persist across scene transitions. Active overlays remain visible regardless of which scene is currently active, as they are layered on top of the scene content.
+### Current Scene
 
-## Known Limitations
+The `currentScene` state tracks the active layout configuration:
 
-- The Scenes system (LayoutCanvasEditor, scene switching, scene audio) is only available in Live Stream session mode
-- Only one CTA (`activeCTA`) can be active at a time; there is no CTA queue or rotation
-- Only one featured comment (`featuredComment`) can be displayed at a time
-- Only one Q&A question (`displayedQuestion`) can be shown on the overlay at a time
-- Scene layout presets cannot be exported or shared between sessions as templates
-- The `LayoutCanvasEditor` canvas is resource-intensive and may impact performance on lower-end devices
-- Scene audio fade configuration applies to all listeners; per-viewer audio preferences are not supported
-- `sceneImages` (preview thumbnails) may not update in real-time and could show stale previews
-- Overlay positioning is fixed per configuration and does not dynamically adapt to different viewer screen sizes
-- The `activeOverlays` array does not have built-in z-index management; overlay layering depends on array order
-- Scene switching is instant in terms of visual transition; there are no built-in visual transitions (e.g., dissolve, wipe) between scenes -- only audio fading is supported
+```
+currentScene = {
+  layout: 'dual-horizontal',
+  background: '#001233',
+  backgroundImage: 'url(...)',
+  overlays: ['talking_point', 'cta'],
+  audioTrackId: 'track_123',
+  volume: 80,
+  fadeIn: 500,
+  fadeOut: 300
+}
+```
 
-## Plan Requirements
+### Scene Images
 
-| Feature | Basic Plan | Business Plan |
-|---------|-----------|---------------|
-| TalkingPointOverlay | Yes | Yes |
-| CTAOverlay | Yes | Yes |
-| FeaturedCommentOverlay | Yes | Yes |
-| QADisplayOverlay | Yes | Yes |
-| StreamOverlayRenderer (custom overlays) | Limited | Full |
-| OverlayManager (multiple simultaneous) | Yes | Yes |
-| Scenes system (Live Stream mode) | No | Yes |
-| LayoutCanvasEditor | No | Yes |
-| LayoutSwitcherBar | No | Yes |
-| StagePanel management | No | Yes |
-| Scene audio configuration (fade in/out) | No | Yes |
-| Number of scenes per session | N/A | Multiple (plan-dependent) |
+The `sceneImages` object maps scene IDs to background images:
 
-## Related Documents
+```
+sceneImages = {
+  scene_1: 'https://...background1.jpg',
+  scene_2: 'https://...background2.jpg',
+  default: 'https://...default.jpg'
+}
+```
 
-- [00-index.md](00-index.md) -- Knowledge base index
-- [10-studio-elements.md](10-studio-elements.md) -- Studio elements (activated on stage alongside overlays)
-- [12-studio-polls-qa.md](12-studio-polls-qa.md) -- Polls and Q&A (QADisplayOverlay details)
-- [13-studio-chat.md](13-studio-chat.md) -- Chat system (FeaturedCommentOverlay source)
-- [15-studio-streaming.md](15-studio-streaming.md) -- Streaming (overlays appear on streams)
-- [16-studio-recording.md](16-studio-recording.md) -- Recording (overlays captured in recordings)
+---
+
+## Layout Navigation
+
+### LayoutSwitcherBar
+
+The `LayoutSwitcherBar` component provides quick layout switching via a horizontal bar of layout thumbnails:
+
+- Displays all available layouts as small preview icons.
+- Current layout is highlighted.
+- Click a layout to switch immediately.
+- Supports keyboard shortcuts (Shift+1-9).
+
+### LayoutNavigationBar
+
+The `LayoutNavigationBar` provides an alternative navigation interface for scene/layout management:
+
+- Tabbed interface for organizing layouts by category.
+- Drag-to-reorder layout order.
+- Quick-access to layout settings.
+
+### Layouts Sidebar
+
+The `LayoutsSidebar` provides a full sidebar view for detailed layout management:
+
+- All available layouts with previews.
+- Layout settings and customization.
+- Scene transition configuration.
+
+---
+
+## AI Overlay Assistant
+
+The `AIOverlayAssistant` component in the streaming directory provides AI-powered overlay suggestions:
+
+- Analyzes session context (topic, audience, engagement).
+- Suggests appropriate overlays to display.
+- Recommends overlay timing and placement.
+- Connected to the `aiOverlayService` for intelligent overlay management.
+
+---
+
+## Common Troubleshooting
+
+### Q: My overlay is not visible on the stage.
+**A:** Ensure the element is activated (purple highlight in the Elements panel). Check that the session is in live/preview mode. Verify the overlay's z-index is not behind other elements. For Rally overlays, confirm `is_visible` is set to true in the OverlayManager.
+
+### Q: I cannot drag Rally overlays to reposition them.
+**A:** Rally overlays are draggable by clicking and dragging anywhere on the overlay widget (not just the header). Ensure you are clicking on the overlay itself, not the settings or close buttons. If the overlay seems stuck, try refreshing the page -- the position persists in the database.
+
+### Q: The featured comment overlay is not showing.
+**A:** The featured comment overlay requires: (1) a message to be featured via the star icon in chat, (2) the `FeaturedCommentOverlay` component to be rendered in the stage layout, (3) the `onFeatureComment` callback to be properly connected. Check the chat panel to confirm the star icon is highlighted (yellow fill) for the featured message.
+
+### Q: Scene transitions are not smooth.
+**A:** Scene audio transitions use `fadeIn` and `fadeOut` durations. If these are set to 0, transitions are instant (no fade). Set `fadeIn` and `fadeOut` to 300-500ms for smooth transitions. For video layout transitions, the system uses Framer Motion with default animation settings.
+
+### Q: How do I change the layout during a live session?
+**A:** Use the Layout Switcher bar (below the stage) to click a different layout. Alternatively, use keyboard shortcuts Shift+1 through Shift+9. The layout changes immediately and is visible to all viewers. If Auto Scene Switching is enabled, the layout may change automatically based on participant count.
+
+### Q: I want different backgrounds for different scenes.
+**A:** Use the `sceneImages` configuration to assign background images to specific scenes. Access this through the Advanced Scene Manager or Layout Settings panel. Each scene can have its own background image URL.
+
+### Q: How do I add background music to a scene?
+**A:** Configure scene audio by setting the `audioTrackId`, `volume`, `fadeIn`, and `fadeOut` properties for each scene. Audio tracks can be uploaded through the Asset Library or Elements panel (audio element type). Each scene independently controls which audio plays and at what volume.
+
+### Q: Overlays are overlapping and hard to see.
+**A:** Adjust overlay z-indexes through the Scene Layer Editor. Higher z-index values appear on top. For Rally overlays, use the `z_index` property in the OverlayCustomizationModal. Consider reducing the number of simultaneous overlays for a cleaner presentation.
+
+### Q: The Talking Point overlay covers other content.
+**A:** The Talking Point overlay renders as a full-width lower-third at z-index 50. It intentionally covers the bottom of the stage. Use the `auto_hide_ms` setting to automatically dismiss it after a set duration. Alternatively, manually deactivate the talking point element when no longer needed.
+
+### Q: How do I customize Rally overlay colors and fonts?
+**A:** Click the purple gear icon on any Rally overlay to open the Overlay Customization Modal. From there, adjust font family, font size, text colors, accent color, background color/opacity, border settings, corner radius, and shadow intensity. Changes persist to the database immediately.
+
+---
+
+## API Reference
+
+### UserOverlay Entity (Rally Overlays)
+
+```
+{
+  id: string,
+  room_id: string,
+  template_id: string,          // Overlay type identifier
+  custom_config: {
+    name: string,
+    type: string                // Matches template_id
+  },
+  position: {
+    x: number,                  // Left offset in pixels
+    y: number,                  // Top offset in pixels
+    width: number,              // Widget width
+    height: number              // Widget height
+  },
+  styling: {
+    font_family: string,
+    font_size: number,
+    font_weight: string,
+    text_color: string,
+    secondary_text_color: string,
+    accent_color: string,
+    background_color: string,
+    background_opacity: number,
+    border_enabled: boolean,
+    border_width: number,
+    border_color: string,
+    border_opacity: number,
+    border_radius: number,
+    shadow_enabled: boolean,
+    shadow_intensity: string    // 'sm' | 'md' | 'lg' | 'xl'
+  },
+  is_visible: boolean,
+  z_index: number
+}
+```
+
+### Scene State
+
+```
+currentScene = {
+  layout: string,               // Layout name
+  background: string,           // Background color
+  backgroundImage: string,      // Background image URL
+  overlays: string[],           // Active overlay type list
+  audioTrackId: string,         // Scene audio track ID
+  volume: number,               // 0-100
+  fadeIn: number,               // Fade-in ms
+  fadeOut: number               // Fade-out ms
+}
+```
+
+### Layout Options
+
+```
+layouts = [
+  'solo', 'dual-horizontal', 'cropped', 'three-person',
+  'news', 'screen', 'demo-screen', 'pip', 'cinema', 'spotlight'
+]
+```
+
+### Overlay Operations
+
+```
+// Feature a chat comment
+onFeatureComment(message)    // Pass message object to display
+onFeatureComment(null)       // Remove featured comment
+
+// Display Q&A question
+onDisplayQuestion(question)  // Shows QADisplayOverlay
+
+// Activate CTA
+activeElements.cta = element // Shows CTA overlay
+
+// Toggle overlay visibility (Rally)
+UserOverlay.update(id, { is_visible: true/false })
+
+// Update overlay position (Rally)
+UserOverlay.update(id, { position: { x, y } })
+
+// Customize overlay styling (Rally)
+UserOverlay.update(id, { styling: { ... } })
+```
+
+---
+
+## Related Features
+
+- **Elements:** Elements activate as overlays on the stage. See `10-studio-elements.md`.
+- **Chat:** Featured comments and chat commands trigger overlays. See `13-studio-chat.md`.
+- **Polls and Q&A:** Poll and Q&A displays render as stage overlays. See `12-studio-polls-qa.md`.
+- **Streaming:** All overlays and scenes are encoded in the stream output. See `15-studio-streaming.md`.
+- **Recording:** Active overlays and scenes are captured in recordings. See `16-studio-recording.md`.

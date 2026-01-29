@@ -2,620 +2,698 @@
 
 ## Overview
 
-The R-Link Admin Portal (`/admin`) is the central management interface for all account operations. It contains 18 tabs organized into 5 sidebar groups, a top header with navigation and notifications, and the `DashboardTab` as the default home screen. The Admin page is implemented in `Admin.jsx` and uses the `AdminSidebar` component for navigation, `NotificationsPanel` for alerts, and renders one of 18 tab components based on the `activeTab` state.
-
-The active tab is determined by the `?tab=` URL query parameter (e.g., `/admin?tab=billing`). If no tab parameter is provided, the dashboard tab is shown by default.
+The R-Link Admin Dashboard is the central management interface for all platform features. It is organized into **18 tabs**, accessed via the `?tab=` URL parameter, and navigated through the **AdminSidebar** which groups tabs into 5 logical sections. The dashboard also includes a **NotificationsPanel** for real-time alerts and a **DashboardTab** as the default landing view. This document provides a comprehensive reference for all tabs, their components, props, access levels, plan requirements, sidebar organization, and data fetching architecture.
 
 ---
 
-## Admin Page Structure
+## Tab Access via URL Parameter
 
-### Layout
+All Admin Dashboard tabs are accessed by setting the `?tab=` URL parameter.
+
+### URL Format
 
 ```
-+-----------------------------------------------------------+
-| Top Header (h-14)                                          |
-| [<- Back to Dashboard]           [Notifications] [Avatar]  |
-+-------+---------------------------------------------------+
-|       |                                                   |
-| Side  |  Content Area (max-w-5xl, centered)               |
-| bar   |                                                   |
-| (w-64)|  [Active Tab Component]                           |
-|       |                                                   |
-|       |                                                   |
-+-------+---------------------------------------------------+
+https://app.r-link.com/admin?tab={tabId}
 ```
 
-### Top Header
+### Example URLs
 
-| Element | Position | Description |
-|---|---|---|
-| **Back to Dashboard** link | Left | Arrow-left icon + "Back to Dashboard" text. Links to the Landing page. |
-| **NotificationsPanel** | Right | Bell icon notification panel component |
-| **User Avatar** | Far right | Gradient circle (purple-to-green) with user's first initial. Shows `full_name` and `email`. |
+| Tab | URL |
+|-----|-----|
+| Dashboard | `?tab=dashboard` |
+| Account | `?tab=account` |
+| Rooms | `?tab=rooms` |
+| Schedule | `?tab=schedule` |
+| Recordings | `?tab=recordings` |
+| Clips | `?tab=clips` |
+| Brand Kit | `?tab=brand-kit` |
+| Team | `?tab=team` |
+| Roles | `?tab=roles` |
+| Templates | `?tab=templates` |
+| Billing | `?tab=billing` |
+| Integrations | `?tab=integrations` |
+| Settings | `?tab=settings` |
+| Support | `?tab=support` |
+| Notetaker | `?tab=notetaker` |
+| Leads | `?tab=leads` |
+| Event Landing | `?tab=event-landing` |
+| Elements | `?tab=elements` |
 
-### Background
+### URL Behavior
 
-The entire Admin page uses a dark navy background: `bg-[#001233]`.
-
----
-
-## AdminSidebar Structure
-
-The sidebar is 264px wide (`w-64`) with a fixed layout containing:
-
-### Sidebar Header
-
-- **Title**: "Admin Panel" (bold white text)
-- **Plan Badge**: Shows "Basic Plan" (gray) or "Business Plan" (purple-green gradient)
-
-### 5 Menu Groups
-
-The sidebar is organized into 5 groups separated by horizontal dividers (`border-t border-white/10`):
-
-#### Group 1: Core
-
-| Tab ID | Label | Icon | Business Only |
-|---|---|---|---|
-| `dashboard` | Dashboard | LayoutTemplate | No |
-| `account` | Account | User | No |
-| `team` | Team / Users | Users | No |
-
-#### Group 2: Creative Assets
-
-| Tab ID | Label | Icon | Business Only |
-|---|---|---|---|
-| `brand-kit` | Brand Kits | Palette | No |
-| `templates` | Room Templates | LayoutTemplate | No |
-| `elements` | Elements Library | Layers | No |
-
-#### Group 3: Content & Events
-
-| Tab ID | Label | Icon | Business Only |
-|---|---|---|---|
-| `rooms` | Rooms | Video | No |
-| `schedule` | Schedule | Calendar | No |
-| `recordings` | Recordings | Film | No |
-| `clips` | Clips | Scissors | No |
-| `event-landing` | Event Landing Pages | Globe | No |
-
-#### Group 4: Intelligence & Integrations
-
-| Tab ID | Label | Icon | Business Only |
-|---|---|---|---|
-| `leads` | Leads | Mail | No |
-| `notetaker` | AI Notetaker | Bot | No |
-| `integrations` | Integrations | Plug | No |
-
-#### Group 5: Administration
-
-| Tab ID | Label | Icon | Business Only |
-|---|---|---|---|
-| `billing` | Billing & Usage | CreditCard | No |
-| `settings` | Settings | Settings | No |
-| `support` | Support | HelpCircle | No |
-
-### Sidebar Footer (Basic Plan Only)
-
-When the account is on the Basic plan, the sidebar footer shows an upgrade card:
-- **Crown icon** with "Upgrade to Business" heading
-- Description: "Unlock team management, advanced branding, templates & more."
-- **Upgrade Now** button (purple-green gradient)
-
-### Tab Styling
-
-| State | Style |
-|---|---|
-| **Active** | Purple-green gradient background (`from-[#6a1fbf]/30 to-[#00c853]/30`), white text, white border |
-| **Hover** | White text, subtle white background (`bg-white/5`) |
-| **Locked** | Gray text, `cursor-not-allowed`, Lock icon |
-| **Business Feature** | Crown icon in green when unlocked on Business plan |
-
-**Note:** In the current sidebar configuration, no tabs are marked as `businessOnly: true`. All tabs are visible to all plans. Business-only features are enforced at the component level via permissions and plan checks.
+- If no `?tab=` parameter is provided, the dashboard defaults to the `dashboard` tab.
+- If an invalid `?tab=` value is provided, the dashboard falls back to the `dashboard` tab.
+- Tab changes update the URL parameter without a full page reload (client-side routing).
+- The URL is shareable; opening a link with a `?tab=` parameter navigates directly to that tab.
+- Tab access is subject to user role permissions; if a user does not have access to a tab, they are redirected to the dashboard.
 
 ---
 
-## All 18 Admin Tabs -- Complete Reference
+## All 18 Tabs: Complete Reference
 
-### 1. Dashboard (`dashboard`)
+### 1. DashboardTab
 
 | Property | Value |
-|---|---|
-| **Component** | `DashboardTab` |
-| **Props** | `account`, `rooms`, `onNavigate` (tab navigation callback), `plan` |
-| **Access** | Public (all roles) |
-| **Plan Requirement** | Both plans |
+|----------|-------|
+| Tab ID | `dashboard` |
+| Component | `DashboardTab` |
+| Props | `accountId`, `user` |
+| Access Level | All authenticated users |
+| Plan Requirement | All plans |
 
-**Description**: The home screen of the Admin portal. Displays:
+**Description:** The default landing page of the Admin Dashboard. Provides an at-a-glance overview of account activity, upcoming events, recent recordings, usage metrics, and quick actions.
 
-- **Welcome Header**: "Welcome back, {first_name}" with subtitle "Here's what's happening with your events"
-- **Quick Action Cards** (3-column grid):
-  - **Start** (purple): Navigate to Landing page to start a session
-  - **Schedule** (orange): Navigate to Schedule tab
-  - **Room Setup** (green): Navigate to Rooms tab
-- **Stats Grid** (4-column):
-  - Today's Sessions (blue)
-  - Upcoming Sessions (purple)
-  - Active Rooms (green)
-  - Total Recordings (orange)
-- **My Rooms** panel (Business plan, if rooms exist): Shows up to 4 room cards with name, slug URL (`rally.r-link.com/{slug}`), session/participant counts, Launch and Settings buttons
-- **Upcoming Sessions** panel: Lists next 5 scheduled sessions with type icon, title, date, time, invitee count, Details button
-- **Usage This Month** panel: Recording time (minutes), Storage used (GB), Active Rooms
-- **Recent Recordings** panel: Last 3 recordings with title and date
+**DashboardTab Detail:**
+- **Upcoming Events Widget**: Shows the next 3-5 scheduled events with name, date, and quick join/edit actions.
+- **Recent Recordings Widget**: Displays the latest recordings with thumbnail, title, duration, and view count.
+- **Usage Overview Widget**: Shows current usage against plan limits (rooms created, storage used, minutes consumed, team members).
+- **Quick Actions**: Shortcuts to common tasks (create room, schedule event, invite team member).
+- **Activity Feed**: Recent account activity (new registrations, recordings processed, team member actions).
+- **Plan Status Banner**: Displays current plan, status, and upgrade prompts if approaching limits.
 
-**Data Sources**: `ScheduledMeeting` (upcoming sessions), `Recording` (recent recordings and stats)
-
----
-
-### 2. Account (`account`)
+### 2. AccountTab
 
 | Property | Value |
-|---|---|
-| **Component** | `AccountTab` |
-| **Props** | `account`, `onSave` |
-| **Access** | Public (all roles) |
-| **Plan Requirement** | Both plans |
+|----------|-------|
+| Tab ID | `account` |
+| Component | `AccountTab` |
+| Props | `accountId` |
+| Access Level | Account owner, administrators |
+| Plan Requirement | All plans |
 
-**Description**: Organization profile editing. Two sections:
-- **Organization Details**: company_name, owner_name, owner_email, phone
-- **Regional Settings**: timezone (10 options), locale (7 languages)
+**Description:** Manages account-level information including company name, owner details, contact information, timezone, and locale. See the Account Management KB article for full detail.
 
-See [04-account-management.md](./04-account-management.md) for full details.
-
----
-
-### 3. Rooms (`rooms`)
+### 3. RoomsTab
 
 | Property | Value |
-|---|---|
-| **Component** | `RoomsTab` |
-| **Props** | `rooms`, `templates`, `brandKits`, `plan`, `onCreate`, `onUpdate`, `onDelete`, `onUpgrade` |
-| **Access** | Permission-gated |
-| **Plan Requirement** | Basic: 1 room. Business: 5 rooms. |
+|----------|-------|
+| Tab ID | `rooms` |
+| Component | `RoomsTab` |
+| Props | `accountId` |
+| Access Level | All authenticated users (create/edit restricted by role) |
+| Plan Requirement | All plans (room count limited by plan) |
 
-**Description**: Create, configure, and manage virtual rooms. Supports room CRUD operations, template application during creation, Brand Kit association. The `onUpgrade` callback navigates to the Billing tab when the room limit is reached.
+**Description:** Lists all rooms for the account. Supports creating new rooms, editing room configurations, deleting rooms, and launching live sessions. Rooms can be filtered by status (active, ended, scheduled) and searched by name.
 
-**Key Operations**:
-- `Room.create({ ...data, account_id })`: Create new room
-- `Room.update(id, data)`: Update room settings
-- `Room.delete(id)`: Delete a room
-
----
-
-### 4. Schedule (`schedule`)
+### 4. ScheduleTab
 
 | Property | Value |
-|---|---|
-| **Component** | `ScheduleTab` |
-| **Props** | `rooms` |
-| **Access** | Public (all roles) |
-| **Plan Requirement** | Both plans |
+|----------|-------|
+| Tab ID | `schedule` |
+| Component | `ScheduleTab` |
+| Props | `accountId` |
+| Access Level | All authenticated users (create/edit restricted by role) |
+| Plan Requirement | All plans |
 
-**Description**: Event calendar and scheduling interface. View and manage scheduled sessions. Receives the rooms list for room selection when scheduling.
+**Description:** Calendar-based view of all scheduled events and meetings. Supports creating new scheduled events, editing existing ones, and viewing registration counts. Integrates with the Event Landing system for webinar scheduling.
 
----
-
-### 5. Recordings (`recordings`)
-
-| Property | Value |
-|---|---|
-| **Component** | `RecordingsTab` |
-| **Props** | None |
-| **Access** | Permission-gated |
-| **Plan Requirement** | Both plans |
-
-**Description**: Browse, play, download, and manage session recordings. Storage is plan-limited (10 GB Basic, 50 GB Business).
-
----
-
-### 6. Clips (`clips`)
+### 5. RecordingsTab
 
 | Property | Value |
-|---|---|
-| **Component** | `ClipsTab` |
-| **Props** | None |
-| **Access** | Permission-gated |
-| **Plan Requirement** | Both plans |
+|----------|-------|
+| Tab ID | `recordings` |
+| Component | `RecordingsTab` |
+| Props | `accountId` |
+| Access Level | All authenticated users (delete restricted by role) |
+| Plan Requirement | All plans (storage limited by plan) |
 
-**Description**: Create and manage short video clips extracted from recordings. Clips can be shared via the SharedClip public page.
+**Description:** Lists all recordings for the account. Supports playback, download, sharing, clip creation, and deletion. Shows recording status (processing, ready, failed), duration, and view count. Integrates with the Replay page and Clips system.
 
----
-
-### 7. Brand Kit (`brand-kit`)
-
-| Property | Value |
-|---|---|
-| **Component** | `BrandKitTab` |
-| **Props** | `brandKits` (filtered by account/global/template), `onCreate`, `onUpdate`, `onDelete`, `onSetDefault`, `onSetGlobalDefault`, `plan`, `canCreate`, `canEdit`, `canDelete` |
-| **Access** | Permission-gated (`canAccessTab('brand-kit')` must return true) |
-| **Plan Requirement** | Basic: branded backgrounds. Business: Full Branding Suite. |
-
-**Description**: Visual branding management including colors, fonts, frame settings, lower thirds, and logos. Brand Kits are filtered to show:
-- Account-owned kits (`bk.account_id === account.id`)
-- Global defaults (`bk.is_global_default`)
-- Template kits (`bk.is_template`)
-
-**Permission-gated operations**:
-- Create: requires `hasPermission('brand_kits', 'create')`
-- Edit: requires `hasPermission('brand_kits', 'edit')`
-- Delete: requires `hasPermission('brand_kits', 'delete')`
-- Set Global Default: requires `isOwner`
-
----
-
-### 8. Team (`team`)
+### 6. ClipsTab
 
 | Property | Value |
-|---|---|
-| **Component** | `TeamTab` |
-| **Props** | `teamMembers`, `account`, `roles`, `onInvite`, `onUpdate`, `onRemove`, `canInvite`, `canEdit`, `canRemove` |
-| **Access** | Permission-gated (`canAccessTab('team')` must return true) |
-| **Plan Requirement** | Both plans (limited to `max_team_members`) |
+|----------|-------|
+| Tab ID | `clips` |
+| Component | `ClipsTab` |
+| Props | `accountId` |
+| Access Level | All authenticated users (create/share restricted by role) |
+| Plan Requirement | Pro and above |
 
-**Description**: Invite and manage team members, assign roles.
+**Description:** Manages repurposed clips extracted from recordings. Supports creating clips from recordings, editing clip metadata, sharing via SharedClip, viewing clip analytics, and deleting clips. Integrates with ClipAnalytics for engagement tracking.
 
-**Key Operations**:
-- Invite: `TeamMember.create({ ...data, account_id, user_email, status: 'invited', invited_at })` -- requires `hasPermission('team', 'invite')`
-- Update: `TeamMember.update(id, data)` -- requires `hasPermission('team', 'edit')`
-- Remove: `TeamMember.delete(id)` -- requires `hasPermission('team', 'remove')`
-
----
-
-### 9. Roles (`roles`)
+### 7. BrandKitTab
 
 | Property | Value |
-|---|---|
-| **Component** | `RolesTab` |
-| **Props** | `roles`, `account`, `onCreate`, `onUpdate`, `onDelete`, `onDuplicate` |
-| **Access** | **Owner-only** (`canAccessTab('roles')`) |
-| **Plan Requirement** | Both plans |
+|----------|-------|
+| Tab ID | `brand-kit` |
+| Component | `BrandKitTab` |
+| Props | `accountId` |
+| Access Level | Account owner, administrators |
+| Plan Requirement | All plans (multiple BrandKits on Pro and above) |
 
-**Description**: Define and manage permission roles. Built-in roles: `admin` (all permissions), `host` (limited). Custom roles can be created, edited, deleted, and duplicated.
+**Description:** Manages visual branding for the account. Supports creating and editing BrandKits (colors, fonts, logos), setting a default BrandKit, and previewing branding across rooms and landing pages. The default BrandKit is auto-created during account setup.
 
-**Access denied message**: "Only account owners can manage roles"
-
-**Key Operations**:
-- Create: `Role.create({ ...data, account_id })`
-- Update: `Role.update(id, data)`
-- Delete: `Role.delete(id)`
-- Duplicate: `Role.create(data)` (creates a copy)
-
----
-
-### 10. Templates (`templates`)
+### 8. TeamTab
 
 | Property | Value |
-|---|---|
-| **Component** | `TemplatesTab` |
-| **Props** | `templates`, `brandKits`, `onCreate`, `onUpdate`, `onDelete`, `onSetDefault` |
-| **Access** | Permission-gated |
-| **Plan Requirement** | Both plans |
+|----------|-------|
+| Tab ID | `team` |
+| Component | `TeamTab` |
+| Props | `accountId` |
+| Access Level | Account owner, administrators |
+| Plan Requirement | All plans (team size limited by plan) |
 
-**Description**: Create and manage reusable room templates with preset settings.
+**Description:** Manages team members for the account. Supports inviting new members, editing member roles, removing members, and viewing member activity. Respects `allowed_email_domains` from security settings. Integrates with the Roles system for permission management.
 
-See [25-templates.md](./25-templates.md) for full details.
-
-**Key Operations**:
-- Create: `RoomTemplate.create({ ...data, account_id })`
-- Update: `RoomTemplate.update(id, data)`
-- Delete: `RoomTemplate.delete(id)`
-- Set Default: Updates ALL templates -- `is_default: true` on selected, `is_default: false` on all others
-
----
-
-### 11. Billing (`billing`)
+### 9. RolesTab
 
 | Property | Value |
-|---|---|
-| **Component** | `BillingTab` |
-| **Props** | `account`, `plan`, `onUpgrade`, `onManageBilling`, `canManage` |
-| **Access** | **Owner-only** (`canAccessTab('billing')`) |
-| **Plan Requirement** | Both plans |
+|----------|-------|
+| Tab ID | `roles` |
+| Component | `RolesTab` |
+| Props | `accountId` |
+| Access Level | Account owner, administrators |
+| Plan Requirement | Pro and above |
 
-**Description**: Subscription management, payment methods, invoices, and usage tracking.
+**Description:** Manages custom roles and permissions for the account. Supports creating roles with granular permissions, editing existing roles, assigning roles to team members, and deleting custom roles. Default roles (owner, admin, member) cannot be deleted.
 
-**Access denied message**: "Only account owners can view billing"
-
-`canManage` is `true` when `isOwner || hasPermission('billing', 'manage')`.
-
----
-
-### 12. Integrations (`integrations`)
+### 10. TemplatesTab
 
 | Property | Value |
-|---|---|
-| **Component** | `IntegrationsTab` |
-| **Props** | `integrations`, `onConnect`, `onDisconnect`, `onSave`, `onConfigureWebhook` |
-| **Access** | Permission-gated |
-| **Plan Requirement** | Calendar integrations on both plans; all others Business only. |
+|----------|-------|
+| Tab ID | `templates` |
+| Component | `TemplatesTab` |
+| Props | `accountId` |
+| Access Level | All authenticated users (create/edit restricted by role) |
+| Plan Requirement | All plans (AI assistant on Pro and above) |
 
-**Description**: Connect and configure 21 third-party services across 8 categories (Email, Payment, Cloud Storage, SSO, CRM, Calendar, SMS, Live Streaming) plus Webhooks and API Keys.
+**Description:** Manages room templates. Supports CRUD operations, setting default template, duplicating templates, and AI-assisted template creation. See the Templates KB article for full detail.
 
-**Key Operations**:
-- Connect: `Integration.create({ ...data, account_id })`
-- Update: `Integration.update(id, data)` (for saving configuration)
-- Disconnect: `Integration.update(id, { status: 'disconnected' })`
-
----
-
-### 13. Settings (`settings`)
+### 11. BillingTab
 
 | Property | Value |
-|---|---|
-| **Component** | `SettingsTab` |
-| **Props** | `account`, `plan`, `integrations`, `onSave`, `onSaveIntegrations` |
-| **Access** | Permission-gated |
-| **Plan Requirement** | Both plans (domain restriction is Business only) |
+|----------|-------|
+| Tab ID | `billing` |
+| Component | `BillingTab` |
+| Props | `accountId` |
+| Access Level | Account owner only |
+| Plan Requirement | All plans |
 
-**Description**: Security settings, notification preferences, active session management, and streaming integration quick access.
+**Description:** Manages subscription and billing. Shows current plan, plan status, billing cycle, payment method, invoice history, and next renewal date. Supports plan upgrades/downgrades, payment method updates, and invoice downloads.
 
-See [04-account-management.md](./04-account-management.md) for full details.
-
-**Saves**: `security_settings` and `notification_preferences` objects on the Account entity.
-
----
-
-### 14. Support (`support`)
+### 12. IntegrationsTab
 
 | Property | Value |
-|---|---|
-| **Component** | `SupportTab` |
-| **Props** | `plan` |
-| **Access** | Public (all roles) |
-| **Plan Requirement** | Both plans |
+|----------|-------|
+| Tab ID | `integrations` |
+| Component | `IntegrationsTab` |
+| Props | `accountId` |
+| Access Level | Account owner, administrators |
+| Plan Requirement | Pro and above |
 
-**Description**: Help resources, documentation links, and contact support options. Content may vary based on the user's plan (Business customers may have priority support access).
+**Description:** Manages third-party integrations. Supports connecting CRM platforms, calendar integrations, streaming services (RTMP), and other external tools. Each integration has its own authentication flow and configuration. See also the CRM integration section in the Leads and Analytics KB article.
 
----
-
-### 15. Notetaker (`notetaker`)
-
-| Property | Value |
-|---|---|
-| **Component** | `NotetakerTab` |
-| **Props** | `settings` (NotetakerSettings entity), `onSave`, `templates` |
-| **Access** | Public (all roles) |
-| **Plan Requirement** | Business plan for AI Notetaker functionality |
-
-**Description**: Configure AI notetaker settings for automatic transcription, summarization, and action item extraction during sessions. Receives the `templates` list for note template selection.
-
-**Key Operations**:
-- Save: If `NotetakerSettings` exists, updates via `NotetakerSettings.update(id, data)`. Otherwise, creates via `NotetakerSettings.create({ ...data, account_id })`.
-
----
-
-### 16. Leads (`leads`)
+### 13. SettingsTab
 
 | Property | Value |
-|---|---|
-| **Component** | `LeadsTab` |
-| **Props** | `accountId` |
-| **Access** | Permission-gated |
-| **Plan Requirement** | Both plans (CRM integration Business only) |
+|----------|-------|
+| Tab ID | `settings` |
+| Component | `SettingsTab` |
+| Props | `accountId` |
+| Access Level | Account owner, administrators |
+| Plan Requirement | All plans (some features plan-restricted) |
 
-**Description**: View, filter, and export lead capture data from sessions.
+**Description:** Manages account-wide settings including security (2FA, domain restrictions, session timeout), active sessions, notification preferences, and streaming integrations. See the Account Management KB article for full detail.
 
-See [28-leads-and-analytics.md](./28-leads-and-analytics.md) for full details.
-
----
-
-### 17. Event Landing (`event-landing`)
+### 14. SupportTab
 
 | Property | Value |
-|---|---|
-| **Component** | `EventLandingTab` |
-| **Props** | None |
-| **Access** | Permission-gated |
-| **Plan Requirement** | Both plans |
+|----------|-------|
+| Tab ID | `support` |
+| Component | `SupportTab` |
+| Props | `accountId` |
+| Access Level | All authenticated users |
+| Plan Requirement | All plans (priority support on Enterprise) |
 
-**Description**: Create and manage event landing pages with 5 layout types, registration forms, countdown timers, and replay embedding.
+**Description:** Access to help resources, documentation, and support channels. Supports submitting support tickets, browsing help articles, viewing system status, and accessing live chat (plan-dependent). Enterprise plans receive priority support with dedicated channels.
 
-See [29-event-landing-pages.md](./29-event-landing-pages.md) for full details.
-
----
-
-### 18. Elements (`elements`)
+### 15. NotetakerTab
 
 | Property | Value |
-|---|---|
-| **Component** | `ElementsTab` |
-| **Props** | `folders`, `elements`, `onCreateFolder`, `onEditFolder`, `onDeleteFolder`, `onCreateElement`, `onEditElement`, `onDuplicateElement`, `onDeleteElement`, `onMoveElement`, `onToggleFavorite`, `onReorderElements`, `currentRoomId` |
-| **Access** | Permission-gated |
-| **Plan Requirement** | Basic: Core Media only. Business: All element types. |
+|----------|-------|
+| Tab ID | `notetaker` |
+| Component | `NotetakerTab` |
+| Props | `accountId` |
+| Access Level | All authenticated users |
+| Plan Requirement | Pro and above |
 
-**Description**: Manage interactive overlays and media elements used during sessions. Elements include Links, Banners, Polls, Website Overlays, Prompter, and Core Media (Slides, Video, Audio).
+**Description:** AI-powered meeting notes and action items. Automatically generates meeting summaries, key takeaways, action items, and follow-up tasks from recorded sessions. Integrates with the Recordings and Transcript systems. Notes can be exported and shared.
 
-**Key Operations**:
-- Create folder: `ElementFolder.create(data)`
-- Edit folder: `ElementFolder.update(id, data)`
-- Delete folder: `ElementFolder.delete(id)`
-- Create element: `Element.create(data)`
-- Edit element: `Element.update(id, data)`
-- Duplicate element: `Element.create({ ...data, id: undefined, name: "{name} (Copy)" })`
-- Delete element: `Element.delete(id)`
-- Move element: `Element.update(id, { folder_id })`
-- Toggle favorite: `Element.update(id, { is_favorite: !isFavorite })`
-- Reorder: `Promise.all(elements.map(el => Element.update(el.id, { order: el.order })))`
+### 16. LeadsTab
+
+| Property | Value |
+|----------|-------|
+| Tab ID | `leads` |
+| Component | `LeadsTab` |
+| Props | `accountId` |
+| Access Level | Account owner, administrators, sales roles |
+| Plan Requirement | Pro and above |
+
+**Description:** Centralized lead management with capture, scoring, tagging, and export. See the Leads and Analytics KB article for full detail.
+
+### 17. EventLandingTab
+
+| Property | Value |
+|----------|-------|
+| Tab ID | `event-landing` |
+| Component | `EventLandingTab` |
+| Props | `accountId` |
+| Access Level | All authenticated users (create/edit restricted by role) |
+| Plan Requirement | All plans (advanced layouts on Pro and above) |
+
+**Description:** Creates and manages event landing pages with 5 layout types, registration forms, and branding. See the Event Landing Pages KB article for full detail.
+
+### 18. ElementsTab
+
+| Property | Value |
+|----------|-------|
+| Tab ID | `elements` |
+| Component | `ElementsTab` |
+| Props | `accountId` |
+| Access Level | All authenticated users (create/edit restricted by role) |
+| Plan Requirement | All plans |
+
+**Description:** Manages reusable room elements including polls, banners, CTAs, overlays, and other interactive components that can be added to rooms during live sessions. Elements are stored at the account level and can be reused across multiple rooms.
 
 ---
 
-## Tab Access Control Summary
+## AdminSidebar
 
-### Public Tabs (All Authenticated Users)
+The AdminSidebar is the primary navigation component for the Admin Dashboard. It organizes all 18 tabs into 5 logical groups.
 
-| Tab | Slug | Additional Notes |
-|---|---|---|
-| Dashboard | `dashboard` | Default tab on Admin load |
-| Account | `account` | Profile editing for all users |
-| Schedule | `schedule` | Calendar visible to all |
-| Support | `support` | Help always accessible |
-| Notetaker | `notetaker` | Settings visible to all (feature requires Business) |
+### Sidebar Group Structure
 
-### Owner-Only Tabs
+#### Group 1: Overview
 
-| Tab | Slug | Denied Message |
-|---|---|---|
-| Billing | `billing` | "Only account owners can view billing" |
-| Roles | `roles` | "Only account owners can manage roles" |
+| Tab ID | Label | Icon |
+|--------|-------|------|
+| `dashboard` | Dashboard | LayoutDashboard |
+| `account` | Account | Building |
+| `schedule` | Schedule | Calendar |
 
-### Permission-Gated Tabs
+**Purpose:** Top-level account information and scheduling overview.
 
-| Tab | Slug | Permission Check |
-|---|---|---|
-| Rooms | `rooms` | `canAccessTab('rooms')` |
-| Recordings | `recordings` | `canAccessTab('recordings')` |
-| Clips | `clips` | `canAccessTab('clips')` |
-| Brand Kit | `brand-kit` | `canAccessTab('brand-kit')` |
-| Team | `team` | `canAccessTab('team')` |
-| Templates | `templates` | `canAccessTab('templates')` |
-| Integrations | `integrations` | `canAccessTab('integrations')` |
-| Settings | `settings` | `canAccessTab('settings')` |
-| Leads | `leads` | `canAccessTab('leads')` |
-| Event Landing | `event-landing` | `canAccessTab('event-landing')` |
-| Elements | `elements` | `canAccessTab('elements')` |
+#### Group 2: Content
 
-Permission-gated tabs show "Access denied" (gray text, centered) when the user's role does not grant access.
+| Tab ID | Label | Icon |
+|--------|-------|------|
+| `rooms` | Rooms | Video |
+| `recordings` | Recordings | Film |
+| `clips` | Clips | Scissors |
+| `elements` | Elements | Puzzle |
+| `templates` | Templates | LayoutTemplate |
+
+**Purpose:** All content creation and management tools.
+
+#### Group 3: Marketing
+
+| Tab ID | Label | Icon |
+|--------|-------|------|
+| `event-landing` | Event Landing | Globe |
+| `leads` | Leads | Users |
+| `brand-kit` | Brand Kit | Palette |
+
+**Purpose:** Marketing, branding, and lead management tools.
+
+#### Group 4: Organization
+
+| Tab ID | Label | Icon |
+|--------|-------|------|
+| `team` | Team | UserPlus |
+| `roles` | Roles | Shield |
+| `notetaker` | Notetaker | FileText |
+| `integrations` | Integrations | Plug |
+
+**Purpose:** Team management, permissions, AI tools, and external integrations.
+
+#### Group 5: System
+
+| Tab ID | Label | Icon |
+|--------|-------|------|
+| `billing` | Billing | CreditCard |
+| `settings` | Settings | Settings |
+| `support` | Support | HelpCircle |
+
+**Purpose:** Account administration, billing, and support.
+
+### Sidebar Behavior
+
+- The sidebar is always visible on desktop viewports (left-side panel).
+- On mobile viewports, the sidebar collapses into a hamburger menu.
+- The currently active tab is highlighted in the sidebar.
+- Clicking a tab in the sidebar updates the `?tab=` URL parameter and renders the corresponding component.
+- Tabs that the user does not have permission to access are either hidden or shown as disabled (depending on the access restriction type).
+- Plan-restricted tabs show a lock icon or "Upgrade" badge for users on plans that do not include the feature.
+
+### Sidebar Visual Indicators
+
+| Indicator | Meaning |
+|-----------|---------|
+| Active highlight | Currently selected tab |
+| Lock icon | Feature requires a plan upgrade |
+| Badge/count | Number of pending items (e.g., pending registrations, unread notifications) |
+| Disabled/grayed | User's role does not have permission to access this tab |
 
 ---
 
 ## NotificationsPanel
 
-The `NotificationsPanel` component is displayed in the Admin header (top right, before the user avatar). It provides:
+The NotificationsPanel provides real-time notifications within the Admin Dashboard.
 
-- **Bell icon** button to toggle the notifications panel
-- In-app notifications about account activity (upcoming events, recording completion, usage warnings, etc.)
-- Notification management (read/dismiss)
+### Access
+
+- The NotificationsPanel is accessible via a bell icon in the dashboard header.
+- Clicking the bell opens a dropdown or slide-out panel with notifications.
+- An unread count badge appears on the bell icon when there are new notifications.
+
+### Notification Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| Event reminders | Upcoming event notifications | "Your webinar starts in 30 minutes" |
+| Recording ready | Recording processing complete | "Recording 'Q4 Demo' is ready to view" |
+| Registration alert | New registration received | "New registration for 'Product Launch'" |
+| Team activity | Team member actions | "Jane Doe joined your team" |
+| Usage warning | Approaching plan limits | "You've used 90% of your storage" |
+| Payment alert | Billing notifications | "Payment due in 3 days" |
+| System announcement | Platform updates and maintenance | "Scheduled maintenance on Jan 30" |
+
+### Notification Behavior
+
+- Notifications are loaded on dashboard open and updated in real time.
+- Each notification has a read/unread status.
+- Notifications can be marked as read individually or all at once ("Mark all as read").
+- Clicking a notification navigates to the relevant tab or page.
+- Notifications follow the `notification_frequency` setting from the account's notification preferences for email delivery. In-app notifications always appear in real time.
+- Old notifications are archived after a retention period (typically 30 days).
+
+### Common Customer Questions About Notifications
+
+**Q: I am not seeing any notifications in the panel.**
+A: Check that:
+1. You are logged in and on the correct account.
+2. Your browser supports notifications (no ad blockers interfering).
+3. Try refreshing the page.
+
+**Q: Can I turn off in-app notifications?**
+A: In-app notifications cannot be fully disabled as they include critical information (payment alerts, security notifications). You can dismiss individual notifications. Email notifications can be configured in the Settings tab.
+
+---
+
+## DashboardTab Detail
+
+The DashboardTab (`?tab=dashboard`) is the default view and serves as the command center for the account.
+
+### Widget Layout
+
+```
++-------------------------------------------------------+
+|  Plan Status Banner                                    |
++---------------------------+---------------------------+
+|  Upcoming Events          |  Quick Actions             |
+|  - Event 1 (date, time)  |  [Create Room]             |
+|  - Event 2 (date, time)  |  [Schedule Event]          |
+|  - Event 3 (date, time)  |  [Invite Team Member]      |
++---------------------------+---------------------------+
+|  Usage Overview                                        |
+|  Rooms: 5/10 | Storage: 2.1GB/5GB | Minutes: 120/500  |
++-------------------------------------------------------+
+|  Recent Recordings        |  Activity Feed             |
+|  - Recording 1 (thumb)   |  - "New registration..."   |
+|  - Recording 2 (thumb)   |  - "Recording ready..."    |
+|  - Recording 3 (thumb)   |  - "Team member joined..." |
++---------------------------+---------------------------+
+```
+
+### Widget Details
+
+#### Plan Status Banner
+
+| Field | Description |
+|-------|-------------|
+| Plan name | Current plan (basic, pro, enterprise) |
+| Plan status | Active, trialing, past_due, canceled |
+| Upgrade CTA | Shown when on basic or approaching limits |
+| Trial countdown | Days remaining in trial (if trialing) |
+
+**Behavior:**
+- Always visible at the top of the DashboardTab.
+- Color-coded: green for active, yellow for trialing, red for past_due/canceled.
+- Clicking the upgrade CTA navigates to `?tab=billing`.
+
+#### Upcoming Events Widget
+
+- Fetches the next 3-5 scheduled events from the ScheduledMeeting entity.
+- Each event shows name, date/time, registration count, and quick actions (edit, join, view landing page).
+- If no events are scheduled, shows "No upcoming events" with a CTA to schedule one.
+
+#### Recent Recordings Widget
+
+- Fetches the latest 3-5 recordings from the Recording entity.
+- Each recording shows a thumbnail, title, duration, view count, and quick actions (play, share, create clip).
+- If no recordings exist, shows "No recordings yet" with a CTA to create a room.
+
+#### Usage Overview Widget
+
+- Displays current usage against plan limits.
+- Metrics include: rooms created, storage used, minutes consumed, team members.
+- Uses progress bars or circular gauges for visual representation.
+- When usage exceeds 80%, the metric turns yellow. At 95%, it turns red.
+- Clicking a metric navigates to the relevant tab (rooms, recordings, team).
+
+#### Quick Actions
+
+- Shortcuts to the most common tasks.
+- Actions: Create Room, Schedule Event, Invite Team Member.
+- Each action either navigates to the relevant tab or opens a creation dialog.
+
+#### Activity Feed
+
+- Shows recent account activity in reverse chronological order.
+- Activity types: registrations, recordings processed, team changes, billing events.
+- Each activity is clickable and navigates to the relevant context.
+- Limited to the most recent 10-20 activities.
 
 ---
 
 ## Data Fetching Architecture
 
-The Admin page fetches all primary data at the top level and passes it down to tab components as props. This ensures:
-- Consistent data across all tabs
-- Efficient caching via React Query
-- Automatic cache invalidation after mutations
+The Admin Dashboard uses a consistent data fetching pattern across all tabs.
 
-### Queries Executed at Admin Level
+### Fetching Pattern
 
-| Query Key | Entity | Filter | Description |
-|---|---|---|---|
-| `currentUser` | `auth.me()` | None | Current authenticated user |
-| `accounts` | `Account.list()` | None | All accounts (uses first one) |
-| `brandKits` | `BrandKit.list()` | None (RLS filters) | Brand kits for the account |
-| `teamMembers` | `TeamMember.filter()` | `{ account_id }` | Team members |
-| `templates` | `RoomTemplate.filter()` | `{ account_id }` | Room templates |
-| `rooms` | `Room.filter()` | `{ account_id }` | Rooms (deduplicated by ID) |
-| `integrations` | `Integration.filter()` | `{ account_id }` | Connected integrations |
-| `elementFolders` | `ElementFolder.list()` | None | Element folders |
-| `elements` | `Element.list()` | None | All elements |
-| `notetakerSettings` | `NotetakerSettings.filter()` | `{ account_id }` | AI notetaker config |
-| `roles` | `Role.filter()` | `{ account_id }` | Permission roles |
-
-### Room Deduplication
-
-Rooms are deduplicated after fetching to prevent duplicate entries:
 ```
-const rooms = roomsRaw.filter(room => {
-  if (seen.has(room.id)) return false;
-  seen.add(room.id);
-  return true;
-});
+1. Tab component mounts (user navigates to ?tab={tabId}).
+2. Component receives accountId as a prop.
+3. Component calls the relevant entity API(s) filtered by account_id.
+4. Data is loaded into component state.
+5. UI renders with the fetched data.
+6. User interactions trigger mutations (create, update, delete).
+7. After mutations, data is re-fetched or optimistically updated.
 ```
+
+### Key Architecture Principles
+
+| Principle | Description |
+|-----------|-------------|
+| Account scoping | All data fetches are scoped to the `accountId` prop. Users only see data from their own account. |
+| Lazy loading | Tab data is fetched only when the tab is activated (not on initial dashboard load). |
+| Prop drilling | `accountId` is passed from the dashboard root to all tab components as a prop. |
+| Entity-based | Each tab fetches from one or more base44 entities using standard CRUD operations. |
+| Real-time updates | Some components (chat, notifications) use WebSocket or polling for real-time data. |
+| Optimistic updates | UI updates immediately on user action; reverts if the API call fails. |
+| Error handling | Failed fetches display error messages with retry options. |
+
+### Data Dependencies Between Tabs
+
+| Tab | Primary Entity | Secondary Entities |
+|-----|---------------|-------------------|
+| DashboardTab | Account | ScheduledMeeting, Recording, Usage |
+| AccountTab | Account | -- |
+| RoomsTab | Room | Template, BrandKit |
+| ScheduleTab | ScheduledMeeting | Room, WebinarRegistration |
+| RecordingsTab | Recording | MeetingTranscript, Room |
+| ClipsTab | RepurposedClip | Recording, SharedClip, ClipAnalytics |
+| BrandKitTab | BrandKit | -- |
+| TeamTab | TeamMember | Role, Account (security settings) |
+| RolesTab | Role | -- |
+| TemplatesTab | RoomTemplate | BrandKit |
+| BillingTab | Account (billing fields) | PaymentHistory |
+| IntegrationsTab | Integration | -- |
+| SettingsTab | Account (settings fields) | Session |
+| SupportTab | SupportTicket | -- |
+| NotetakerTab | MeetingNotes | Recording, MeetingTranscript |
+| LeadsTab | Lead | Event, WebinarRegistration, ClipAnalytics |
+| EventLandingTab | Event | ScheduledMeeting, WebinarRegistration, BrandKit |
+| ElementsTab | Element (Poll, Banner, CTA) | -- |
+
+### Caching and Performance
+
+- Tab data is cached in memory during the session. Navigating away and back to a tab does not re-fetch if the cache is still valid.
+- Cache invalidation occurs on:
+  - Explicit user action (creating, updating, or deleting entities).
+  - Tab re-activation after a configurable stale time.
+  - Manual refresh (pull-to-refresh or refresh button).
+- Large datasets (recordings, leads) support pagination to avoid loading all data at once.
+- Search and filter operations may trigger new API calls or filter cached data client-side, depending on the data size.
 
 ---
 
-## Settings and Options
+## Tab Access Control Summary
 
-| Setting | Location | Description |
-|---|---|---|
-| Active Tab | URL `?tab=` parameter | Controls which tab is displayed; defaults to `dashboard` |
-| Plan | Account entity | Determines feature availability and sidebar badge |
-| Permissions | `usePermissions(account)` hook | Controls tab access and operation permissions |
-| Sidebar Width | Fixed: `w-64` (256px) | Not configurable |
-| Content Width | Fixed: `max-w-5xl` (1024px, centered) | Not configurable |
+### By User Role
+
+| Tab | Owner | Admin | Member | Sales | Viewer |
+|-----|-------|-------|--------|-------|--------|
+| dashboard | Yes | Yes | Yes | Yes | Yes |
+| account | Yes | Yes | No | No | No |
+| rooms | Yes | Yes | Yes | View Only | No |
+| schedule | Yes | Yes | Yes | View Only | No |
+| recordings | Yes | Yes | Yes | View Only | No |
+| clips | Yes | Yes | Yes | View Only | No |
+| brand-kit | Yes | Yes | No | No | No |
+| team | Yes | Yes | No | No | No |
+| roles | Yes | Yes | No | No | No |
+| templates | Yes | Yes | Yes | No | No |
+| billing | Yes | No | No | No | No |
+| integrations | Yes | Yes | No | No | No |
+| settings | Yes | Yes | No | No | No |
+| support | Yes | Yes | Yes | Yes | Yes |
+| notetaker | Yes | Yes | Yes | No | No |
+| leads | Yes | Yes | No | Yes | No |
+| event-landing | Yes | Yes | Yes | View Only | No |
+| elements | Yes | Yes | Yes | No | No |
+
+### By Plan
+
+| Tab | Basic | Pro | Enterprise |
+|-----|-------|-----|-----------|
+| dashboard | Yes | Yes | Yes |
+| account | Yes | Yes | Yes |
+| rooms | Yes (limited) | Yes | Yes |
+| schedule | Yes | Yes | Yes |
+| recordings | Yes (limited storage) | Yes | Yes |
+| clips | No | Yes | Yes |
+| brand-kit | Yes (1 BrandKit) | Yes (multiple) | Yes (unlimited) |
+| team | Yes (limited members) | Yes | Yes |
+| roles | No | Yes | Yes |
+| templates | Yes (no AI) | Yes | Yes |
+| billing | Yes | Yes | Yes |
+| integrations | No | Yes | Yes |
+| settings | Yes (basic security) | Yes | Yes (SSO, advanced) |
+| support | Yes (email only) | Yes (email + chat) | Yes (priority + dedicated) |
+| notetaker | No | Yes | Yes |
+| leads | No | Yes | Yes |
+| event-landing | Yes (basic layouts) | Yes (all layouts) | Yes (all + custom) |
+| elements | Yes | Yes | Yes |
 
 ---
 
 ## Troubleshooting
 
-| Issue | Cause | Solution |
-|---|---|---|
-| Admin page shows blank content | No account exists and auto-creation failed | Check browser console for account creation errors; verify user has an email address |
-| Sidebar shows "Basic Plan" incorrectly | Account plan field is `"basic"` | Check account entity plan field; upgrade via Billing tab |
-| Tab shows "Access denied" | User's role does not include permissions for that tab | Contact the account owner to update the user's role via the Team or Roles tab |
-| "Only account owners can view billing" | User is not the account owner | Only the user whose email matches `account.owner_email` can access Billing |
-| "Only account owners can manage roles" | User is not the account owner | Same as above -- only the owner can manage roles |
-| NotificationsPanel not showing | Component render issue | Refresh the page |
-| Data not loading in a tab | React Query cache is stale or network error | Refresh the page; check network connectivity |
-| Tab does not match URL parameter | `?tab=` value does not match any tab ID | Use exact tab slugs from the table above (e.g., `brand-kit`, not `brandkit`) |
-| Upgrade card not showing in sidebar | User is on Business plan | The upgrade card only appears for Basic plan users |
-| Room duplicates in Rooms tab | Base44 returned duplicate entries | Deduplication is handled automatically; if persistent, contact support |
+### Tab Not Loading / Shows Blank
+
+**Possible Causes:**
+- Network error during data fetch.
+- The `accountId` prop is missing or incorrect.
+- The user's session has expired.
+
+**Resolution Steps:**
+1. Ask the user to refresh the page.
+2. Check if other tabs load correctly (to isolate whether it is a specific tab issue or a session issue).
+3. If only one tab is affected, the entity API for that tab may be experiencing issues. Check system status.
+4. If no tabs load, the session may have expired. Ask the user to log out and log back in.
+
+### Tab Shows "Access Denied" or Is Missing
+
+**Possible Causes:**
+- The user's role does not have permission to access the tab.
+- The account's plan does not include the feature.
+
+**Resolution Steps:**
+1. Check the user's role. Refer to the access control table above.
+2. Check the account's plan. Refer to the plan requirements table above.
+3. If the user should have access, verify their role assignment in the Team tab.
+4. If the feature requires a plan upgrade, direct the user to the Billing tab.
+
+### NotificationsPanel Not Showing Updates
+
+**Possible Causes:**
+- WebSocket connection is not established.
+- Browser tab is in the background (some browsers throttle background connections).
+- Notification preferences are configured for daily/weekly batch delivery (email-only; in-app should still be real-time).
+
+**Resolution Steps:**
+1. Ask the user to refresh the page to re-establish the WebSocket connection.
+2. Ensure the browser tab is in the foreground.
+3. Check if the bell icon shows a badge (unread count). If yes, click to open the panel.
+4. If notifications are consistently missing, escalate to engineering.
+
+### Dashboard Widgets Showing Stale Data
+
+**Possible Causes:**
+- Data cache has not been invalidated after recent changes.
+- The user has been on the dashboard tab for an extended period without refreshing.
+
+**Resolution Steps:**
+1. Ask the user to refresh the page.
+2. Navigate away from the dashboard tab and back to trigger a re-fetch.
+3. If the data is still stale, log out and log back in to clear the session cache.
+
+### URL Tab Parameter Not Working
+
+**Possible Causes:**
+- The tab ID is misspelled in the URL.
+- The user is not on the admin dashboard route.
+- Browser URL handling issue.
+
+**Resolution Steps:**
+1. Verify the URL format: `https://app.r-link.com/admin?tab={tabId}`.
+2. Check the tab ID against the list of valid tab IDs above.
+3. Ensure the user is on the `/admin` route, not a different page.
+4. Try navigating via the sidebar instead of directly editing the URL.
 
 ---
 
-## FAQ
+## Internal Reference
 
-**Q: How do I navigate to a specific admin tab?**
-A: Use the sidebar navigation, or add `?tab={tab_id}` to the Admin URL. For example: `/admin?tab=billing`.
+### Complete Tab Registry
 
-**Q: Which tabs can I access on the Basic plan?**
-A: All 18 tabs are visible in the sidebar on both plans. However, some features within tabs (like webinar settings, RTMP streaming, or AI notetaker) require the Business plan.
+| # | Tab ID | Component | Props | Access | Plan |
+|---|--------|-----------|-------|--------|------|
+| 1 | `dashboard` | `DashboardTab` | `accountId`, `user` | All users | All |
+| 2 | `account` | `AccountTab` | `accountId` | Owner, Admin | All |
+| 3 | `rooms` | `RoomsTab` | `accountId` | All (restricted) | All |
+| 4 | `schedule` | `ScheduleTab` | `accountId` | All (restricted) | All |
+| 5 | `recordings` | `RecordingsTab` | `accountId` | All (restricted) | All |
+| 6 | `clips` | `ClipsTab` | `accountId` | All (restricted) | Pro+ |
+| 7 | `brand-kit` | `BrandKitTab` | `accountId` | Owner, Admin | All |
+| 8 | `team` | `TeamTab` | `accountId` | Owner, Admin | All |
+| 9 | `roles` | `RolesTab` | `accountId` | Owner, Admin | Pro+ |
+| 10 | `templates` | `TemplatesTab` | `accountId` | All (restricted) | All |
+| 11 | `billing` | `BillingTab` | `accountId` | Owner only | All |
+| 12 | `integrations` | `IntegrationsTab` | `accountId` | Owner, Admin | Pro+ |
+| 13 | `settings` | `SettingsTab` | `accountId` | Owner, Admin | All |
+| 14 | `support` | `SupportTab` | `accountId` | All users | All |
+| 15 | `notetaker` | `NotetakerTab` | `accountId` | All (restricted) | Pro+ |
+| 16 | `leads` | `LeadsTab` | `accountId` | Owner, Admin, Sales | Pro+ |
+| 17 | `event-landing` | `EventLandingTab` | `accountId` | All (restricted) | All |
+| 18 | `elements` | `ElementsTab` | `accountId` | All (restricted) | All |
 
-**Q: How do I know which plan I'm on?**
-A: The sidebar header shows a plan badge: "Basic Plan" (gray) or "Business Plan" (purple-green gradient).
+### Sidebar Group Summary
 
-**Q: What is the default tab when I open Admin?**
-A: The Dashboard tab is the default. It shows an overview of your account with quick actions, stats, upcoming sessions, and recent recordings.
+| Group | Label | Tabs |
+|-------|-------|------|
+| 1 | Overview | dashboard, account, schedule |
+| 2 | Content | rooms, recordings, clips, elements, templates |
+| 3 | Marketing | event-landing, leads, brand-kit |
+| 4 | Organization | team, roles, notetaker, integrations |
+| 5 | System | billing, settings, support |
 
-**Q: Can I bookmark a specific tab?**
-A: Yes. The `?tab=` URL parameter is read on page load. Bookmarking `/admin?tab=brand-kit` will open directly to the Brand Kit tab.
+### Related KB Articles
 
-**Q: Why do some tabs show "Access denied"?**
-A: Your role does not include permissions for that tab. Contact the account owner to update your role. Owner-only tabs (Billing, Roles) can only be accessed by the user whose email matches `account.owner_email`.
-
-**Q: How many sidebar groups are there?**
-A: Five groups: Core (Dashboard, Account, Team), Creative Assets (Brand Kits, Templates, Elements), Content & Events (Rooms, Schedule, Recordings, Clips, Event Landing), Intelligence & Integrations (Leads, Notetaker, Integrations), and Administration (Billing, Settings, Support).
-
----
-
-## Known Limitations
-
-1. **No responsive sidebar**: The sidebar is a fixed 264px width and does not collapse on smaller screens. On mobile devices, the sidebar may overlap content.
-2. **Single account context**: The Admin page always uses the first account returned by `Account.list()`. Multi-account support is not available.
-3. **Tab state not persisted**: Switching tabs updates the internal state but does not update the URL `?tab=` parameter dynamically (it is only read on initial load).
-4. **No tab deep linking within tabs**: Some tabs have internal sub-views (e.g., editing a specific room), but these are not URL-addressable.
-5. **Top-level data fetching**: All entity data is fetched at the Admin page level regardless of which tab is active. This may result in unnecessary API calls for data not relevant to the current tab.
-6. **No breadcrumb navigation**: There is no breadcrumb trail showing the current location within the admin hierarchy.
-7. **Sidebar scroll**: On very small screens, the sidebar navigation may exceed viewport height. The sidebar uses `flex flex-col h-full` but does not have an explicit scroll container for the nav area.
-
----
-
-## Plan Requirements
-
-| Feature | Basic | Business |
-|---|---|---|
-| Admin Portal Access | Yes | Yes |
-| All 18 Tabs Visible | Yes | Yes |
-| Dashboard with Stats | Yes | Yes |
-| My Rooms Panel (Dashboard) | 1 room | Up to 5 rooms |
-| Account Profile Editing | Yes | Yes |
-| Team Management (max members) | 3 | Varies by plan |
-| Custom Roles | Yes | Yes |
-| Full Branding Suite | No | Yes |
-| AI Notetaker Configuration | No | Yes |
-| CRM Integrations | No | Yes |
-| RTMP Streaming Integrations | No | Yes |
-| Email Domain Restriction (Settings) | No | Yes |
-
----
-
-## Related Documents
-
-- [01-platform-overview.md](./01-platform-overview.md) -- Platform architecture, all 18 tabs listed with access rules
-- [02-plans-and-pricing.md](./02-plans-and-pricing.md) -- Plan comparison and feature gating
-- [04-account-management.md](./04-account-management.md) -- Account and Settings tab details
-- [25-templates.md](./25-templates.md) -- Templates tab details
-- [28-leads-and-analytics.md](./28-leads-and-analytics.md) -- Leads tab details
-- [29-event-landing-pages.md](./29-event-landing-pages.md) -- Event Landing tab details
-- [30-viewer-replay-sharing.md](./30-viewer-replay-sharing.md) -- Public-facing pages
-- [18-roles-and-permissions.md](./18-roles-and-permissions.md) -- Permission system and role definitions
+- **Templates** (25-templates.md): Full detail on TemplatesTab
+- **Account Management** (04-account-management.md): Full detail on AccountTab and SettingsTab
+- **Leads and Analytics** (28-leads-and-analytics.md): Full detail on LeadsTab
+- **Event Landing Pages** (29-event-landing-pages.md): Full detail on EventLandingTab
+- **Viewer, Replay, Sharing** (30-viewer-replay-sharing.md): Full detail on viewer-facing pages

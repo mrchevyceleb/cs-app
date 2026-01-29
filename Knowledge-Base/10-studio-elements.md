@@ -1,351 +1,487 @@
-# Studio Elements System
+# 10 - Studio Elements
 
 ## Overview
 
-The R-Link Studio Elements system provides a comprehensive library of interactive content types that hosts can activate during live sessions. With 16+ element types ranging from video and audio playback to auctions, contracts, and crypto tickers, elements form the core building blocks of any R-Link session. Elements are organized into folders, support activation/deactivation on the live stage, and can be managed through a full CRUD interface. The Elements system is available across all session types (Meeting, Webinar, Live Stream) though certain element types may be more relevant to specific session modes.
+The R-Link Studio Elements system provides a comprehensive library of interactive components that hosts can create, organize, and activate during live sessions. Elements are managed through the **Elements Tab** in the studio left sidebar, powered by the `ElementsPanel` component. Each element belongs to an `ElementFolder` and can be activated/deactivated on stage in real time. The system supports 16+ element types, drag-and-drop reordering, favorites, duplication, folder organization, and an Element Marketplace for discovering new overlays.
 
-## Element Types Reference
+---
 
-### Media Elements
+## Accessing the Elements Tab
 
-#### Video Element
-- **Components:** `VideoElementModal` (configuration), `VideoPreviewModal` (preview before activation), `VideoStageRenderer` (on-stage display)
-- **Purpose:** Play video files directly on the stage during a session
-- **Configuration:** Upload or link a video file, set playback options
-- **Stage behavior:** Renders the video within the stage layout; hosts control play/pause/seek
+1. Enter any R-Link Studio session (Meeting, Webinar, or Live Stream).
+2. Open the **Left Sidebar**.
+3. Click the **Elements** tab.
+4. The panel displays:
+   - **Asset Library** button -- opens the centralized asset browser for uploading and managing media files.
+   - **Element Marketplace** button -- opens the marketplace modal to browse and install community-created elements.
+   - **Search bar** -- filter elements by name or type label.
+   - **Favorites toggle** -- filter to only show favorited elements.
+   - **Add Folder** button -- create a new folder for organizing elements.
+   - **Add Element** dropdown -- create any of the 16+ element types.
+   - **Folder tree** -- collapsible folders containing elements with drag-and-drop reorder support.
 
-#### Audio Element
-- **Components:** `AudioElementModal` (configuration), `AudioStageRenderer` (on-stage playback), `AudioPreviewModal` (preview)
-- **Purpose:** Play audio files during a session (background music, sound effects, audio content)
-- **Key feature -- Audio Ducking:** The audio element supports an `isDucking` state, which automatically lowers the audio volume when a speaker is talking and raises it back when they stop. This prevents background audio from competing with voices.
-- **Configuration:** Upload or link an audio file, set volume levels, enable/disable ducking
+---
 
-#### Presentation Element
-- **Components:** `PresentationElementModal` (configuration), `PresentationStageRenderer` (on-stage display), `PresentationPreviewModal` (preview), `PresentationShareModal` (sharing)
-- **Purpose:** Display slide presentations on the stage with full navigation controls
-- **Key properties:**
-  - `file_url` / `fileUrl`: The URL of the uploaded presentation file
-  - `fileType`: The format of the presentation (PDF, images, etc.)
-  - **Transitions:** Supports fade transitions between slides
-- **Navigation:** Hosts can advance forward/backward through slides; slide number is visible to hosts
+## Element Types
 
-### Interactive Commerce Elements
+R-Link supports 16 core element types, each with a dedicated icon, color, and behavior. Elements are identified by their `type` field.
 
-#### Product Showcase Element
-- **Components:** `ProductShowcaseModal` (configuration), `ProductShowcaseRenderer` (on-stage display)
-- **Purpose:** Display products with details, images, and pricing during a session
-- **Use case:** E-commerce presentations, product launches, shopping events
+### 1. CTA Banner (`cta`)
 
-#### Checkout Element
-- **Components:** `CheckoutModal` (configuration), `CheckoutRenderer` (on-stage display)
-- **Purpose:** Enable in-session purchases with a checkout flow displayed on stage
-- **Key feature:** Triggers `purchaseNotifications` when a viewer completes a purchase, which can display on-screen alerts
-- **Use case:** Live shopping events, flash sales during webinars
+- **Icon:** Image (pink)
+- **Purpose:** Display a call-to-action banner overlay on the stage.
+- **Data fields:** Text content, link URL, button text, styling options.
+- **Activation:** Click to show/hide the CTA banner on screen. When active, renders as an `activeCTA` overlay visible to all viewers.
+- **Use case:** Drive viewers to a landing page, sign-up form, or promotional offer during a live session.
 
-#### Auction Element
-- **Components:** `AuctionModal` (configuration), `AuctionRenderer` (on-stage display)
-- **Purpose:** Run live auctions during sessions with real-time bidding
-- **Key entity -- AuctionSession:** Tracks the full auction state:
-  - `status`: `active` | `scheduled` | `paused` | `ended`
-  - `current_price`: The current highest bid amount
-  - `total_bids`: Number of bids placed
-  - `unique_bidders`: Count of distinct bidders
-  - `time_extensions`: Number of time extensions applied (e.g., extending when a last-second bid arrives)
-- **Use case:** Charity auctions, product auctions, fundraising events
+### 2. Talking Point (`talking_point`)
 
-#### Lead Capture Element
-- **Components:** `LeadCaptureModal` (configuration), `LeadCaptureRenderer` (on-stage display)
-- **Purpose:** Collect viewer information (name, email, phone, etc.) through an on-stage form
-- **Use case:** Webinar lead generation, event registrations, newsletter signups
+- **Icon:** MessageSquareText (purple)
+- **Purpose:** Display a lower-third text overlay with an optional icon.
+- **Data fields:** `text` (main message), `icon` (emoji/icon), `auto_hide_ms` (auto-dismiss timer in milliseconds, 0 = manual dismiss).
+- **Activation:** Shows the `TalkingPointOverlay` component as a full-width lower-third bar at the bottom of the stage.
+- **Branding integration:** Uses the session branding colors (`primaryColor`, `accentColor`, `font`) for consistent visual identity.
+- **Auto-hide:** If `auto_hide_ms > 0`, the overlay automatically fades out after the specified duration. After the exit animation (300ms), the `onAutoHide` callback fires to clean up state.
 
-### Engagement Elements
+### 3. Web Overlay (`web_overlay`)
 
-#### Timer Element
-- **Components:** `TimerElementModal` (configuration), `TimerStageRenderer` (on-stage display)
-- **Purpose:** Display countdown or count-up timers on stage
-- **Timer status states:**
-  - `idle`: Timer has not started
-  - `running`: Timer is actively counting
-  - `paused`: Timer is paused and can be resumed
-- **Use case:** Session countdowns, break timers, timed activities, offer deadlines
+- **Icon:** Globe (blue)
+- **Purpose:** Embed any external webpage as an iframe overlay on the stage.
+- **Data fields:** URL, dimensions, position, opacity.
+- **Rendered by:** `WebOverlayRenderer` component.
+- **Use case:** Display live dashboards, external content, social media feeds, or documentation during a session.
 
-#### Prompter Element
-- **Components:** `PrompterElementModal` (configuration), `PrompterViewer` (display)
-- **Purpose:** Provide a teleprompter for hosts to read scripted content while presenting
-- **Window modes:**
-  - `docked`: Prompter appears within the Studio interface
-  - `detached`: Prompter opens in a separate browser window (useful for dual-monitor setups)
-- **Use case:** Scripted presentations, news-style broadcasts, prepared remarks
+### 4. Poll (`poll`)
 
-#### Poll Element
-- **Components:** `PollModal` (configuration), `PollStageRenderer` (on-stage display)
-- **Purpose:** Create and display polls for audience participation
-- **Related state:** `showQuickPoll` for rapid poll creation
-- **Use case:** Audience engagement, feedback collection, decision-making
+- **Icon:** BarChart3 (amber)
+- **Purpose:** Create and display interactive polls for audience participation.
+- **Data fields:** `question`, `poll_type` (`'multiple_choice'`, `'yes_no'`, `'multiple_answer'`), `options` (array of `{ text, color, votes }`), `appearance` (position, size, colors, border settings), `results_settings` (`show_immediately`).
+- **Rendered by:** `PollStageRenderer` component.
+- **Poll types:**
+  - **Multiple Choice** -- Viewers select one option from the list.
+  - **Yes/No** -- Binary choice with green "Yes" and red "No" buttons.
+  - **Multiple Answer** -- Viewers can select multiple options ("Select all that apply").
+- **Appearance settings:** `position` (`bottom_center`, `bottom_left`, `bottom_right`, `side_panel`, `fullscreen`), `size` (`small` 72px, `medium` 96px, `large` 500px), `background_color`, `accent_color`, `border_enabled`.
+- **Results:** If `results_settings.show_immediately` is true, progress bars with vote counts and percentages display after the viewer votes. Otherwise, results are hidden until the host reveals them.
+- **Host controls:** Only the host sees the close (X) button to end the poll on stage.
 
-#### Leaderboard Element
-- **Components:** `LeaderboardElementModal` (configuration), `LeaderboardStageRenderer` (on-stage display)
-- **Purpose:** Display ranked leaderboards on stage
-- **Use case:** Gamified events, competitions, top-contributor recognition
+### 5. Video (`video`)
 
-### Display and Data Elements
+- **Icon:** Video (red)
+- **Purpose:** Add pre-recorded video content for playback during sessions.
+- **Data fields:** Video file URL, title, duration.
+- **Preview:** Host can use the "Preview" option in the element context menu to watch the video before activating.
+- **Use case:** Play introduction videos, product demos, or pre-recorded segments during live sessions.
 
-#### Crypto Ticker Element
-- **Components:** `CryptoTickerElementModal` (configuration), `CryptoTickerStageRenderer` (on-stage display)
-- **Purpose:** Display real-time cryptocurrency price tickers on stage
-- **Use case:** Crypto-focused broadcasts, financial content, trading sessions
+### 6. Audio (`audio`)
 
-#### Contract Element
-- **Components:** `ContractModal` (configuration), `ContractRenderer` (on-stage display), `ContractStageRenderer` (stage rendering)
-- **Purpose:** Present and execute contracts/agreements during a session
-- **Key properties:**
-  - `file_url`: URL to the contract document
-  - `display_mode`: `modal` -- displays the contract in a modal overlay
-  - **Integrations:** DocuSign and GoHighLevel for e-signature workflows
-- **Use case:** Sales closings, agreement signings, onboarding documents
+- **Icon:** Music (green)
+- **Purpose:** Add audio clips for background music or sound effects.
+- **Data fields:** Audio file URL, title, ducking settings.
+- **Ducking:** When audio elements play, the system can automatically lower other audio sources to ensure the audio element is clearly audible.
+- **Preview:** Available via the context menu "Preview" action.
 
-#### Web Overlay Element
-- **Components:** `WebOverlayModal` (configuration)
-- **Purpose:** Embed external web content as an overlay on the stage
-- **Use case:** Displaying external dashboards, websites, or web applications during a session
+### 7. Timer (`timer`)
 
-### Rally Overlay Elements (Crypto/Web3)
+- **Icon:** Clock (cyan)
+- **Purpose:** Display countdown or count-up timers on stage.
+- **States:** `idle` (not started), `running` (actively counting), `paused` (stopped temporarily, can resume).
+- **Data fields:** Duration, display format, start/pause/reset controls, visual style.
+- **Use case:** Countdown to session start, break timers, Q&A time limits, auction countdowns.
 
-Rally overlay elements are specialized for blockchain and Web3 communities:
+### 8. Presentation (`presentation`)
 
-| Type | Purpose |
-|------|---------|
-| `rally_badge` | Display community badges or achievements |
-| `nft_showcase` | Showcase NFT collections or individual NFTs |
-| `token_drop` | Run token distribution events |
-| `price_tracker` | Track and display token prices in real time |
-| `token_balance` | Show token balance information |
-| `wallet_status` | Display wallet connection status |
-| `mint_counter` | Track NFT minting progress |
-| `gas_tracker` | Display current gas prices |
-| `volume_display` | Show trading volume metrics |
-| `community_stats` | Display community engagement statistics |
-| `staking_rewards` | Show staking reward information |
+- **Icon:** Presentation (orange)
+- **Purpose:** Display slide decks on stage with transition controls.
+- **Data fields:** `file_url` (uploaded file), slides array, transition settings.
+- **Activation:** Clicking the element card starts playback. The "Edit" context menu option opens the configuration modal. This is a deliberate design choice -- the card click never opens a file picker.
+- **Share:** Context menu includes a "Share" action (`onSharePresentation`) for distributing the presentation link.
+- **Preview:** Available via the context menu.
+- **Transitions:** Supports configurable slide transitions between slides.
+
+### 9. Prompter (`prompter`)
+
+- **Icon:** AlignLeft (teal)
+- **Purpose:** Teleprompter for the host to read scripted content.
+- **Modes:** `docked` (inline in the studio) or `detached` (floating window).
+- **Activation:** Context menu includes "Open Teleprompter" action. Clicking the element card also activates it.
+- **Use case:** Keep hosts on script during presentations, keynotes, or product launches.
+
+### 10. Product Showcase (`product_showcase`)
+
+- **Icon:** ShoppingBag (emerald)
+- **Purpose:** Display products with images, descriptions, and pricing during live commerce sessions.
+- **Data fields:** Product details, images, pricing, links.
+- **Use case:** E-commerce live streams, product launches, shopping events.
+
+### 11. Checkout (`checkout`)
+
+- **Icon:** CreditCard (violet)
+- **Purpose:** Enable in-session purchases with a checkout overlay.
+- **Data fields:** Product info, pricing, `purchaseNotifications` (show real-time purchase activity).
+- **Purchase notifications:** When enabled, viewers see toast notifications of other viewers' purchases, creating social proof and urgency.
+- **Use case:** Live commerce, flash sales, exclusive offers during webinars.
+
+### 12. Lead Capture (`lead_capture`)
+
+- **Icon:** Mail (emerald)
+- **Purpose:** Collect viewer contact information during live sessions.
+- **Data fields:** Form fields, CTA text, thank-you message.
+- **Use case:** Capture emails for follow-up, gated content access, newsletter sign-ups.
+
+### 13. Auction (`auction`)
+
+- **Icon:** Gavel (fuchsia)
+- **Purpose:** Run live auctions with real-time bidding during sessions.
+- **Data fields:** Item details, starting price, bid increment, duration.
+- **AuctionSession entity:** Tracks the live auction state:
+  - `status` -- `'active'`, `'scheduled'`, `'paused'`, `'ended'`
+  - `current_price` -- Current highest bid
+  - `total_bids` -- Number of bids placed
+  - `unique_bidders` -- Count of distinct bidders
+  - `time_extensions` -- Automatic time extensions when bids arrive near the deadline
+- **Use case:** Charity auctions, art sales, exclusive item drops during live events.
+
+### 14. Contract (`contract`)
+
+- **Icon:** FileSignature (indigo)
+- **Purpose:** Present documents for review and signature during live sessions.
+- **Data fields:** `file_url` (document URL), `display_mode` (`'modal'` -- shows as a modal overlay).
+- **Integrations:** Supports DocuSign and GoHighLevel for electronic signature workflows. When integrated, viewers can sign documents directly within the R-Link session.
+- **Use case:** Live deal closings, agreement sign-offs, onboarding paperwork during webinars.
+
+### 15. Leaderboard (`leaderboard`)
+
+- **Icon:** Trophy (yellow)
+- **Purpose:** Display rankings and scores during sessions.
+- **Data fields:** Participant list, scores, ranking criteria.
+- **Use case:** Gamification, contests, training sessions with scoring.
+
+### 16. Crypto Ticker (`crypto_ticker`)
+
+- **Icon:** LineChart (green-500)
+- **Purpose:** Display live cryptocurrency price data.
+- **Data fields:** Token selection, display format, update interval.
+- **Use case:** Web3-focused streams, crypto education, trading sessions.
+
+---
+
+## Rally Overlays (11 Types)
+
+In addition to the 16 core element types, R-Link provides 11 specialized Rally/Web3 overlay types managed through the `OverlayManager` and `RallyOverlaysPanel`:
+
+| Overlay Type | Component | Description |
+|-------------|-----------|-------------|
+| `rally_badge` | `RallyBadge` | "Powered by Rally" branding badge |
+| `nft_showcase` | `NFTShowcase` | Display NFT collection items |
+| `token_drop` | `TokenRewardDrop` | Animated token reward drops |
+| `price_tracker` | `RLYPriceTracker` | Live RLY token price display |
+| `token_balance` | `TokenBalance` | Show wallet token balance |
+| `wallet_status` | `WalletStatus` | Wallet connection status indicator |
+| `mint_counter` | `MintCounter` | NFT minting progress counter |
+| `gas_tracker` | `GasTracker` | Current gas fee display |
+| `volume_display` | `VolumeDisplay` | Trading volume metrics |
+| `community_stats` | `CommunityStats` | Community engagement statistics |
+| `staking_rewards` | `StakingRewards` | Staking reward tracking |
+
+Rally overlays are created as `UserOverlay` entities with `room_id`, `template_id` (the overlay type), `custom_config`, `position` (x, y, width, height), `styling` (font, colors, borders, shadows), `is_visible`, and `z_index`. They are draggable on the stage and support per-overlay customization through the `OverlayCustomizationModal`.
+
+---
 
 ## Element Folder System
 
-### Folder Structure
-Elements are organized into folders for easy management. Each folder has the following properties:
-- **`room_id`**: Associates the folder with a specific session/room
-- **`is_global`**: When set to `true`, the folder and its elements are shared across all sessions for that account
+Elements are organized into `ElementFolder` objects. Each folder belongs to a room (`room_id`) or is global (`is_global`).
 
-### Folder Operations
+### Folder Properties
 
-#### Creating a Folder
-1. Navigate to the **Elements** tab in the Studio
-2. Click the "Create Folder" option
-3. Enter a folder name
-4. Optionally mark it as a **global folder** to share across sessions
-5. The folder is created and ready to receive elements
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string | Unique folder identifier |
+| `name` | string | Display name (e.g., "Webinar Assets") |
+| `color` | string | Hex color code for the folder icon |
+| `room_id` | string | Room this folder belongs to |
+| `is_global` | boolean | If true, folder is available across all rooms |
+| `order` | number | Sort position among folders |
+| `is_default` | boolean | If true, new elements default to this folder |
 
-#### Editing a Folder
-1. Right-click or open the folder menu
-2. Select "Edit Folder"
-3. Modify the folder name or global status
-4. Save changes
+### Available Folder Colors
 
-#### Deleting a Folder
-1. Right-click or open the folder menu
-2. Select "Delete Folder"
-3. Confirm the deletion (elements within may be moved or deleted depending on configuration)
+The `ElementFolderModal` provides 8 preset colors:
+- `#6a1fbf` (purple, default), `#00c853` (green), `#ff5722` (orange), `#2196f3` (blue)
+- `#9c27b0` (deep purple), `#ff9800` (amber), `#e91e63` (pink), `#00bcd4` (teal)
 
-### Global Folders
-- Folders with `is_global: true` are shared across all sessions
-- Useful for storing reusable elements like brand assets, standard presentations, or frequently used timers
-- Changes to elements in global folders affect all sessions that reference them
+### Creating a Folder
+
+1. Click the **Folder** button at the top of the Elements panel.
+2. Enter a folder name in the `ElementFolderModal`.
+3. Select a color from the preset palette.
+4. Click **Create Folder**.
+
+### Editing a Folder
+
+1. Click the three-dot menu on the folder header.
+2. Select **Rename**.
+3. Modify the name and/or color.
+4. Click **Save Changes**.
+
+### Deleting a Folder
+
+1. Click the three-dot menu on the folder header.
+2. Select **Delete**.
+3. Confirm deletion. (Elements in the folder should be moved first.)
+
+---
 
 ## Element CRUD Operations
 
 ### Creating an Element
-1. Open the **Elements** tab in Studio
-2. Click "Add Element" or select a specific element type
-3. If no folder is selected, the `FolderSelectModal` appears prompting you to choose or create a folder
-4. Fill in the element configuration modal:
-   - **`room_id`**: Automatically set to the current session
-   - **`folder_id`**: The target folder
-   - **`type`**: The element type (video, audio, timer, etc.)
-   - **`name`**: A display name for the element
-   - **`data`**: Type-specific configuration (JSON object)
-5. Save the element
 
-### Updating an Element
-1. Locate the element in its folder within the Elements tab
-2. Click on the element or select "Edit" from its context menu
-3. The appropriate modal opens (e.g., `VideoElementModal` for video elements)
-4. Modify the configuration
-5. Save changes
+1. Click the **Add Element** button in the Elements panel.
+2. Select the desired element type from the dropdown (all 16 types listed).
+3. The element is created with default values:
+   - `type`: selected type
+   - `name`: "New [Type Label]" (e.g., "New CTA Banner")
+   - `folder_id`: first available folder
+   - `data`: empty object `{}`
+   - `room_id`: current room ID (if applicable)
+4. The element appears in the first folder and can be configured by opening its Edit modal.
 
-### Deleting an Element
-1. Locate the element in its folder
-2. Select "Delete" from the context menu
-3. Confirm the deletion
-4. The element is removed from the folder and deactivated if currently active
+### Editing an Element
+
+1. Click the three-dot menu (MoreVertical icon) on any element.
+2. Select **Edit**.
+3. The type-specific configuration modal opens.
+4. Make changes and save.
+
+### Renaming an Element
+
+1. Click the three-dot menu and select **Rename**.
+2. The element name becomes an inline text input.
+3. Type the new name.
+4. Press **Enter** to save or **Escape** to cancel.
+5. Clicking elsewhere (blur) also saves the change.
 
 ### Duplicating an Element
-1. Select "Duplicate" from the element's context menu
-2. A copy of the element is created in the same folder
-3. The duplicated element is named with a `"(Copy)"` suffix appended to the original name
-4. The copy can be independently edited and configured
 
-### Moving Elements Between Folders
-1. Select "Move" from the element's context menu (or drag-and-drop if supported)
-2. Choose the target folder from the folder list
-3. The element is relocated to the new folder
-4. If moved to a global folder, the element becomes available across all sessions
+1. Click the three-dot menu and select **Duplicate**.
+2. A copy of the element is created with "(Copy)" appended to the name.
+3. The duplicate inherits all data and settings from the original.
+
+### Deleting an Element
+
+1. Click the three-dot menu and select **Delete**.
+2. The element is permanently removed.
+
+### Moving an Element Between Folders
+
+1. Click the three-dot menu and hover over **Move to**.
+2. A submenu lists all available folders.
+3. The current folder is shown with a "Current" label and is disabled.
+4. Select the destination folder to move the element.
+
+---
 
 ## Element Activation and Deactivation
 
+Elements are activated and deactivated to control what appears on the live stage.
+
+### Activation Model
+
+The system uses an `activeElements` object keyed by element type:
+
+```
+activeElements = {
+  cta: { id: 'elem_123', type: 'cta', name: 'Buy Now Banner', data: {...} },
+  poll: { id: 'elem_456', type: 'poll', name: 'Quick Survey', data: {...} }
+}
+```
+
+- **One element per type** can be active at a time. Activating a new CTA element replaces the currently active CTA.
+- Activation is checked via: `activeElements[element.type]?.id === element.id`
+
 ### Activating an Element
-- Trigger: Host clicks "Activate" or uses the `handleActivateElement` function
-- Behavior: The system sets `activeElements[element.type] = element`
-- Only **one element per type** can be active at a time (activating a new video element deactivates the previous video element)
-- The element's stage renderer component (e.g., `VideoStageRenderer`, `TimerStageRenderer`) begins rendering on the live stage
+
+- **Click the element card** -- toggles activation. If inactive, calls `onActivateElement(element)`. If already active, calls `onDeactivateElement(element)`.
+- **Presentations:** Clicking the card starts playback; the Edit menu opens the configuration modal.
+- Active elements display with a purple background (`bg-[#6a1fbf]`) and white text/icons.
+- The containing folder shows a subtle purple tint (`bg-[#6a1fbf]/20`) when any element inside it is active.
 
 ### Deactivating an Element
-- Trigger: Host clicks "Deactivate" or uses the `handleDeactivateElement` function
-- Behavior: The element is removed from the `activeElements` object for its type
-- The stage renderer is unmounted and the element disappears from the live stage
 
-### Active Elements State
-- The `activeElements` state is a dictionary keyed by element type
-- Example: `{ video: {id: 1, ...}, timer: {id: 5, ...}, poll: {id: 3, ...} }`
-- Multiple element types can be active simultaneously (e.g., a video and a timer at the same time)
-- Activating a different element of the same type replaces the currently active one
+- **Click the active element card** again to deactivate it.
+- The element returns to its default gray appearance.
+- The overlay/component is removed from the live stage.
 
-## Element Management Features
+---
 
-### Favorites
-- Each element has an `is_favorite` boolean property
-- Toggle the favorite status by clicking the favorite/star icon on an element
-- Favorited elements can be filtered to the top for quick access
+## Favorites
 
-### Reordering
-- Elements within a folder have an `order` field that determines display order
-- Drag elements to reorder them within a folder
-- The `order` field is updated to reflect the new position
+- Toggle favorites via the three-dot menu: **Favorite** / **Unfavorite**.
+- Favorited elements have `is_favorite: true`.
+- Use the **Favorites** filter button (star icon) at the top of the Elements panel to show only favorited elements.
+- The star icon fills yellow when the favorites filter is active.
 
-### ElementsTab Admin Interface
-- The **ElementsTab** is the primary administrative interface for managing the elements library
-- Displays all folders and their elements in a browsable tree/list
-- Provides controls for:
-  - Creating, editing, and deleting folders
-  - Creating, editing, deleting, duplicating, and moving elements
-  - Toggling favorites
-  - Reordering elements via drag-and-drop
-  - Activating and deactivating elements
-  - Filtering and searching elements
+---
 
-## Settings and Options
+## Drag-and-Drop Reordering
 
-| Setting | Description | Values |
-|---------|-------------|--------|
-| Element type | The kind of element to create | `video`, `audio`, `timer`, `presentation`, `prompter`, `product_showcase`, `checkout`, `lead_capture`, `auction`, `contract`, `leaderboard`, `crypto_ticker`, `poll`, `web_overlay`, Rally types |
-| Folder assignment | Which folder the element belongs to | Any existing folder or create new |
-| Global folder | Whether the folder is shared across sessions | `true` / `false` |
-| Favorite | Quick-access marking | `true` / `false` |
-| Order | Display position within folder | Numeric value |
-| Audio ducking | Auto-lower audio when speaker talks | `isDucking` state toggle |
-| Timer status | Current timer state | `idle` / `running` / `paused` |
-| Prompter window mode | How the teleprompter displays | `docked` / `detached` |
-| Presentation transition | Slide change animation | `fade` |
-| Contract display mode | How the contract is shown | `modal` |
+Elements within a folder can be reordered via drag-and-drop:
 
-## Troubleshooting
+1. Grab the **grip handle** (GripVertical icon) on the left side of any element.
+2. Drag it to a new position within the same folder.
+3. Drop to confirm the new order.
+4. The system uses optimistic local state for immediate visual feedback.
+5. The `onReorderElements` callback sends the new order values to the backend:
+   ```
+   [{ id: 'elem_1', order: 0 }, { id: 'elem_2', order: 1 }, ...]
+   ```
+6. Once the backend confirms, the local optimistic state clears.
+7. If the reorder matches the backend response, the UI seamlessly updates without flicker.
 
-### Element not appearing on stage after activation
-1. Verify the element is listed in the active elements by checking the Elements tab -- the element should show an "active" indicator
-2. Confirm the element type does not conflict with another active element of the same type (only one per type)
-3. Check that the element data is valid (e.g., a video element has a valid video URL)
-4. Refresh the Studio page and try activating again
+The drag-and-drop system is powered by `@hello-pangea/dnd` with `DragDropContext`, `Droppable` (per folder), and `Draggable` (per element).
 
-### Folder not visible
-1. Ensure the folder belongs to the current session's `room_id` or is marked as `is_global`
-2. Check if folder filters are hiding the folder
-3. Try refreshing the Elements tab
+---
 
-### Duplicate element missing
-1. The duplicated element should appear in the same folder as the original
-2. Look for an element with the same name plus `"(Copy)"` suffix
-3. Scroll down in the folder as it may appear at the end of the list
+## Search and Filtering
 
-### Audio ducking not working
-1. Verify the audio element has `isDucking` enabled in its configuration
-2. Ensure a microphone is active so the system can detect when someone is speaking
-3. Check that the audio element is currently activated on stage
+- **Search:** Type in the search bar to filter elements by name or type label (e.g., typing "timer" matches Timer elements, typing "banner" matches CTA Banner).
+- **Favorites filter:** Click the star button to show only elements with `is_favorite: true`.
+- Both filters work together -- you can search within favorites.
+- Filtered results maintain the original sort order within each folder.
 
-### Presentation slides not advancing
-1. Ensure the presentation file uploaded successfully (`file_url` / `fileUrl` is valid)
-2. Check the `fileType` is a supported format
-3. Try re-uploading the presentation file
-4. Verify you have host permissions to control navigation
+---
 
-### Contract integration not working (DocuSign/GoHighLevel)
-1. Verify the integration is properly configured in account settings
-2. Ensure the `file_url` points to a valid document
-3. Check that the `display_mode` is set correctly
-4. Confirm the third-party service (DocuSign or GoHighLevel) account is connected and active
+## Asset Library and Element Marketplace
 
-## FAQ
+### Asset Library
 
-**Q: How many elements can I have active at the same time?**
-A: You can have one active element per element type simultaneously. For example, you can have a video, a timer, and a poll all active at the same time, but you cannot have two videos active simultaneously. Activating a second element of the same type will replace the first.
+- Click the **Asset Library** button at the top of the Elements panel.
+- Opens the `AssetLibraryModal` component.
+- Browse and upload media assets (images, videos, audio files) that can be used across elements.
+- Assets can be filtered by type when opened from a specific element context.
 
-**Q: What is the difference between room-level and global folders?**
-A: Room-level folders (`room_id` set, `is_global: false`) are specific to a single session. Global folders (`is_global: true`) are shared across all sessions in your account, making them ideal for reusable content like brand presentations or standard timers.
+### Element Marketplace
 
-**Q: Can I use elements in all session types?**
-A: Yes, elements are available across Meeting, Webinar, and Live Stream session types. However, some elements like product showcase and checkout are more commonly used in Webinar and Live Stream modes for audience-facing commerce.
+- Click the **Element Marketplace** button.
+- Opens the `ElementMarketplace` modal.
+- Browse community-created elements and overlay templates.
+- Install elements directly into your room.
 
-**Q: What happens to active elements if I navigate away from the Studio?**
-A: Active elements remain active on the stage for viewers. Returning to the Studio will show the current active element state. Only explicit deactivation removes them.
+---
 
-**Q: Can I reuse elements across different sessions?**
-A: Yes, by placing elements in global folders. Elements in global folders are accessible from any session. You can also duplicate elements and move them between folders.
+## Common Troubleshooting
 
-**Q: What is audio ducking?**
-A: Audio ducking automatically reduces the volume of a playing audio element when a speaker's microphone is active, and restores the volume when they stop speaking. This ensures background music or audio does not compete with the speaker's voice.
+### Q: I created an element but it does not appear on the stage.
+**A:** Creating an element adds it to the elements list but does not activate it. Click the element card to activate it. The element will then render on the live stage. Only one element per type can be active at a time.
 
-**Q: How do auction time extensions work?**
-A: When an auction is running and a bid is placed near the end of the countdown, the system can automatically add extra time (a time extension) to prevent sniping. The `time_extensions` count tracks how many extensions have been applied.
+### Q: I cannot drag elements to reorder them.
+**A:** Ensure you are grabbing the grip handle icon on the far left of the element row. The drag handle is a small vertical dots icon. Dragging from other parts of the element row will not initiate a drag operation.
 
-## Known Limitations
+### Q: My presentation element opens a file picker when I click it.
+**A:** This should not happen. Clicking a presentation element card starts playback if it has a file already configured. To change the file, use the three-dot menu and select "Edit" to open the configuration modal. If you see a file picker, ensure you are clicking the element card itself and not a system-level file input.
 
-- Only one element of each type can be active on stage at a time
-- Rally overlay elements require Web3/blockchain integration to be configured
-- The `FolderSelectModal` appears every time an element is created without a pre-selected folder, which may add an extra step to the workflow
-- Presentation transitions are currently limited to `fade`; additional transition types are not yet available
-- Contract element integrations (DocuSign, GoHighLevel) require separate third-party account setup
-- The prompter in `detached` mode opens a new browser window, which may be blocked by popup blockers
-- Element reordering is folder-scoped; elements cannot be ordered across different folders
-- Audio ducking sensitivity is not user-configurable; it uses a system-determined threshold
+### Q: I duplicated an element but the copy has the same name.
+**A:** Duplicated elements automatically get "(Copy)" appended to the original name. If you see a duplicate without this suffix, try refreshing the elements panel.
 
-## Plan Requirements
+### Q: How do I move an element to a different folder?
+**A:** Click the three-dot menu on the element, hover over "Move to", and select the destination folder from the submenu. The element will immediately appear in the new folder.
 
-| Feature | Basic Plan | Business Plan |
-|---------|-----------|---------------|
-| Core elements (video, audio, timer, presentation) | Yes | Yes |
-| Prompter element | Yes | Yes |
-| Poll element | Yes | Yes |
-| Product showcase, checkout | Limited | Yes |
-| Auction element | No | Yes |
-| Lead capture element | Limited | Yes |
-| Contract element (with integrations) | No | Yes |
-| Leaderboard element | Yes | Yes |
-| Crypto ticker and Rally overlays | No | Yes |
-| Web overlay element | Yes | Yes |
-| Global folders | Yes | Yes |
-| Element favorites and reordering | Yes | Yes |
+### Q: Can I have multiple active polls at the same time?
+**A:** No. The `activeElements` system allows only one active element per type. Activating a new poll will replace the currently active poll. To run sequential polls, deactivate the current poll first, then activate the next one.
 
-## Related Documents
+### Q: What is the Element Marketplace?
+**A:** The Element Marketplace is a built-in store where you can browse and install community-created elements and overlay templates. It is accessed via the "Element Marketplace" button at the top of the Elements panel.
 
-- [00-index.md](00-index.md) -- Knowledge base index
-- [14-studio-overlays-scenes.md](14-studio-overlays-scenes.md) -- Overlays and scenes system
-- [12-studio-polls-qa.md](12-studio-polls-qa.md) -- Polls and Q&A details
-- [15-studio-streaming.md](15-studio-streaming.md) -- Streaming configuration
-- [16-studio-recording.md](16-studio-recording.md) -- Recording features
-- [13-studio-chat.md](13-studio-chat.md) -- Chat system
+### Q: How do Rally overlays differ from regular elements?
+**A:** Rally overlays are specialized Web3/blockchain components (price trackers, NFT showcases, token drops, etc.) managed through the `OverlayManager` system rather than the standard element activation system. They are stored as `UserOverlay` entities, are draggable on the stage, and support individual positioning, styling, and customization. They are added via the `RallyOverlaysPanel`.
+
+---
+
+## API Reference
+
+### Element Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string | Unique element identifier |
+| `type` | string | Element type (e.g., `'cta'`, `'poll'`, `'video'`) |
+| `name` | string | Display name |
+| `folder_id` | string | Parent folder ID |
+| `room_id` | string | Room this element belongs to |
+| `data` | object | Type-specific configuration data |
+| `is_favorite` | boolean | Whether the element is favorited |
+| `order` | number | Sort position within folder (0-based) |
+
+### Element Operations
+
+```
+// Create element
+onCreateElement({ type, name, folder_id, data, room_id })
+
+// Edit element
+onEditElement(elementId, element)
+
+// Rename element
+onRenameElement(elementId, element, newName)
+
+// Duplicate element
+onDuplicateElement(elementId, element)  // Creates copy with "(Copy)" suffix
+
+// Delete element
+onDeleteElement(elementId)
+
+// Move to folder
+onMoveElement(elementId, targetFolderId)
+
+// Toggle favorite
+onToggleFavorite(elementId, currentIsFavorite)
+
+// Reorder elements
+onReorderElements([{ id, order }, ...])
+
+// Activate element
+onActivateElement(element)  // Sets activeElements[type] = element
+
+// Deactivate element
+onDeactivateElement(element)  // Removes activeElements[type]
+```
+
+### UserOverlay Entity (Rally Overlays)
+
+```
+UserOverlay.create({
+  room_id: 'room_123',
+  template_id: 'price_tracker',
+  custom_config: { name: 'RLY Price Tracker', type: 'price_tracker' },
+  position: { x: 100, y: 100, width: 300, height: 200 },
+  styling: {
+    font_family: 'Inter',
+    font_size: 14,
+    font_weight: 'medium',
+    text_color: '#ffffff',
+    secondary_text_color: '#9ca3af',
+    accent_color: '#6E3FF3',
+    background_color: '#001233',
+    background_opacity: 95,
+    border_enabled: true,
+    border_width: 1,
+    border_color: '#ffffff',
+    border_opacity: 10,
+    border_radius: 16,
+    shadow_enabled: true,
+    shadow_intensity: 'lg'
+  },
+  is_visible: true,
+  z_index: 1000
+})
+```
+
+---
+
+## Related Features
+
+- **Overlays and Scenes:** Active elements render as overlays on the stage. See `14-studio-overlays-scenes.md`.
+- **Polls and Q&A:** Polls are an element type but also have dedicated management panels. See `12-studio-polls-qa.md`.
+- **Chat Commands:** Viewers can trigger certain elements via chat commands. See `13-studio-chat.md`.
+- **Streaming:** Active elements are visible to viewers on all streaming platforms. See `15-studio-streaming.md`.
+- **Recording:** Active elements are captured in recordings. See `16-studio-recording.md`.

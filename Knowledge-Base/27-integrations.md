@@ -1,741 +1,874 @@
-# Integrations
+# 27 - Integrations
 
 ## Overview
 
-The Integrations tab is located in Group 4 of the Admin Sidebar (alongside Leads and AI Notetaker). It provides a centralized interface for connecting R-Link with over 21 third-party services across 8 categories: Email, Payment, Cloud Storage, Authentication, CRM, Calendar, SMS, and Live Streaming.
-
-The Integrations tab is powered by the `IntegrationsTab` component and includes management for service integrations, Webhooks, and API Keys.
-
-### Integration Entity Structure
-
-```
-Integration {
-  provider       // Name of the service (e.g., 'mailchimp', 'stripe', 'google_drive')
-  category       // Integration category (e.g., 'email', 'payment', 'cloud_storage')
-  status         // Connection status: 'connected' or 'disconnected'
-  account_id     // The account this integration belongs to
-}
-```
-
-### Integration Operations
-
-- **Connect/Save**: Creates or updates an integration record with `account_id` and sets `status` to `'connected'`.
-- **Disconnect**: Updates the integration `status` to `'disconnected'`. The integration record remains but is inactive.
-
-Each integration has its own **configuration modal component** that opens when the user clicks to set up or configure the integration.
-
-## Email Integrations
-
-### Mailchimp
-
-**What it does**: Syncs attendee data with Mailchimp for email marketing. Automatically adds session registrants and attendees to Mailchimp lists, tracks engagement metrics, and enables automated campaign triggers based on R-Link events.
-
-**Capabilities**:
-- Sync attendees to Mailchimp audience lists.
-- Track engagement data (attendance, watch time, interactions).
-- Automate email campaigns triggered by R-Link events (e.g., post-webinar follow-up).
-- Segment audiences based on session participation.
-
-**Setup Steps**:
-1. Navigate to **Integrations** in the Admin Sidebar.
-2. Find **Mailchimp** under the Email category.
-3. Click **Connect**.
-4. The Mailchimp configuration modal opens.
-5. Authenticate with your Mailchimp account via OAuth.
-6. Select the Mailchimp audience list to sync with.
-7. Configure sync preferences (which fields to map, sync frequency).
-8. Click **Save** to complete the connection.
-9. The integration status changes to `'connected'`.
-
-**Disconnecting**: Click the integration, then click **Disconnect**. Status updates to `'disconnected'`. Existing synced data in Mailchimp is not removed.
+R-Link supports 21+ third-party integrations across 8 categories, plus Webhooks and API Keys for custom development. The Integrations tab (`IntegrationsTab` component) provides a unified interface for connecting, configuring, and managing all external services. Each integration is stored as an `Integration` entity with provider, category, status, and configuration data. The system also supports webhook event notifications and API key management for programmatic access.
 
 ---
 
-### SendGrid
+## Accessing Integrations
 
-**What it does**: Handles transactional and marketing emails sent from the R-Link platform. Transactional emails include session invitations, registration confirmations, and reminders. Marketing emails include follow-up campaigns and engagement-based sequences.
-
-**Capabilities**:
-- Send transactional emails (invites, confirmations, reminders).
-- Send marketing emails and campaigns.
-- Email delivery tracking and analytics.
-- Template management for branded emails.
-
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **SendGrid** under the Email category.
-3. Click **Connect**.
-4. The SendGrid configuration modal opens.
-5. Enter your SendGrid API key.
-6. Configure sender identity (from name, from email).
-7. Select email templates or use defaults.
-8. Click **Save**.
-9. Status changes to `'connected'`.
-
-## Payment Integrations
-
-### Stripe
-
-**What it does**: Processes payments and manages subscriptions for paid events, webinars, and premium content access. Supports one-time payments and recurring billing.
-
-**Capabilities**:
-- Accept payments for paid webinars and events.
-- Manage subscriptions for recurring access.
-- Process refunds.
-- Payment analytics and reporting.
-- Support for multiple currencies.
-
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Stripe** under the Payment category.
-3. Click **Connect**.
-4. The Stripe configuration modal opens.
-5. Authenticate with your Stripe account via OAuth or enter API keys.
-6. Configure payment settings (currency, tax handling).
-7. Set up webhook endpoints for payment event notifications.
-8. Click **Save**.
+1. Log in to your R-Link account.
+2. Navigate to the Admin Dashboard.
+3. Click the **Integrations** tab in the left sidebar.
+4. Integration management requires the `integrations.manage` permission. See `26-team-and-roles.md`.
 
 ---
 
-### PayPal
+## Integration Entity
 
-**What it does**: Provides payment processing as an alternative to Stripe. Enables attendees to pay for events and access using their PayPal accounts.
+The `Integration` entity stores connection data for each third-party service:
 
-**Capabilities**:
-- Accept PayPal payments for events.
-- Process one-time payments.
-- PayPal checkout integration for Event Landing Pages.
-- Payment notifications and receipts.
-
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **PayPal** under the Payment category.
-3. Click **Connect**.
-4. The PayPal configuration modal opens.
-5. Authenticate with your PayPal business account.
-6. Configure payment preferences.
-7. Click **Save**.
-
-## Cloud Storage Integrations
-
-### Google Drive
-
-**What it does**: Stores recordings and files in Google Drive. Enables automatic export of cloud recordings to a designated Google Drive folder, plus file sharing during sessions.
-
-**Capabilities**:
-- Auto-export recordings to Google Drive.
-- Store session files and documents.
-- Share Drive files within R-Link sessions.
-- Organize recordings in Drive folders by date, room, or session.
-
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Google Drive** under the Cloud Storage category.
-3. Click **Connect**.
-4. The Google Drive configuration modal opens.
-5. Authenticate with your Google account via OAuth.
-6. Grant R-Link permission to access your Drive.
-7. Select or create a destination folder for recordings.
-8. Configure auto-export preferences.
-9. Click **Save**.
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier |
+| `account_id` | string | The R-Link account this integration belongs to |
+| `provider` | string | Provider identifier (e.g., `'mailchimp'`, `'stripe'`, `'google_calendar'`) |
+| `category` | string | Category: `'email'`, `'payment'`, `'cloud_storage'`, `'authentication'`, `'crm'`, `'calendar'`, `'sms'`, `'live_streaming'` |
+| `status` | string | `'connected'`, `'disconnected'`, `'error'` |
+| `config` | object | Provider-specific configuration (API keys, tokens, settings) |
+| `created_at` | datetime | When the integration was first connected |
+| `updated_at` | datetime | When the integration was last modified |
 
 ---
 
-### Dropbox
+## Integration Categories and Providers
 
-**What it does**: Syncs recordings to Dropbox. Similar to Google Drive integration but for Dropbox users.
+### 1. Email (Marketing & Communications)
 
-**Capabilities**:
-- Sync recordings to Dropbox.
-- Automatic backup of cloud recordings.
-- Organize files by session metadata.
+#### Mailchimp
 
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Dropbox** under the Cloud Storage category.
-3. Click **Connect**.
-4. The Dropbox configuration modal opens.
-5. Authenticate with your Dropbox account via OAuth.
-6. Select destination folder.
-7. Configure sync preferences.
-8. Click **Save**.
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `mailchimp` |
+| **Category** | email |
+| **Description** | Sync attendees, track engagement, and automate campaigns |
+| **Configuration Modal** | `EmailIntegrationModal` |
 
-## Authentication Integrations
+**Setup Steps:**
+1. Click **Connect** on the Mailchimp card.
+2. Enter your Mailchimp API key (found in Mailchimp under Account > Extras > API keys).
+3. Select the audience list to sync attendees to.
+4. Configure sync settings:
+   - Auto-sync new registrants to your Mailchimp audience.
+   - Tag attendees based on event attendance.
+   - Track email engagement metrics back in R-Link.
+5. Click **Save** to connect.
 
-### Google SSO
+**Use Cases:**
+- Automatically add webinar registrants to an email list.
+- Send follow-up campaigns to attendees.
+- Segment audiences based on session attendance.
 
-**What it does**: Enables Single Sign-On (SSO) with Google accounts. Team members and participants can log in using their Google credentials.
+#### SendGrid
 
-**Capabilities**:
-- One-click login with Google accounts.
-- Automatic user provisioning from Google Workspace.
-- Reduced friction for attendees joining sessions.
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `sendgrid` |
+| **Category** | email |
+| **Description** | Professional transactional and marketing emails |
+| **Configuration Modal** | `EmailIntegrationModal` |
 
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Google SSO** under the Authentication category.
-3. Click **Connect**.
-4. The Google SSO configuration modal opens.
-5. Configure Google OAuth client credentials (Client ID, Client Secret) from your Google Cloud Console.
-6. Set allowed domains (optional, for restricting SSO to specific email domains).
-7. Click **Save**.
+**Setup Steps:**
+1. Click **Connect** on the SendGrid card.
+2. Enter your SendGrid API key (found in SendGrid under Settings > API Keys).
+3. Configure sender identity (verified sender email and name).
+4. Set up email templates for:
+   - Registration confirmations
+   - Session reminders
+   - Post-session follow-ups
+5. Click **Save** to connect.
 
----
-
-### Microsoft SSO
-
-**What it does**: Enables Single Sign-On with Microsoft/Azure AD accounts. Team members and participants can log in using their Microsoft credentials.
-
-**Capabilities**:
-- One-click login with Microsoft accounts.
-- Azure AD directory integration.
-- Enterprise SSO for organizations using Microsoft 365.
-
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Microsoft SSO** under the Authentication category.
-3. Click **Connect**.
-4. The Microsoft SSO configuration modal opens.
-5. Configure Azure AD application credentials (Application ID, Client Secret, Tenant ID).
-6. Set allowed domains if needed.
-7. Click **Save**.
-
-## CRM Integrations
-
-### Salesforce
-
-**What it does**: Provides two-way synchronization of registration, attendance, and engagement data with Salesforce CRM. Ensures sales and marketing teams have complete visibility into prospect/customer interactions through R-Link events.
-
-**Capabilities**:
-- Two-way sync of registrations and attendance.
-- Push engagement data (watch time, interactions, Q&A participation) to Salesforce.
-- Create or update Salesforce Leads, Contacts, and Campaign Members.
-- Trigger Salesforce workflows based on R-Link events.
-- Pull Salesforce data into R-Link for personalized session experiences.
-
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Salesforce** under the CRM category.
-3. Click **Connect**.
-4. The Salesforce configuration modal opens.
-5. Authenticate with your Salesforce org via OAuth.
-6. Map R-Link fields to Salesforce fields (name, email, company, custom fields).
-7. Configure sync direction (one-way or two-way).
-8. Set up object mapping (which Salesforce objects to create/update).
-9. Click **Save**.
+**Use Cases:**
+- Send branded transactional emails (confirmations, reminders).
+- High-volume email delivery for large webinars.
+- Custom email templates with R-Link merge tags.
 
 ---
 
-### HubSpot
+### 2. Payment Processing
 
-**What it does**: Syncs contacts and pipeline data with HubSpot CRM. Enables marketing and sales alignment through automatic contact creation and engagement tracking.
+#### Stripe
 
-**Capabilities**:
-- Sync contacts from R-Link events to HubSpot.
-- Update contact properties with engagement data.
-- Manage pipeline deals linked to event attendance.
-- Trigger HubSpot workflows from R-Link events.
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `stripe` |
+| **Category** | payment |
+| **Description** | Accept payments and manage subscriptions |
+| **Configuration Modal** | `StripeIntegrationModal` |
 
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **HubSpot** under the CRM category.
-3. Click **Connect**.
-4. The HubSpot configuration modal opens.
-5. Authenticate with your HubSpot account via OAuth.
-6. Map R-Link fields to HubSpot properties.
-7. Configure contact sync preferences.
-8. Click **Save**.
+**Setup Steps:**
+1. Click **Connect** on the Stripe card.
+2. Enter your Stripe API keys:
+   - **Publishable key** (starts with `pk_live_` or `pk_test_`)
+   - **Secret key** (starts with `sk_live_` or `sk_test_`)
+3. Configure payment settings:
+   - Default currency
+   - Payment methods to accept (cards, ACH, etc.)
+   - Webhook endpoint for payment events
+4. Click **Save** to connect.
 
----
+**Use Cases:**
+- Charge for paid webinars and events.
+- Set up recurring subscriptions for content access.
+- Process one-time payments for session registrations.
+- Checkout integration in the Studio (via CheckoutModal).
 
-### Marketo
+#### PayPal
 
-**What it does**: Integrates with Marketo for marketing automation. Syncs event data for lead scoring, nurture campaigns, and marketing analytics.
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `paypal` |
+| **Category** | payment |
+| **Description** | Process payments via PayPal |
+| **Configuration Modal** | `PayPalIntegrationModal` |
 
-**Capabilities**:
-- Sync event registrations and attendance to Marketo.
-- Feed engagement data into Marketo lead scoring.
-- Trigger Marketo smart campaigns from R-Link events.
-- Track marketing attribution for events.
+**Setup Steps:**
+1. Click **Connect** on the PayPal card.
+2. Enter your PayPal API credentials:
+   - **Client ID**
+   - **Client Secret**
+3. Select environment: Sandbox (testing) or Live (production).
+4. Configure payment settings:
+   - Default currency
+   - Payment capture mode (immediate or authorize-then-capture)
+5. Click **Save** to connect.
 
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Marketo** under the CRM category.
-3. Click **Connect**.
-4. The Marketo configuration modal opens.
-5. Enter Marketo REST API credentials (Client ID, Client Secret, Munchkin Account ID).
-6. Configure data mapping and sync preferences.
-7. Click **Save**.
-
----
-
-### ActiveCampaign
-
-**What it does**: Connects with ActiveCampaign for customer experience automation. Syncs attendee data for email automation, CRM, and messaging.
-
-**Capabilities**:
-- Sync attendees to ActiveCampaign contacts.
-- Trigger automations based on event attendance.
-- Update deal stages based on engagement.
-- Tag contacts based on session participation.
-
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **ActiveCampaign** under the CRM category.
-3. Click **Connect**.
-4. The ActiveCampaign configuration modal opens.
-5. Enter your ActiveCampaign API URL and API key.
-6. Map R-Link data fields to ActiveCampaign fields.
-7. Configure automation triggers.
-8. Click **Save**.
+**Use Cases:**
+- Alternative payment method for attendees without credit cards.
+- International payments in multiple currencies.
+- PayPal checkout for paid events.
 
 ---
 
-### ConvertKit
+### 3. Cloud Storage
 
-**What it does**: Integrates with ConvertKit (now Kit) for creator-focused email marketing. Designed for course creators, coaches, and content creators using R-Link.
+#### Google Drive
 
-**Capabilities**:
-- Add event attendees as ConvertKit subscribers.
-- Tag subscribers based on event participation.
-- Trigger email sequences after events.
-- Segment subscribers by engagement level.
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `google_drive` |
+| **Category** | cloud_storage |
+| **Description** | Store recordings and files in Google Drive |
+| **Configuration Modal** | `GoogleDriveIntegrationModal` |
 
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **ConvertKit** under the CRM category.
-3. Click **Connect**.
-4. The ConvertKit configuration modal opens.
-5. Enter your ConvertKit API key or authenticate via OAuth.
-6. Select subscriber forms or tags to map.
-7. Click **Save**.
+**Setup Steps:**
+1. Click **Connect** on the Google Drive card.
+2. Authenticate with your Google account via OAuth.
+3. Grant R-Link permission to access your Google Drive.
+4. Select a destination folder for recordings.
+5. Configure auto-sync settings:
+   - Auto-upload new recordings to Google Drive.
+   - Choose file naming convention.
+   - Set folder structure (by date, room, or session type).
+6. Click **Save** to connect.
 
----
+**Use Cases:**
+- Automatic backup of recordings to Google Drive.
+- Share recordings via Google Drive links.
+- Organize recordings alongside other team files.
 
-### Go High Level
+#### Dropbox
 
-**What it does**: Full CRM integration with Go High Level (GHL). Provides comprehensive lead management, pipeline tracking, and marketing automation for agencies and businesses.
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `dropbox` |
+| **Category** | cloud_storage |
+| **Description** | Sync recordings to Dropbox |
+| **Configuration Modal** | `DropboxIntegrationModal` |
 
-**Capabilities**:
-- Full contact and lead sync.
-- Pipeline management with event-based stage updates.
-- Trigger GHL workflows from R-Link events.
-- SMS and email follow-ups via GHL.
-- Appointment and calendar sync.
+**Setup Steps:**
+1. Click **Connect** on the Dropbox card.
+2. Authenticate with your Dropbox account via OAuth.
+3. Grant R-Link permission to access your Dropbox.
+4. Select a destination folder for recordings.
+5. Configure sync settings:
+   - Auto-sync completed recordings.
+   - Choose file organization method.
+6. Click **Save** to connect.
 
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Go High Level** under the CRM category.
-3. Click **Connect**.
-4. The Go High Level configuration modal opens.
-5. Authenticate with your GHL account via OAuth or API key.
-6. Map R-Link fields to GHL contact properties.
-7. Configure pipeline and workflow triggers.
-8. Click **Save**.
-
-## Calendar Integrations
-
-### Google Calendar
-
-**What it does**: Synchronizes R-Link scheduled sessions with Google Calendar. When a session is scheduled in R-Link, it automatically appears on the user's Google Calendar, and vice versa.
-
-**Capabilities**:
-- Two-way sync of scheduled sessions.
-- Automatic calendar event creation with join links.
-- Reminder sync with Google Calendar notifications.
-- Support for recurring events.
-
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Google Calendar** under the Calendar category.
-3. Click **Connect**.
-4. The Google Calendar configuration modal opens.
-5. Authenticate with your Google account via OAuth.
-6. Select which Google Calendar to sync with.
-7. Configure sync preferences (one-way or two-way, reminder settings).
-8. Click **Save**.
+**Use Cases:**
+- Sync recordings to Dropbox for team access.
+- Integrate with existing Dropbox-based workflows.
+- Cross-platform file access.
 
 ---
 
-### Microsoft Outlook
+### 4. Authentication (SSO)
 
-**What it does**: Synchronizes scheduled sessions with Microsoft Outlook Calendar. Works with both personal Outlook accounts and Microsoft 365 business accounts.
+#### Google SSO
 
-**Capabilities**:
-- Sync sessions to Outlook Calendar.
-- Automatic event creation with session details and join links.
-- Reminder integration.
-- Support for Microsoft 365 organizations.
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `google_auth` |
+| **Category** | authentication |
+| **Description** | Enable Google single sign-on |
+| **Configuration Modal** | `GoogleSSOIntegrationModal` |
 
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Microsoft Outlook** under the Calendar category.
-3. Click **Connect**.
-4. The Outlook configuration modal opens.
-5. Authenticate with your Microsoft account via OAuth.
-6. Select calendar.
-7. Configure sync preferences.
-8. Click **Save**.
+**Setup Steps:**
+1. Click **Connect** on the Google SSO card.
+2. Create an OAuth 2.0 Client ID in Google Cloud Console.
+3. Enter the following credentials:
+   - **Client ID**
+   - **Client Secret**
+   - **Redirect URI** (provided by R-Link)
+4. Configure allowed domains (optional -- restrict to specific email domains).
+5. Click **Save** to connect.
 
----
+**Use Cases:**
+- Allow team members to log in with their Google accounts.
+- Simplify onboarding -- no separate R-Link password needed.
+- Enforce corporate Google Workspace authentication.
 
-### iCal Feed
+#### Microsoft SSO
 
-**What it does**: Provides an iCal subscription URL that external calendar applications can subscribe to. This is a one-way feed from R-Link to the external calendar.
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `microsoft_auth` |
+| **Category** | authentication |
+| **Description** | Enable Microsoft single sign-on |
+| **Configuration Modal** | `MicrosoftSSOIntegrationModal` |
 
-**Capabilities**:
-- Generate an iCal subscription URL.
-- Compatible with any calendar application that supports iCal/ICS subscriptions (Apple Calendar, Thunderbird, etc.).
-- Automatic updates as sessions are added or modified.
+**Setup Steps:**
+1. Click **Connect** on the Microsoft SSO card.
+2. Register an application in Azure Active Directory.
+3. Enter the following credentials:
+   - **Application (Client) ID**
+   - **Client Secret**
+   - **Tenant ID**
+   - **Redirect URI** (provided by R-Link)
+4. Configure allowed domains and tenant restrictions.
+5. Click **Save** to connect.
 
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **iCal Feed** under the Calendar category.
-3. Click **Connect** or **Generate Feed**.
-4. Copy the generated iCal URL.
-5. In your external calendar application, add a new calendar subscription and paste the URL.
-6. The calendar will periodically poll the URL for updates.
-
-**Note**: iCal Feed is one-way only (R-Link to external calendar). Events created in the external calendar are not synced back to R-Link.
-
-## SMS Integration
-
-### Twilio
-
-**What it does**: Sends SMS notifications and reminders to participants via Twilio. Useful for session reminders, last-minute schedule changes, and follow-up messages.
-
-**Capabilities**:
-- Send SMS reminders before scheduled sessions.
-- Notify participants of schedule changes.
-- Post-event follow-up messages.
-- Custom SMS templates.
-- Phone number collection during registration.
-
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Twilio** under the SMS category.
-3. Click **Connect**.
-4. The Twilio configuration modal opens.
-5. Enter your Twilio Account SID.
-6. Enter your Twilio Auth Token.
-7. Enter or select the Twilio phone number to send from.
-8. Configure default message templates.
-9. Click **Save**.
-
-## Live Streaming Integrations
-
-These integrations allow R-Link Live Stream mode sessions to broadcast simultaneously to external platforms.
-
-### YouTube
-
-**What it does**: Streams R-Link sessions live to YouTube. Enables reaching YouTube audiences while hosting the interactive session in R-Link.
-
-**Capabilities**:
-- Broadcast R-Link sessions to YouTube Live.
-- Automatic stream key configuration.
-- YouTube chat integration (optional).
-- Stream status monitoring.
-
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **YouTube** under the Live Streaming category.
-3. Click **Connect**.
-4. Authenticate with your YouTube/Google account via OAuth.
-5. Select the YouTube channel to stream to.
-6. Configure stream settings (title, description, visibility).
-7. Click **Save**.
-
-**Usage**: When starting a Live Stream session, select YouTube as a streaming destination. The session video is simultaneously sent to YouTube Live.
+**Use Cases:**
+- Allow team members to log in with Microsoft 365 accounts.
+- Azure AD integration for enterprise environments.
+- Support for multi-tenant or single-tenant configurations.
 
 ---
 
-### Facebook Live
+### 5. CRM (Customer Relationship Management)
 
-**What it does**: Streams R-Link sessions to Facebook Live on a Page or Profile.
+All CRM integrations use the `CRMIntegrationModal` for configuration.
 
-**Capabilities**:
-- Broadcast to Facebook Pages or personal profiles.
-- Automatic stream configuration.
-- Reach Facebook audiences alongside R-Link participants.
+#### Salesforce
 
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Facebook Live** under the Live Streaming category.
-3. Click **Connect**.
-4. Authenticate with your Facebook account via OAuth.
-5. Select the Facebook Page or profile to stream to.
-6. Configure stream permissions and defaults.
-7. Click **Save**.
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `salesforce` |
+| **Category** | crm |
+| **Description** | Two-way sync for registrations, attendance, and engagement scores |
+
+**Setup Steps:**
+1. Click **Connect** on the Salesforce card.
+2. Authenticate with your Salesforce org via OAuth.
+3. Configure field mappings:
+   - Map R-Link registrant fields to Salesforce Contact/Lead fields.
+   - Map attendance data to custom fields or activities.
+   - Map engagement scores to Salesforce fields.
+4. Set sync direction: one-way (R-Link to Salesforce), or two-way.
+5. Configure triggers (when to sync: on registration, on attendance, on session end).
+6. Click **Save** to connect.
+
+**Use Cases:**
+- Push webinar leads into Salesforce pipeline.
+- Track session engagement as Salesforce activities.
+- Score leads based on attendance and participation.
+
+#### HubSpot
+
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `hubspot` |
+| **Category** | crm |
+| **Description** | Sync contacts and track engagement in your pipeline |
+
+**Setup Steps:**
+1. Click **Connect** on the HubSpot card.
+2. Authenticate with your HubSpot account via OAuth or API key.
+3. Configure contact sync:
+   - Map registration fields to HubSpot contact properties.
+   - Set lifecycle stage for new contacts.
+   - Configure deal creation on paid event registration.
+4. Set up engagement tracking:
+   - Log session attendance as HubSpot activities.
+   - Update contact properties with engagement data.
+5. Click **Save** to connect.
+
+**Use Cases:**
+- Automatically create HubSpot contacts from registrants.
+- Track webinar attendance in the HubSpot timeline.
+- Trigger workflows based on session engagement.
+
+#### Marketo
+
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `marketo` |
+| **Category** | crm |
+| **Description** | Marketing automation with engagement tracking |
+
+**Setup Steps:**
+1. Click **Connect** on the Marketo card.
+2. Enter your Marketo REST API credentials:
+   - **Client ID**
+   - **Client Secret**
+   - **REST API Endpoint** (e.g., `https://XXX-XXX-XXX.mktorest.com`)
+3. Configure lead sync and program membership.
+4. Set up engagement scoring.
+5. Click **Save** to connect.
+
+**Use Cases:**
+- Sync attendees to Marketo programs.
+- Track engagement for lead scoring.
+- Trigger Marketo smart campaigns based on R-Link events.
+
+#### ActiveCampaign
+
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `activecampaign` |
+| **Category** | crm |
+| **Description** | Customer experience automation with two-way sync |
+
+**Setup Steps:**
+1. Click **Connect** on the ActiveCampaign card.
+2. Enter your ActiveCampaign API credentials:
+   - **API URL** (e.g., `https://youraccountname.api-us1.com`)
+   - **API Key**
+3. Configure contact sync and list assignments.
+4. Set up automation triggers.
+5. Click **Save** to connect.
+
+**Use Cases:**
+- Add attendees to ActiveCampaign lists and automations.
+- Tag contacts based on event attendance.
+- Two-way data sync for comprehensive customer profiles.
+
+#### ConvertKit
+
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `convertkit` |
+| **Category** | crm |
+| **Description** | Creator marketing platform with automated tagging |
+
+**Setup Steps:**
+1. Click **Connect** on the ConvertKit card.
+2. Enter your ConvertKit API credentials:
+   - **API Key**
+   - **API Secret**
+3. Select subscriber forms and tags.
+4. Configure automated tag assignment based on events.
+5. Click **Save** to connect.
+
+**Use Cases:**
+- Add webinar registrants as ConvertKit subscribers.
+- Tag subscribers based on attendance.
+- Trigger ConvertKit sequences from R-Link events.
+
+#### GoHighLevel
+
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `gohighlevel` |
+| **Category** | crm |
+| **Description** | Full-featured CRM and marketing automation |
+
+**Setup Steps:**
+1. Click **Connect** on the GoHighLevel card.
+2. Enter your GoHighLevel API credentials:
+   - **API Key** or OAuth token
+   - **Location ID**
+3. Configure contact sync and pipeline mapping.
+4. Set up workflow triggers.
+5. Click **Save** to connect.
+
+**Use Cases:**
+- Sync R-Link contacts into GoHighLevel CRM.
+- Create pipeline opportunities from paid event registrations.
+- Trigger GoHighLevel workflows from R-Link events.
 
 ---
 
-### Twitch
+### 6. Calendar
 
-**What it does**: Streams R-Link sessions to Twitch for gaming, creative, and professional audiences.
+#### Google Calendar
 
-**Capabilities**:
-- Broadcast to Twitch channels.
-- Stream key integration.
-- Reach the Twitch community while hosting in R-Link.
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `google_calendar` |
+| **Category** | calendar |
+| **Description** | Sync meetings with Google Calendar |
+| **Configuration Modal** | `GoogleCalendarIntegrationModal` |
 
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **Twitch** under the Live Streaming category.
-3. Click **Connect**.
-4. Authenticate with your Twitch account via OAuth.
-5. Select the Twitch channel.
-6. Configure stream title and category.
-7. Click **Save**.
+**Setup Steps:**
+1. Click **Connect** on the Google Calendar card.
+2. Authenticate with your Google account via OAuth.
+3. Grant R-Link permission to manage your Google Calendar.
+4. Select which calendar to sync events to.
+5. Configure sync settings:
+   - Auto-create calendar events for scheduled sessions.
+   - Include join link in event description.
+   - Set reminder notifications.
+6. Click **Save** to connect.
+
+**Use Cases:**
+- Automatically add R-Link sessions to Google Calendar.
+- Send Google Calendar reminders to participants.
+- Prevent scheduling conflicts by checking calendar availability.
+
+#### Microsoft Outlook
+
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `outlook` |
+| **Category** | calendar |
+| **Description** | Sync meetings with Outlook Calendar |
+| **Configuration Modal** | `OutlookIntegrationModal` |
+
+**Setup Steps:**
+1. Click **Connect** on the Microsoft Outlook card.
+2. Authenticate with your Microsoft account via OAuth.
+3. Grant R-Link permission to manage your Outlook Calendar.
+4. Select the target calendar.
+5. Configure sync settings:
+   - Auto-create Outlook events for scheduled sessions.
+   - Include meeting link in event body.
+   - Configure Teams/Outlook notification preferences.
+6. Click **Save** to connect.
+
+**Use Cases:**
+- Sync R-Link sessions to Outlook for enterprise environments.
+- Leverage Outlook's scheduling assistant for team availability.
+- Send Outlook calendar invites to participants.
+
+#### iCal Feed
+
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `ical` |
+| **Category** | calendar |
+| **Description** | Generate iCal feeds for calendar subscriptions |
+| **Configuration Modal** | `ICalIntegrationModal` |
+
+**Setup Steps:**
+1. Click **Connect** on the iCal Feed card.
+2. Configure feed settings:
+   - Which session types to include (meetings, webinars, live streams).
+   - Feed visibility (public or private with token).
+3. Copy the generated iCal feed URL.
+4. Subscribe to the feed in any calendar application (Apple Calendar, Thunderbird, etc.).
+
+**Use Cases:**
+- Universal calendar compatibility (any app that supports iCal).
+- Public event feeds for marketing pages.
+- Personal calendar subscriptions without OAuth.
 
 ---
 
-### LinkedIn Live
+### 7. SMS
 
-**What it does**: Streams R-Link sessions to LinkedIn Live for professional networking and thought leadership content.
+#### Twilio
 
-**Capabilities**:
-- Broadcast to LinkedIn profiles or Company Pages.
-- Professional audience reach.
-- Integration with LinkedIn's event features.
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `twilio` |
+| **Category** | sms |
+| **Description** | Send SMS notifications and reminders |
+| **Configuration Modal** | `TwilioIntegrationModal` |
 
-**Setup Steps**:
-1. Navigate to **Integrations**.
-2. Find **LinkedIn Live** under the Live Streaming category.
-3. Click **Connect**.
-4. Authenticate with your LinkedIn account via OAuth.
-5. Select the LinkedIn profile or Company Page.
-6. Configure stream details.
-7. Click **Save**.
+**Setup Steps:**
+1. Click **Connect** on the Twilio card.
+2. Enter your Twilio credentials:
+   - **Account SID**
+   - **Auth Token**
+   - **Phone Number** (Twilio phone number to send from)
+3. Configure SMS settings:
+   - Session reminder timing (e.g., 1 hour before, 15 minutes before).
+   - Custom message templates with merge fields.
+   - Opt-in/opt-out management.
+4. Click **Save** to connect.
 
-**Note**: LinkedIn Live access may require LinkedIn approval for live broadcasting.
+**Use Cases:**
+- Send SMS reminders before sessions start.
+- Notify registrants of schedule changes.
+- Send join links via text message.
+- International SMS support via Twilio.
+
+---
+
+### 8. Live Streaming
+
+All streaming integrations use the `RTMPIntegrationModal` for configuration.
+
+#### YouTube
+
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `youtube` |
+| **Category** | live_streaming |
+| **Description** | Stream live to YouTube |
+
+**Setup Steps:**
+1. Click **Connect** on the YouTube card.
+2. Authenticate with your YouTube/Google account.
+3. Enter RTMP credentials:
+   - **RTMP URL**: `rtmp://a.rtmp.youtube.com/live2` (default YouTube RTMP endpoint)
+   - **Stream Key**: Found in YouTube Studio under "Go Live" > "Stream" settings
+4. Configure default streaming settings:
+   - Privacy (public, unlisted, private)
+   - Category (from YouTube categories list)
+   - Auto-start behavior
+5. Click **Save** to connect.
+
+**Use Cases:**
+- Simulcast R-Link sessions to YouTube Live.
+- Build YouTube audience alongside private webinars.
+- Archive sessions on YouTube channel.
+
+#### Facebook Live
+
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `facebook` |
+| **Category** | live_streaming |
+| **Description** | Stream live to Facebook |
+
+**Setup Steps:**
+1. Click **Connect** on the Facebook Live card.
+2. Authenticate with your Facebook account.
+3. Enter RTMP credentials:
+   - **RTMP URL**: Provided in Facebook Live Producer
+   - **Stream Key**: Provided in Facebook Live Producer
+4. Configure default settings:
+   - Target (page, group, or profile)
+   - Privacy settings
+5. Click **Save** to connect.
+
+**Use Cases:**
+- Broadcast sessions to Facebook pages or groups.
+- Reach Facebook audience during webinars.
+- Cross-promote events on social media.
+
+#### Twitch
+
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `twitch` |
+| **Category** | live_streaming |
+| **Description** | Stream live to Twitch |
+
+**Setup Steps:**
+1. Click **Connect** on the Twitch card.
+2. Enter RTMP credentials:
+   - **RTMP URL**: `rtmp://live.twitch.tv/app/` (default Twitch ingest)
+   - **Stream Key**: Found in Twitch Dashboard under Settings > Stream
+3. Configure default settings.
+4. Click **Save** to connect.
+
+**Use Cases:**
+- Stream interactive sessions to Twitch.
+- Gaming, creative, or educational live content.
+- Leverage Twitch chat alongside R-Link features.
+
+#### LinkedIn Live
+
+| Detail | Value |
+|--------|-------|
+| **Provider ID** | `linkedin` |
+| **Category** | live_streaming |
+| **Description** | Stream live to LinkedIn |
+
+**Setup Steps:**
+1. Click **Connect** on the LinkedIn Live card.
+2. Enter RTMP credentials:
+   - **RTMP URL**: Provided in LinkedIn Live Events
+   - **Stream Key**: Provided in LinkedIn Live Events
+3. Configure default settings.
+4. Click **Save** to connect.
+
+**Use Cases:**
+- Professional broadcasts to LinkedIn audience.
+- B2B webinar promotion.
+- Thought leadership content distribution.
+
+---
 
 ## Webhooks
 
 ### Overview
 
-The `WebhookConfigModal` provides webhook configuration for receiving HTTP callbacks when specific events occur in R-Link. Webhooks push real-time event data to external systems.
+Webhooks allow you to receive real-time HTTP POST notifications when specific events occur in your R-Link account. Configure webhooks via the `WebhookConfigModal`.
 
-### Supported Webhook Events
+### Accessing Webhooks
+
+1. In the Integrations tab, scroll to the **Webhooks** section.
+2. Click **Configure Webhooks** to open the configuration modal.
+
+### Webhook Configuration
+
+Each webhook consists of:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique webhook identifier |
+| `url` | string | The HTTPS endpoint to receive POST requests |
+| `events` | object | Map of event types to boolean (enabled/disabled) |
+| `secret` | string | Signing secret for payload verification (format: `whsec_xxxxxxxxxx`) |
+| `enabled` | boolean | Whether the webhook is active |
+| `created` | datetime | When the webhook was created |
+
+### Available Webhook Events
 
 | Event | Description |
 |-------|-------------|
-| Room creation | Triggered when a new room is created |
-| Recording completion | Triggered when a recording finishes processing |
-| Participant joins | Triggered when a participant joins a session |
+| `room.created` | Fired when a new room is created |
+| `room.started` | Fired when a room session begins (host joins) |
+| `room.ended` | Fired when a room session ends |
+| `participant.joined` | Fired when a participant joins a room |
+| `participant.left` | Fired when a participant leaves a room |
+| `recording.started` | Fired when recording begins in a session |
+| `recording.completed` | Fired when a recording is processed and ready |
+| `registration.created` | Fired when someone registers for a webinar/event |
 
-Additional events may include: session start, session end, registration received, and payment completed.
+### Creating a Webhook
 
-### Configuring Webhooks
-
-1. Navigate to **Integrations**.
-2. Scroll to the **Webhooks** section or click the Webhooks tab.
-3. Click **Add Webhook**.
-4. The `WebhookConfigModal` opens.
-5. Enter the **Endpoint URL**: The HTTPS URL where R-Link will send POST requests.
-6. Select the **Events** to subscribe to (check one or more events from the list).
-7. Optionally set a **Secret Key** for request signature verification.
-8. Click **Save**.
+1. Click **Configure Webhooks** to open the modal.
+2. Enter the **Webhook URL** (must be an HTTPS endpoint).
+3. Optionally enter a **Signing Secret** (auto-generated if left blank).
+4. Toggle which events should trigger the webhook (all enabled by default).
+5. Click **Add** to create the webhook.
+6. Click **Save** to persist all webhook configurations.
 
 ### Webhook Payload
 
-Webhook requests are sent as HTTP POST requests with a JSON payload containing:
-- `event`: The event type (e.g., `room.created`, `recording.completed`, `participant.joined`).
-- `timestamp`: ISO 8601 timestamp of the event.
-- `data`: Event-specific payload with relevant details (room ID, recording URL, participant info, etc.).
-
-### Webhook Security
-
-- Always use HTTPS endpoints.
-- Use the secret key to verify webhook signatures and ensure requests originate from R-Link.
-- Implement idempotency in your webhook handler to handle duplicate deliveries.
+Webhooks send POST requests with:
+- **Content-Type**: `application/json`
+- **X-Webhook-Secret**: The signing secret for verification
+- **Body**: JSON payload containing the event type, timestamp, and event-specific data
 
 ### Managing Webhooks
 
-- **Edit**: Update the endpoint URL or subscribed events.
-- **Delete**: Remove a webhook to stop receiving callbacks.
-- **Test**: Send a test payload to verify the endpoint is working.
-- **Logs**: View recent webhook delivery logs to troubleshoot failed deliveries.
+- View active webhooks in the webhook section (shows URL, count of webhooks).
+- Remove a webhook by clicking the delete button in the configuration modal.
+- Toggle webhooks on/off without deleting them.
+
+---
 
 ## API Keys
 
 ### Overview
 
-API Keys provide programmatic access to R-Link's API. They are used for building custom integrations, automating workflows, and accessing R-Link data from external applications.
+API keys provide programmatic access to R-Link's API. Keys are used to authenticate server-to-server requests.
 
-### API Key Format
+### Key Format
 
-API keys follow a prefixed format:
-- **Live keys**: `rlink_live_xxxx` (for production use)
-- **Test keys**: `rlink_test_xxxx` (for development and testing)
+R-Link API keys follow this naming convention:
+
+| Key Type | Format | Description |
+|----------|--------|-------------|
+| **Production** | `rlink_live_xxxxxxxxxxxxxxxx` | For live/production environments |
+| **Development** | `rlink_test_xxxxxxxxxxxxxxxx` | For testing and development |
+
+The `rlink_live_` and `rlink_test_` prefixes distinguish between production and development keys. Always use test keys during development and live keys in production.
 
 ### Creating an API Key
 
-1. Navigate to **Integrations**.
-2. Scroll to the **API Keys** section.
-3. Click **Create API Key**.
-4. Enter a **name** for the key (e.g., "Production CRM Sync", "Dev Testing").
-5. Select the key type: **Live** or **Test**.
-6. Click **Create**.
-7. The API key is displayed. **Copy it immediately** -- it will not be shown again.
-8. Click **Copy to Clipboard** to securely copy the key.
+1. In the Integrations tab, scroll to the **API Keys** section.
+2. Click **Create New Key**.
+3. Enter a descriptive **Key Name** (e.g., "Production Server", "Staging Environment", "CI/CD Pipeline").
+4. Click **Generate Key**.
+5. **IMPORTANT**: Copy the key immediately. The full key is shown only once and cannot be retrieved later.
+6. Click **Done** to close the dialog.
+
+### Viewing API Keys
+
+The API Keys section displays all created keys:
+
+| Column | Description |
+|--------|-------------|
+| **Name** | Descriptive name given during creation |
+| **Key** | First 30 characters of the key (truncated for security) |
+| **Created** | Date the key was generated |
+| **Last Used** | Date the key was last used for an API call |
 
 ### Revoking an API Key
 
-1. Navigate to the **API Keys** section under Integrations.
-2. Find the key to revoke in the list.
-3. Click **Revoke**.
-4. Confirm the revocation.
-5. The key is immediately invalidated and can no longer be used for API requests.
+1. Find the key in the API Keys list.
+2. Click **Revoke** on the right side.
+3. Confirm the revocation. This action is permanent and cannot be undone.
+4. Any applications using this key will immediately lose API access.
 
-### API Key Security Warning
+### API Key Security
 
-**IMPORTANT**: Do not share API keys in public repositories, client-side code, or unsecured locations. Treat API keys as sensitive credentials.
+- **Never share API keys** in public repositories, client-side code, or unsecured channels.
+- Use environment variables to store keys in your applications.
+- Rotate keys periodically by creating new ones and revoking old ones.
+- Use separate keys for production and development environments.
+- Monitor "Last Used" dates to identify unused keys for cleanup.
 
-- Store keys in environment variables or secure vault systems.
-- Never commit keys to version control (Git, SVN, etc.).
-- Rotate keys periodically.
-- Use test keys (`rlink_test_xxxx`) for development; use live keys (`rlink_live_xxxx`) only in production environments.
-- If a key is compromised, revoke it immediately and create a new one.
+---
 
-### API Key Management
+## Integration Status Values
 
-| Action | Description |
-|--------|-------------|
-| Create | Generate a new named API key (live or test) |
-| Copy | Copy key to clipboard (only available immediately after creation) |
-| Revoke | Permanently invalidate a key |
-| List | View all active and revoked keys with names and creation dates |
+| Status | Badge | Description |
+|--------|-------|-------------|
+| `connected` | Green "Connected" badge | Integration is active and functional |
+| `disconnected` | (no badge) | Integration is not connected; shows "Connect" button |
+| `error` | Red "Error" badge | Integration encountered a problem; needs reconfiguration |
 
-## Settings and Options
+### Connected State Actions
+- **Configure**: Open the configuration modal to modify settings.
+- **Disconnect**: Remove the integration connection.
 
-### Global Integration Settings
+### Disconnected State Actions
+- **Connect**: Open the configuration modal to set up the integration.
 
-| Setting | Description | Notes |
-|---------|-------------|-------|
-| Integration category filter | Filter integrations by category | Email, Payment, Cloud Storage, Auth, CRM, Calendar, SMS, Live Streaming |
-| Connection status | View connected vs. disconnected integrations | Status badge on each integration |
-| Auto-sync | Enable automatic data sync for connected integrations | Per-integration setting |
+---
 
-### Integration Entity Fields
+## Complete Integration Reference Table
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `provider` | String | Integration service name (e.g., `'mailchimp'`, `'stripe'`) |
-| `category` | String | Category grouping (e.g., `'email'`, `'payment'`) |
-| `status` | String | `'connected'` or `'disconnected'` |
-| `account_id` | String | Account that owns this integration |
+| # | Provider | Provider ID | Category | Modal Component |
+|---|----------|-------------|----------|----------------|
+| 1 | Mailchimp | `mailchimp` | email | EmailIntegrationModal |
+| 2 | SendGrid | `sendgrid` | email | EmailIntegrationModal |
+| 3 | Stripe | `stripe` | payment | StripeIntegrationModal |
+| 4 | PayPal | `paypal` | payment | PayPalIntegrationModal |
+| 5 | Google Drive | `google_drive` | cloud_storage | GoogleDriveIntegrationModal |
+| 6 | Dropbox | `dropbox` | cloud_storage | DropboxIntegrationModal |
+| 7 | Google SSO | `google_auth` | authentication | GoogleSSOIntegrationModal |
+| 8 | Microsoft SSO | `microsoft_auth` | authentication | MicrosoftSSOIntegrationModal |
+| 9 | Salesforce | `salesforce` | crm | SalesforceIntegrationModal (via CRMIntegrationModal) |
+| 10 | HubSpot | `hubspot` | crm | HubSpotIntegrationModal (via CRMIntegrationModal) |
+| 11 | Marketo | `marketo` | crm | MarketoIntegrationModal (via CRMIntegrationModal) |
+| 12 | ActiveCampaign | `activecampaign` | crm | ActiveCampaignIntegrationModal (via CRMIntegrationModal) |
+| 13 | ConvertKit | `convertkit` | crm | ConvertKitIntegrationModal (via CRMIntegrationModal) |
+| 14 | GoHighLevel | `gohighlevel` | crm | GoHighLevelIntegrationModal (via CRMIntegrationModal) |
+| 15 | Google Calendar | `google_calendar` | calendar | GoogleCalendarIntegrationModal |
+| 16 | Microsoft Outlook | `outlook` | calendar | OutlookIntegrationModal |
+| 17 | iCal Feed | `ical` | calendar | ICalIntegrationModal |
+| 18 | Twilio | `twilio` | sms | TwilioIntegrationModal |
+| 19 | YouTube | `youtube` | live_streaming | RTMPIntegrationModal |
+| 20 | Facebook Live | `facebook` | live_streaming | RTMPIntegrationModal |
+| 21 | Twitch | `twitch` | live_streaming | RTMPIntegrationModal |
+| 22 | LinkedIn Live | `linkedin` | live_streaming | RTMPIntegrationModal |
 
-## Troubleshooting
+---
 
-### Integration fails to connect
-- Verify your credentials or API keys for the third-party service are correct.
-- Check that your account on the third-party service is active and has the required permissions.
-- For OAuth-based integrations, try disconnecting and reconnecting to refresh the authorization.
-- Check browser popup blockers -- OAuth flows may open a popup window.
+## Common Troubleshooting
 
-### Data not syncing to CRM
-- Verify the integration status is `'connected'` (not `'disconnected'`).
-- Check field mapping configuration -- unmapped fields will not sync.
-- Review sync logs if available in the integration's configuration modal.
-- For two-way sync (Salesforce), ensure both read and write permissions are granted.
+### Q: An integration shows "Connected" but is not working.
+**A:** Click **Configure** on the integration to review the settings. Common issues:
+1. API keys or tokens have expired -- regenerate them in the third-party service.
+2. OAuth tokens need to be refreshed -- disconnect and reconnect the integration.
+3. Permissions were revoked in the third-party service.
+4. The third-party service is experiencing an outage.
 
-### Calendar events not appearing
-- Confirm the calendar integration is connected and the correct calendar is selected.
-- For Google Calendar and Outlook, verify OAuth permissions include calendar write access.
-- For iCal Feed, ensure the external calendar application is refreshing the subscription (this may take up to 24 hours for some apps).
+### Q: I cannot connect an integration.
+**A:** Check the following:
+1. Your role must have the `integrations.manage` permission.
+2. Ensure you have the correct credentials from the third-party service.
+3. Check that the third-party service account is active and in good standing.
+4. For OAuth integrations, ensure popup blockers are disabled.
 
-### Webhook not receiving events
-- Verify the endpoint URL is correct and uses HTTPS.
-- Check that the endpoint server is running and accessible from the internet.
-- Review webhook delivery logs for HTTP error codes.
-- Ensure the selected events match the events you expect to receive.
-- Test the endpoint with the built-in test feature.
+### Q: My webhooks are not firing.
+**A:** Troubleshooting steps:
+1. Verify the webhook URL is correct and accessible from the internet (HTTPS required).
+2. Check that the webhook is enabled (not just created but toggled on).
+3. Verify the events you expect are toggled on for this webhook.
+4. Check your server logs for incoming requests -- they may be arriving but failing.
+5. Test with a service like webhook.site to confirm delivery.
 
-### Live stream not broadcasting
-- Verify the streaming integration is connected and the correct channel/page is selected.
-- Ensure your account on the streaming platform (YouTube, Facebook, Twitch, LinkedIn) is approved for live streaming.
-- Check stream key validity -- keys may expire or rotate on some platforms.
-- Verify your internet upload bandwidth is sufficient for streaming.
+### Q: I lost my API key.
+**A:** API keys are shown only once at creation time. If you lose a key:
+1. Create a new API key with the same name.
+2. Update your application with the new key.
+3. Revoke the old key to prevent unauthorized access.
 
-### API key not working
-- Verify you are using the correct key type (live vs. test) for your environment.
-- Check that the key has not been revoked.
-- Ensure the key is being sent correctly in the API request headers.
-- If the key was just created, there may be a brief propagation delay.
+### Q: How do I test integrations without affecting production?
+**A:** Use test/development credentials:
+- **Stripe**: Use `pk_test_` and `sk_test_` keys.
+- **PayPal**: Select "Sandbox" environment during setup.
+- **API Keys**: Use `rlink_test_` prefixed keys for development.
+- **Webhooks**: Point to a staging webhook endpoint.
 
-### Cannot access Integrations tab
-- Your role must have `integrations.view` permission. Check with your account owner.
-- Admin role includes this permission by default; host role does not.
+### Q: Can I connect multiple accounts for the same integration?
+**A:** Each integration provider can have one active connection per R-Link account. To use multiple accounts (e.g., two Stripe accounts), you would need separate R-Link accounts.
 
-### SMS reminders not sending
-- Verify Twilio integration is connected with valid Account SID, Auth Token, and phone number.
-- Check that participant phone numbers are collected during registration.
-- Verify Twilio account has sufficient balance for SMS.
-- Check Twilio logs for delivery errors.
+### Q: What data is shared with CRM integrations?
+**A:** CRM integrations typically sync:
+- Registrant data (name, email, registration date)
+- Attendance data (joined, duration, engagement score)
+- Session metadata (title, date, type)
+- Custom fields mapped during configuration
 
-## FAQ
+### Q: How do I set up multistreaming to multiple platforms?
+**A:** Connect each streaming platform integration separately (YouTube, Facebook, Twitch, LinkedIn). When scheduling a live stream session, enable each platform and enter the RTMP credentials. R-Link will broadcast to all enabled platforms simultaneously. See `22-scheduling.md` for live stream scheduling details.
 
-**Q: How many integrations can I connect simultaneously?**
-A: There is no limit on the number of connected integrations. You can connect all available integrations if needed.
+### Q: Calendar events are not syncing.
+**A:** Check the following:
+1. The calendar integration is connected and shows "Connected" status.
+2. The correct calendar is selected in the integration settings.
+3. The session was created AFTER the calendar integration was connected (existing sessions may not retroactively sync).
+4. For Google Calendar, ensure R-Link has the necessary Calendar API permissions.
+5. For Outlook, ensure the Azure AD app registration has Calendar.ReadWrite permission.
 
-**Q: Do integrations cost extra?**
-A: R-Link does not charge extra for integration connections. However, the third-party services (Stripe, Twilio, Mailchimp, etc.) have their own pricing. You are responsible for costs on those platforms.
+### Q: How do I verify webhook payloads?
+**A:** Each webhook has a signing secret (format: `whsec_xxxxx`). When R-Link sends a webhook:
+1. The `X-Webhook-Secret` header contains the secret.
+2. Compare this header value with your stored secret.
+3. Only process payloads where the secret matches.
+4. This prevents unauthorized services from sending fake events to your endpoint.
 
-**Q: Can I connect multiple accounts of the same integration?**
-A: Typically, one account per integration per R-Link account. For example, one Mailchimp account, one Stripe account. If you need multiple, contact support.
+---
 
-**Q: What happens to my data when I disconnect an integration?**
-A: Disconnecting sets the integration status to `'disconnected'` and stops future data sync. Data already synced to the third-party service remains there. Data in R-Link is not affected.
+## API Reference
 
-**Q: Can I use webhooks to build custom integrations?**
-A: Yes. Webhooks combined with API keys allow you to build fully custom integrations. Webhooks push events to your server, and API keys allow your server to query and update R-Link data.
+### Integration Management
 
-**Q: How do live streaming integrations work with the three session modes?**
-A: Live streaming integrations are designed for **Live Stream** mode specifically. When starting a Live Stream session, you can select one or more connected streaming destinations. The session video is simultaneously broadcast to R-Link participants and the selected external platforms.
+```
+// List all integrations
+Integration.list()
 
-**Q: Can I stream to multiple platforms at once?**
-A: Yes. You can enable multiple live streaming destinations (e.g., YouTube and Facebook Live simultaneously) for a single Live Stream session. This is often called "simulcasting."
+// Connect an integration
+onConnect(integrationId)
 
-**Q: Are webhook deliveries retried on failure?**
-A: Yes. If a webhook delivery fails (non-2xx response), R-Link retries the delivery with exponential backoff. After multiple failures, the webhook may be automatically disabled.
+// Save integration configuration
+onSave({
+  provider: 'stripe',
+  category: 'payment',
+  status: 'connected',
+  config: { publishable_key: 'pk_live_xxx', secret_key: 'sk_live_xxx' }
+})
 
-**Q: What is the difference between live and test API keys?**
-A: Live keys (`rlink_live_xxxx`) access production data and should only be used in production environments. Test keys (`rlink_test_xxxx`) are for development and testing, typically accessing sandbox or test data without affecting real accounts.
+// Disconnect an integration
+onDisconnect(integrationId)
+```
 
-**Q: Can I regenerate an API key?**
-A: You cannot regenerate an existing key. Instead, create a new key and revoke the old one. This ensures a clean rotation with no ambiguity about which key is active.
+### Webhook Management
 
-## Known Limitations
+```
+// Save webhook configurations
+onSaveWebhooks([
+  {
+    id: '1',
+    url: 'https://api.example.com/webhooks/rlink',
+    events: {
+      'room.created': true,
+      'recording.completed': true,
+      'registration.created': true
+    },
+    secret: 'whsec_abc123',
+    enabled: true
+  }
+])
+```
 
-- OAuth tokens for integrations may expire and require re-authentication. R-Link attempts token refresh automatically, but some providers require manual re-connection.
-- iCal Feed is one-way only (R-Link to external calendar); events created in external calendars are not imported into R-Link.
-- Webhook retry logic has a maximum attempt count; after exhausting retries, events may be lost unless the external system has a recovery mechanism.
-- Live streaming quality depends on the host's upload bandwidth; R-Link does not provide CDN-level encoding for external streams.
-- API key permissions are global; you cannot create a key that is restricted to specific endpoints or data.
-- CRM field mapping must be configured manually for each integration; there is no automatic field detection.
-- Simultaneous multi-platform streaming (simulcast) may increase bandwidth and resource usage significantly.
-- SMS integration (Twilio) requires participants to provide phone numbers; there is no phone number lookup.
-- Some integrations (LinkedIn Live) require platform-side approval before live streaming is available.
+---
 
-## Plan Requirements
+## Related Features
 
-| Feature | Basic Plan | Business Plan |
-|---------|-----------|---------------|
-| Email integrations (Mailchimp, SendGrid) | No | Yes |
-| Payment integrations (Stripe, PayPal) | Limited | Yes |
-| Cloud Storage (Google Drive, Dropbox) | No | Yes |
-| Authentication SSO (Google, Microsoft) | No | Yes |
-| CRM integrations (all 6) | No | Yes |
-| Calendar integrations | Limited (1) | All (3) |
-| SMS (Twilio) | No | Yes |
-| Live Streaming (all 4 platforms) | No | Yes |
-| Webhooks | No | Yes |
-| API Keys | Limited (1 test key) | Unlimited (live + test) |
-
-## Related Documents
-
-- **21-admin-panel-navigation.md** -- Admin sidebar structure and Group 4 navigation
-- **22-scheduling.md** -- Calendar integrations and session reminders
-- **23-recordings-and-clips.md** -- Cloud storage export for recordings
-- **26-team-and-roles.md** -- Integration permissions (`integrations` category)
-- **24-brand-kits.md** -- Brand identity applied across integrations
+- **Scheduling**: Calendar integrations sync with scheduled sessions. Live streaming integrations receive RTMP data from live stream sessions. See `22-scheduling.md`.
+- **Recordings**: Cloud storage integrations auto-sync recordings. See `23-recordings-and-clips.md`.
+- **Team and Roles**: Integration access requires `integrations.view` and `integrations.manage` permissions. See `26-team-and-roles.md`.

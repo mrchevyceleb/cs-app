@@ -1,672 +1,965 @@
-# Studio Media Controls
+# 09 - Studio Media Controls
 
 ## Overview
 
-R-Link's Studio provides a comprehensive set of media controls that manage microphone, camera, screen sharing, virtual backgrounds, appearance enhancement, and lighting/color adjustments. These controls are accessible primarily through the BottomControls bar and the settings panel within the Studio. Each control has a corresponding state variable that persists during the session and can be configured with default values (such as muting on join). Additionally, the Studio includes a `SkinEnhancementProcessor` class that applies real-time video processing for appearance touch-ups, with hardware compatibility checks via the `isSupported()` method.
+R-Link's Studio provides comprehensive media controls for camera, microphone, screen sharing, and visual enhancement. These controls are accessible through the BottomControls bar, the Settings panel (gear icon in TopBar), and the Effects panel. The platform includes advanced features like skin enhancement processing, virtual backgrounds, touch-up controls, and professional-grade audio settings.
 
-This document covers every toggle, slider, and setting in the media controls system, including their defaults, behaviors, and troubleshooting guidance.
+Media settings are per-user and per-session. Each participant controls their own camera, microphone, and effects independently. Settings are persisted in localStorage so they carry over between sessions.
 
 ---
 
-## Microphone Controls
+## Core Media State
 
-### Mute / Unmute
+The Studio maintains three primary media state flags:
 
-| Setting | Details |
-|---|---|
-| State variable | `isMuted` |
-| Control location | BottomControls bar (microphone icon) |
-| Default | Unmuted (unless `muteOnJoin` is enabled) |
-| Behavior | Toggles the local microphone audio stream on/off |
-| Visual indicator | Microphone icon turns red/crossed when muted |
-| Keyboard shortcut | Spacebar (hold to temporarily unmute while muted) |
+### Primary State Flags
 
-**Step-by-step:**
-1. Locate the microphone icon in the BottomControls bar.
-2. Click once to toggle mute/unmute.
-3. When muted, the icon shows a red slash through the microphone.
-4. When unmuted, the icon shows a normal microphone.
-5. Other participants will see a muted indicator next to your name when you are muted.
+| State | Type | Default | Description |
+|-------|------|---------|-------------|
+| `isMuted` | `boolean` | `false` (unless `muteOnJoin` is enabled) | Whether the user's microphone is muted. When `true`, no audio is transmitted to other participants. |
+| `isCameraOn` | `boolean` | `true` (unless `cameraOffOnJoin` is enabled) | Whether the user's camera is active. When `false`, other participants see an avatar/initials tile instead of video. |
+| `isScreenSharing` | `boolean` | `false` | Whether the user is currently sharing their screen. When `true`, the screen share feed replaces or supplements the camera feed in the layout. |
 
-### Noise Suppression
+### State Interactions
 
-| Setting | Details |
-|---|---|
-| Setting name | `noiseSuppression` |
-| Type | Boolean toggle |
-| Default | Varies by browser/device |
-| Location | Settings panel > Audio settings |
-| Description | Filters out background noise (keyboard typing, fans, ambient sounds) using AI-based noise cancellation |
+```
+Microphone:
+  isMuted = false → Audio transmitted, mic icon shows active state
+  isMuted = true  → Audio NOT transmitted, mic icon shows muted (red/strikethrough)
 
-**How it works:**
-- When enabled, the audio stream is processed through a noise suppression filter before being sent to other participants.
-- Effective for reducing keyboard sounds, fan noise, pet sounds, and mild background conversations.
-- May slightly alter voice quality at aggressive levels.
-- Not effective for very loud or continuous noise sources (construction, heavy music).
+Camera:
+  isCameraOn = true  → Video transmitted, camera feed visible to others
+  isCameraOn = false → Video NOT transmitted, avatar/initials shown
 
-### Auto-Adjust Microphone
+Screen Share:
+  isScreenSharing = false → Normal camera-only mode
+  isScreenSharing = true  → Screen feed added to session; layout may auto-switch
+                             to accommodate screen share (e.g., screen_thumbnails)
+```
 
-| Setting | Details |
-|---|---|
-| Setting name | `autoAdjustMic` |
-| Type | Boolean toggle |
-| Default | Varies |
-| Location | Settings panel > Audio settings |
-| Description | Automatically adjusts microphone input level to maintain consistent volume |
+### Toggle Behavior
 
-**How it works:**
-- When enabled, the system monitors the microphone input level and automatically adjusts gain to prevent audio that is too quiet or too loud.
-- Useful for users who move closer to or farther from their microphone during a session.
-- May conflict with external audio processing software; disable if using professional audio equipment with its own gain control.
+| Action | Trigger | Effect |
+|--------|---------|--------|
+| Toggle mic | Click mic button / press `M` / press `Alt+A` | Flips `isMuted` between `true` and `false` |
+| Toggle camera | Click camera button / press `V` / press `Alt+V` | Flips `isCameraOn` between `true` and `false` |
+| Start screen share | Click screen share button | Opens browser screen picker dialog; on selection, sets `isScreenSharing = true` |
+| Stop screen share | Click screen share button again / click "Stop Sharing" | Sets `isScreenSharing = false`, returns to camera-only mode |
 
-### Mute on Join
+---
 
-| Setting | Details |
-|---|---|
-| Setting name | `muteOnJoin` |
-| Type | Boolean toggle |
+## General Media Settings
+
+These settings are available in the Studio Settings panel and affect fundamental behavior:
+
+### `mirrorVideo`
+
+| Attribute | Detail |
+|-----------|--------|
+| Type | `boolean` |
+| Default | `true` |
+| Description | Mirrors (horizontally flips) the user's own camera preview. This only affects the self-view; other participants see the non-mirrored feed. |
+| Location | Settings > Video |
+| Behavior ON | Self-view is horizontally flipped (natural mirror effect, like looking in a mirror) |
+| Behavior OFF | Self-view shows the actual camera output (non-flipped) |
+| Note | Text and screen elements will appear reversed in self-view when mirrored. This does NOT affect what others see. |
+
+### `hdVideo`
+
+| Attribute | Detail |
+|-----------|--------|
+| Type | `boolean` |
 | Default | `false` |
-| Location | Settings panel > Audio settings |
-| Description | When enabled, the microphone starts muted when joining any session |
+| Description | Enables high-definition video capture (720p or 1080p depending on camera capability and bandwidth). |
+| Location | Settings > Video |
+| Behavior ON | Camera captures at highest available resolution (up to 1080p). Uses more bandwidth and CPU. |
+| Behavior OFF | Camera captures at standard definition (480p or 360p) for lower bandwidth usage. |
+| Impact | Higher CPU usage, higher bandwidth consumption, better visual quality. May cause frame drops on lower-end devices. |
 
-**Use cases:**
-- Joining a large meeting where you want to listen first.
-- Preventing accidental audio when entering a session.
-- Default setting for team members who frequently join ongoing sessions.
+### `muteOnJoin`
 
----
-
-## Camera Controls
-
-### Camera On / Off
-
-| Setting | Details |
-|---|---|
-| State variable | `isCameraOn` |
-| Control location | BottomControls bar (camera icon) |
-| Default | On (unless `cameraOffOnJoin` is enabled) |
-| Behavior | Toggles the local camera video stream on/off |
-| Visual indicator | Camera icon turns red/crossed when off |
-
-**Step-by-step:**
-1. Locate the camera icon in the BottomControls bar.
-2. Click once to toggle camera on/off.
-3. When off, your video tile shows a placeholder (avatar or initials).
-4. When on, your live video feed is visible to other participants.
-
-### Mirror Video
-
-| Setting | Details |
-|---|---|
-| Setting name | `mirrorVideo` |
-| Type | Boolean toggle |
-| Default | Varies |
-| Location | Settings panel > Video settings |
-| Description | Mirrors the local video preview horizontally (like looking in a mirror) |
-
-**Important notes:**
-- Mirroring only affects the **local preview** (what you see of yourself).
-- Other participants always see the **non-mirrored** (correct) version.
-- Most users prefer mirrored view because it feels more natural (matches their mirror at home).
-- Text on the user's side (e.g., on a whiteboard behind them) will appear reversed in their preview but correct for others.
-
-### HD Video
-
-| Setting | Details |
-|---|---|
-| Setting name | `hdVideo` |
-| Type | Boolean toggle |
-| Default | Varies |
-| Location | Settings panel > Video settings |
-| Description | Enables high-definition video output (720p or 1080p depending on camera and network) |
-
-**Impact:**
-- Higher video quality for better visual clarity.
-- Requires more bandwidth (approximately 1.5-3 Mbps upload for 720p, 3-6 Mbps for 1080p).
-- May cause lag or frame drops on slow connections.
-- Disable if experiencing network issues or if the customer reports choppy video.
-
-### Camera Off on Join
-
-| Setting | Details |
-|---|---|
-| Setting name | `cameraOffOnJoin` |
-| Type | Boolean toggle |
+| Attribute | Detail |
+|-----------|--------|
+| Type | `boolean` |
 | Default | `false` |
-| Location | Settings panel > Video settings |
-| Description | When enabled, the camera starts off when joining any session |
+| Description | Automatically mutes the microphone when joining a session. User must manually unmute after joining. |
+| Location | Settings > Audio |
+| Behavior ON | `isMuted` is set to `true` immediately upon joining the session. Mic icon shows muted state. |
+| Behavior OFF | Microphone starts active (unmuted) when joining. |
+| Use case | Large meetings, webinars, environments where background noise should be avoided at join time. |
 
----
+### `cameraOffOnJoin`
 
-## Device Selection
-
-### Selecting Audio and Video Devices
-
-The settings panel provides device selection dropdowns for:
-
-| Device Type | Description |
-|---|---|
-| Microphone | Select from available audio input devices |
-| Speaker/Output | Select from available audio output devices |
-| Camera | Select from available video input devices |
-
-**Step-by-step:**
-1. Open the Settings panel (gear icon in TopBar or BottomControls).
-2. Navigate to the Audio or Video settings section.
-3. Click the dropdown for the device type you want to change.
-4. Select the desired device from the list.
-5. The change takes effect immediately.
-
-**Troubleshooting device selection:**
-- If no devices appear, the browser may not have permission to access media devices.
-- If a device was plugged in after the page loaded, try refreshing the page.
-- If using Bluetooth headphones, ensure they are connected and selected as both input and output.
-
----
-
-## Virtual Backgrounds
-
-### Overview
-
-Virtual backgrounds replace the user's real background with an image or blur effect. This feature uses the camera feed and applies real-time background segmentation.
-
-### State Variables
-
-| Variable | Type | Description |
-|---|---|---|
-| `virtualBackground` | String / null | Currently selected virtual background (null = no background) |
-| `customBackgrounds` | Array | List of user-uploaded custom background images |
-
-### Available Options
-
-| Option | Description |
-|---|---|
-| None | No virtual background (shows real background) |
-| Blur | Blurs the real background while keeping the user in focus |
-| Built-in images | Pre-loaded background images provided by R-Link |
-| Custom images | User-uploaded images from `customBackgrounds` array |
-
-### Step-by-Step: Applying a Virtual Background
-
-1. Open the Settings panel or click the virtual background button (if available in BottomControls).
-2. Navigate to the **Background** section.
-3. Choose from:
-   - **None**: Removes any virtual background.
-   - **Blur**: Applies a Gaussian blur to your real background.
-   - **Built-in**: Select from pre-loaded images.
-   - **Custom**: Click "Upload" to add your own image, then select it.
-4. The background is applied immediately in real-time.
-
-### Custom Background Upload
-
-- Supported formats: JPEG, PNG.
-- Recommended resolution: 1920x1080 or higher for best quality.
-- Uploaded backgrounds are stored in the `customBackgrounds` array and persist across sessions.
-- There is no strict limit on the number of custom backgrounds, but excessive uploads may impact performance.
-
-### Green Screen Mode
-
-| Setting | Details |
-|---|---|
-| Setting name | `greenScreen` |
-| Type | Boolean toggle |
+| Attribute | Detail |
+|-----------|--------|
+| Type | `boolean` |
 | Default | `false` |
-| Location | Settings panel > Background settings |
-| Description | Enables green screen mode for physical green screen setups |
+| Description | Automatically turns off the camera when joining a session. User must manually enable camera after joining. |
+| Location | Settings > Video |
+| Behavior ON | `isCameraOn` is set to `false` immediately upon joining. Avatar/initials shown instead of video. |
+| Behavior OFF | Camera starts active (on) when joining. |
+| Use case | Conserving bandwidth, privacy preference, joining while not camera-ready. |
 
-**How it works:**
-- When enabled, the system uses chroma key processing instead of AI-based background segmentation.
-- Requires a physical green screen behind the user.
-- Provides cleaner background replacement than AI segmentation, especially around hair and edges.
-- Best for professional setups with proper lighting.
+### `colorMode`
+
+| Attribute | Detail |
+|-----------|--------|
+| Type | `string` |
+| Default | `'dark'` |
+| Options | `'dark'`, `'light'` |
+| Description | Controls the overall color scheme of the Studio interface (not the video feed). |
+| Location | Settings > General |
+| Dark mode | Dark backgrounds, light text. Reduces eye strain. Default and recommended for most users. |
+| Light mode | Light backgrounds, dark text. May be preferred in bright environments. |
+| Scope | Affects TopBar, sidebars, BottomControls, settings panels, modals. Does NOT affect the video canvas content. |
 
 ---
 
-## Touch-Up Appearance
+## Audio Settings
 
-### Overview
+### `noiseSuppression`
 
-The touch-up appearance feature applies real-time skin enhancement to the user's video feed using the `SkinEnhancementProcessor` class. It provides subtle cosmetic improvements without requiring external software.
+| Attribute | Detail |
+|-----------|--------|
+| Type | `boolean` |
+| Default | `true` |
+| Description | Enables AI-powered noise suppression that filters out background noise (keyboard clicks, fans, construction, traffic, etc.) while preserving speech. |
+| Location | Settings > Audio |
+| Behavior ON | Background noise is actively suppressed. Speech is clear and isolated. |
+| Behavior OFF | Raw microphone audio is transmitted with no noise filtering. |
+| Technology | Uses Web Audio API or a dedicated noise suppression library/processor. |
+| Impact | Slight increase in CPU usage. Very slight latency addition (<20ms). |
+| Recommendation | Keep ON for most environments. Turn OFF only for music/audio production use cases where full-fidelity audio is required. |
 
-### Main Toggle
+### `autoAdjustMic`
 
-| Setting | Details |
-|---|---|
-| Setting name | `touchUpAppearance` |
-| Type | Boolean toggle |
+| Attribute | Detail |
+|-----------|--------|
+| Type | `boolean` |
+| Default | `true` |
+| Description | Automatically adjusts microphone input level (gain) to maintain consistent audio volume. Prevents audio from being too quiet or too loud. |
+| Location | Settings > Audio |
+| Behavior ON | System monitors audio levels and dynamically adjusts gain. Quiet speakers are boosted; loud speakers are attenuated. |
+| Behavior OFF | Microphone input level is fixed at the system level. User must manually adjust mic volume in OS settings. |
+| Impact | Smooth, consistent audio for all participants. May introduce slight pumping effect in some scenarios. |
+
+---
+
+## Touch-Up and Appearance Settings
+
+### `touchUpAppearance`
+
+| Attribute | Detail |
+|-----------|--------|
+| Type | `boolean` |
 | Default | `false` |
-| Location | Settings panel > Video settings > Touch Up |
-| Description | Enables or disables all touch-up appearance processing |
+| Description | Master toggle for appearance touch-up features. When enabled, activates the skin enhancement pipeline with the configured `touchUpLevel`. |
+| Location | Settings > Appearance / Effects Panel |
+| Behavior ON | Skin smoothing, blemish reduction, and other enhancements are applied to the video feed in real-time. |
+| Behavior OFF | No touch-up processing is applied. Raw camera feed is used. |
+| Dependency | Requires `SkinEnhancementProcessor` to be initialized. See SkinEnhancementProcessor section. |
 
-### Touch-Up Level
+### `touchUpLevel`
 
-| Setting | Details |
-|---|---|
-| Setting name | `touchUpLevel` |
-| Type | Number (slider) |
-| Range | 0 to 100 (or equivalent scale) |
-| Default | Mid-level |
-| Location | Settings panel > Video settings > Touch Up |
-| Description | Controls the overall intensity of the touch-up effect |
+| Attribute | Detail |
+|-----------|--------|
+| Type | `number` (0-100) |
+| Default | `50` |
+| Description | Controls the intensity of the touch-up effect. Higher values produce more smoothing and enhancement. |
+| Location | Settings > Appearance / Effects Panel (slider) |
+| Range | 0 = minimal touch-up, 100 = maximum touch-up |
+| Interaction | Only active when `touchUpAppearance` is `true`. |
+| UI element | Horizontal slider with numeric label showing current value. |
 
-### Individual Enhancement Settings
+### `greenScreen`
 
-When touch-up is enabled, the following individual enhancements are available:
+| Attribute | Detail |
+|-----------|--------|
+| Type | `boolean` |
+| Default | `false` |
+| Description | Enables chroma key (green screen) background replacement. When enabled, a green (or blue) background behind the user is replaced with the selected virtual background. |
+| Location | Settings > Appearance / Effects Panel |
+| Behavior ON | Chroma key processing is activated. A physical green/blue screen behind the user is detected and replaced. |
+| Behavior OFF | Green screen detection is disabled. Virtual backgrounds (if enabled) use AI-based segmentation instead. |
+| Requirements | Physical green or blue screen/backdrop behind the user for best results. Uniform lighting on the backdrop. |
+| Note | Green screen mode provides cleaner background replacement than AI segmentation but requires a physical backdrop. |
 
-#### Skin Tone Evening
+---
 
-| Setting | Details |
-|---|---|
-| Setting name | `skinToneEven` |
-| Type | Toggle / slider |
-| Description | Evens out skin tone variations, reducing redness and discoloration |
+## Skin Enhancement Settings (Advanced)
 
-#### Blemish Reduction
+These settings provide granular control over facial enhancement processing. They are sub-settings of the touch-up system and require `touchUpAppearance` to be enabled.
 
-| Setting | Details |
-|---|---|
-| Setting name | `blemishReduction` |
-| Type | Toggle / slider |
-| Description | Reduces the visibility of blemishes, spots, and skin imperfections |
+### `skinToneEven`
 
-#### Eye Brightness
+| Attribute | Detail |
+|-----------|--------|
+| Type | `number` (0-100) or `boolean` |
+| Default | `0` / `false` |
+| Description | Evens out skin tone variations across the face, reducing redness, blotchiness, and uneven pigmentation. |
+| Location | Effects Panel > Skin Enhancement |
+| Effect | Higher values produce more even skin tone. Low values preserve natural skin tone variation. |
 
-| Setting | Details |
-|---|---|
-| Setting name | `eyeBrightness` |
-| Type | Toggle / slider |
-| Description | Enhances the brightness and clarity of the eyes |
+### `blemishReduction`
 
-#### Teeth Whitening
+| Attribute | Detail |
+|-----------|--------|
+| Type | `number` (0-100) or `boolean` |
+| Default | `0` / `false` |
+| Description | Reduces the visibility of skin blemishes, spots, and minor imperfections. |
+| Location | Effects Panel > Skin Enhancement |
+| Effect | Higher values more aggressively smooth blemishes. May also soften fine details at very high values. |
 
-| Setting | Details |
-|---|---|
-| Setting name | `teethWhitening` |
-| Type | Toggle / slider |
-| Description | Whitens teeth appearance in the video feed |
+### `eyeBrightness`
 
-### SkinEnhancementProcessor Class
+| Attribute | Detail |
+|-----------|--------|
+| Type | `number` (0-100) or `boolean` |
+| Default | `0` / `false` |
+| Description | Increases the brightness and whiteness of the eye area (sclera), making eyes appear more vibrant and awake. |
+| Location | Effects Panel > Skin Enhancement |
+| Effect | Subtle brightening of the eye whites. Higher values produce more noticeable brightening. |
 
-The `SkinEnhancementProcessor` is the underlying class that performs the real-time video processing:
+### `teethWhitening`
 
-| Method | Description |
-|---|---|
-| `isSupported()` | Static method that checks if the user's browser and hardware support skin enhancement processing. Returns `true` or `false`. |
-| `init()` | Initializes the processor, setting up the video processing pipeline. Must be called before processing begins. |
-| `destroy()` | Cleans up resources, stops processing, and releases the video pipeline. Must be called when the session ends or when touch-up is disabled. |
-
-### Lifecycle
-
-1. **Check support**: Call `SkinEnhancementProcessor.isSupported()` to determine if the feature is available on the user's device.
-2. **Initialize**: When touch-up is enabled, call `init()` to start the processing pipeline.
-3. **Process**: Video frames are processed in real-time with the configured enhancement settings.
-4. **Destroy**: When touch-up is disabled or the session ends, call `destroy()` to release resources.
-
-### Hardware Requirements
-
-The `isSupported()` check evaluates:
-- WebGL support in the browser.
-- GPU capabilities (hardware acceleration required).
-- Browser version compatibility.
-- Available memory for real-time video processing.
-
-If `isSupported()` returns `false`, the touch-up controls should be hidden or disabled in the UI. The customer should be informed that their device does not support this feature.
+| Attribute | Detail |
+|-----------|--------|
+| Type | `number` (0-100) or `boolean` |
+| Default | `0` / `false` |
+| Description | Whitens the appearance of teeth when the user smiles or speaks. |
+| Location | Effects Panel > Skin Enhancement |
+| Effect | Subtle to noticeable teeth whitening. Only active when teeth are visible in the frame. |
 
 ---
 
 ## Light and Color Adjustments
 
-### Auto Light Correction
+These settings modify the camera feed's lighting and color properties to compensate for poor lighting conditions.
 
-| Setting | Details |
-|---|---|
-| Setting name | `autoLightCorrection` |
-| Type | Boolean toggle |
-| Default | Varies |
-| Location | Settings panel > Video settings > Light & Color |
-| Description | Automatically adjusts brightness and exposure to compensate for poor lighting |
+### `lowLightAdjust`
 
-### Low Light Adjust
+| Attribute | Detail |
+|-----------|--------|
+| Type | `boolean` |
+| Default | `false` |
+| Description | Automatically detects and compensates for low-light conditions. Brightens the video feed and reduces noise in dark environments. |
+| Location | Settings > Video > Advanced |
+| Behavior ON | Real-time brightness and noise reduction adjustments when low light is detected. |
+| Behavior OFF | No automatic light adjustment. Camera's native auto-exposure is used. |
+| Impact | Improved visibility in dark rooms. May introduce slight grain at extreme low light. |
 
-| Setting | Details |
-|---|---|
-| Setting name | `lowLightAdjust` |
-| Type | Boolean toggle |
-| Default | Varies |
-| Location | Settings panel > Video settings > Light & Color |
-| Description | Specifically enhances video quality in low-light conditions by boosting brightness and reducing noise |
+### `autoLightCorrection`
 
-### Color Temperature
+| Attribute | Detail |
+|-----------|--------|
+| Type | `boolean` or `number` (0-100) |
+| Default | `false` / `0` |
+| Description | Applies automatic light correction to balance brightness across the face, reducing harsh shadows and overexposure. |
+| Location | Effects Panel > Light & Color |
+| Effect | Fills in shadows, reduces highlights, creates a more evenly-lit appearance. |
 
-| Setting | Details |
-|---|---|
-| Setting name | `colorTemperature` |
-| Type | Number (slider) |
-| Range | Cool (blue) to warm (yellow) |
-| Default | Neutral |
-| Location | Settings panel > Video settings > Light & Color |
-| Description | Adjusts the color temperature (warmth/coolness) of the video feed |
+### `colorTemperature`
 
-### Exposure
+| Attribute | Detail |
+|-----------|--------|
+| Type | `number` |
+| Default | `0` (neutral) |
+| Range | `-100` (cool/blue) to `+100` (warm/yellow) |
+| Description | Adjusts the color temperature of the video feed. Negative values shift toward blue (cooler), positive values shift toward yellow/orange (warmer). |
+| Location | Effects Panel > Light & Color |
+| Effect | Compensates for unflattering ambient lighting color. Cool settings can counteract yellow artificial light; warm settings can counteract blue/fluorescent light. |
 
-| Setting | Details |
-|---|---|
-| Setting name | `exposure` |
-| Type | Number (slider) |
-| Range | Under-exposed to over-exposed |
-| Default | Neutral |
-| Location | Settings panel > Video settings > Light & Color |
-| Description | Manually adjusts the brightness/exposure of the video feed |
+### `exposure`
 
-### Contrast
+| Attribute | Detail |
+|-----------|--------|
+| Type | `number` |
+| Default | `0` (neutral) |
+| Range | `-100` (darker) to `+100` (brighter) |
+| Description | Manually adjusts the overall brightness/exposure of the video feed. |
+| Location | Effects Panel > Light & Color |
+| Effect | Positive values brighten the image; negative values darken it. Useful for fine-tuning when auto-exposure doesn't produce the desired result. |
 
-| Setting | Details |
-|---|---|
-| Setting name | `contrast` |
-| Type | Number (slider) |
-| Range | Low contrast to high contrast |
-| Default | Neutral |
-| Location | Settings panel > Video settings > Light & Color |
-| Description | Adjusts the contrast between light and dark areas of the video feed |
+### `contrast`
+
+| Attribute | Detail |
+|-----------|--------|
+| Type | `number` |
+| Default | `0` (neutral) |
+| Range | `-100` (flat/low contrast) to `+100` (high contrast) |
+| Description | Adjusts the contrast of the video feed. Higher values increase the difference between light and dark areas. |
+| Location | Effects Panel > Light & Color |
+| Effect | Positive values make the image more vivid with deeper shadows and brighter highlights. Negative values flatten the image. |
 
 ---
 
 ## Filters
 
-### Active Filter
+### `activeFilter`
 
-| Setting | Details |
-|---|---|
-| Setting name | `activeFilter` |
-| Type | String / null |
+| Attribute | Detail |
+|-----------|--------|
+| Type | `string` or `null` |
 | Default | `null` (no filter) |
-| Location | Settings panel > Video settings > Filters |
-| Description | Applies a visual filter to the camera feed (similar to Instagram-style filters) |
+| Description | Applies a visual filter to the camera feed, similar to social media filters. Changes the overall look and feel of the video. |
+| Location | Effects Panel > Filters |
+| Options | Platform provides a set of pre-defined filters (e.g., warm, cool, vintage, B&W, vivid, soft, dramatic). Exact filter names depend on available presets. |
+| Behavior | Selecting a filter applies it in real-time to the video preview and transmitted feed. Selecting `null` or "None" removes the filter. |
+| Scope | Affects the transmitted video feed (other participants see the filter). |
+| Note | Filters are applied AFTER skin enhancement and light/color adjustments in the processing pipeline. |
 
-**Available filters may include:**
-- None (default)
-- Warm
-- Cool
-- Vintage
-- Black & White
-- High Contrast
-- Soft Focus
-- Additional filters based on platform updates
-
-**Note:** Filters are applied to the local video feed and are visible to all participants. The exact list of available filters may vary.
-
----
-
-## Screen Sharing
-
-### Toggle Screen Sharing
-
-| Setting | Details |
-|---|---|
-| State variable | `isScreenSharing` |
-| Control location | BottomControls bar (screen share icon) |
-| Default | Off |
-| Behavior | Opens the browser's screen share picker, then broadcasts the selected source |
-
-### Step-by-Step: Sharing Your Screen
-
-1. Click the **Screen Share** button in the BottomControls bar.
-2. The browser's native screen share dialog appears with options:
-   - **Entire Screen**: Shares everything visible on the selected monitor.
-   - **Application Window**: Shares a specific application window.
-   - **Browser Tab**: Shares a specific browser tab (Chrome/Edge).
-3. Select the desired source and click **Share**.
-4. The shared content appears in the canvas area according to the active layout.
-5. To stop sharing, click the **Stop Share** button or the browser's stop sharing indicator.
-
-### Screen Share Layouts
-
-When screen sharing is active, certain layouts are optimized:
-
-| Session Type | Optimized Layout | Description |
-|---|---|---|
-| Meeting | `screen_thumbnails` | Screen takes 80%, participants in 20% sidebar |
-| Meeting | `presenter_pip` | Screen fullscreen, presenter in PiP |
-| Webinar | `content_focus` | Shared content fullscreen |
-| Webinar | `content_host_pip` | Content fullscreen, host in PiP |
-| Live Stream | `live_media` | Media/screen fullscreen |
-| Live Stream | `live_media_pip` | Media/screen fullscreen, host in PiP |
-
----
-
-## Complete Settings Object Structure
-
-The following is the complete settings object with all media control fields:
+### Filter Processing Order
 
 ```
-Settings {
-  // Audio
-  isMuted: Boolean,              // Current mute state
-  noiseSuppression: Boolean,     // AI noise cancellation
-  autoAdjustMic: Boolean,        // Auto mic level adjustment
-  muteOnJoin: Boolean,           // Mute when joining session
+Raw Camera Feed
+    |
+    v
+1. Low Light Adjustment (if enabled)
+    |
+    v
+2. Skin Enhancement / Touch-Up (if enabled)
+    |
+    v
+3. Light & Color Adjustments (exposure, contrast, color temperature)
+    |
+    v
+4. Filter Application (activeFilter)
+    |
+    v
+5. Virtual Background / Green Screen (if enabled)
+    |
+    v
+Transmitted Video Feed
+```
 
-  // Camera
-  isCameraOn: Boolean,           // Current camera state
-  mirrorVideo: Boolean,          // Mirror local preview
-  hdVideo: Boolean,              // HD video output
-  cameraOffOnJoin: Boolean,      // Camera off when joining
+---
 
-  // Background
-  virtualBackground: String|null, // Current virtual background
-  customBackgrounds: Array,       // User-uploaded backgrounds
-  greenScreen: Boolean,           // Green screen mode
+## Virtual Backgrounds
 
-  // Touch-Up Appearance
-  touchUpAppearance: Boolean,     // Master touch-up toggle
-  touchUpLevel: Number,           // Overall intensity
-  skinToneEven: Boolean|Number,   // Skin tone evening
-  blemishReduction: Boolean|Number, // Blemish reduction
-  eyeBrightness: Boolean|Number,  // Eye brightness
-  teethWhitening: Boolean|Number, // Teeth whitening
+### `virtualBackground`
 
-  // Light & Color
-  autoLightCorrection: Boolean,   // Auto light correction
-  lowLightAdjust: Boolean,        // Low light enhancement
-  colorTemperature: Number,       // Color warmth/coolness
-  exposure: Number,               // Brightness adjustment
-  contrast: Number,               // Contrast adjustment
+| Attribute | Detail |
+|-----------|--------|
+| Type | `string` or `null` |
+| Default | `null` (no virtual background) |
+| Description | Replaces the user's physical background with a virtual image or video. Uses AI-based person segmentation to separate the user from the background. |
+| Location | Effects Panel > Backgrounds |
+| Options | Pre-loaded backgrounds (images), custom uploaded backgrounds, blur, none |
+| Technology | TensorFlow.js or similar ML model for person segmentation (body/portrait segmentation). Falls back to green screen mode if `greenScreen` is enabled. |
 
-  // Filters
-  activeFilter: String|null,      // Active visual filter
+### `customBackgrounds`
 
-  // Screen Share
-  isScreenSharing: Boolean,       // Screen sharing state
+| Attribute | Detail |
+|-----------|--------|
+| Type | `array` of image URLs/data |
+| Default | `[]` (empty) |
+| Description | User-uploaded custom background images. Stored locally and available across sessions. |
+| Location | Effects Panel > Backgrounds > Custom |
+| Upload | Click "+" or "Upload" button to add a custom image from local files |
+| Supported formats | JPEG, PNG, WebP |
+| Recommended size | 1920x1080 (16:9 aspect ratio) |
+| Storage | Images stored in localStorage or IndexedDB. Not synced across devices. |
 
-  // Recording
-  isRecording: Boolean,           // Recording state
-  recordingMode: 'local'|'cloud', // Recording destination
-  multiTrackEnabled: Boolean,     // Multi-track recording
+### `backgroundBlur`
 
-  // Session
-  isLive: Boolean,                // Live streaming state
-  colorMode: String,              // UI color theme
+| Attribute | Detail |
+|-----------|--------|
+| Type | `boolean` |
+| Default | `false` |
+| Description | Blurs the user's physical background instead of replacing it. Provides privacy without a virtual background. |
+| Location | Effects Panel > Backgrounds |
+| Behavior ON | Background is blurred with the intensity controlled by `backgroundBlurIntensity`. User remains sharp. |
+| Behavior OFF | Background is not blurred (unless a virtual background is active). |
+| Priority | If both `virtualBackground` and `backgroundBlur` are enabled, `virtualBackground` takes precedence. |
 
-  // Sidebars
-  leftSidebarCollapsed: Boolean,  // Left sidebar state (default: true)
-  rightSidebarCollapsed: Boolean  // Right sidebar state (default: true)
+### `backgroundBlurIntensity`
+
+| Attribute | Detail |
+|-----------|--------|
+| Type | `number` (0-100) |
+| Default | `70` |
+| Description | Controls the intensity of the background blur effect. Higher values produce more blur. |
+| Location | Effects Panel > Backgrounds (slider, visible when backgroundBlur is ON) |
+| Range | 0 = very slight blur (almost no effect), 100 = maximum blur (background unrecognizable) |
+| Interaction | Only active when `backgroundBlur` is `true` and `virtualBackground` is `null`. |
+
+### Virtual Background Priority
+
+```
+Priority (highest to lowest):
+1. virtualBackground (image/video replacement)
+2. backgroundBlur (blur at backgroundBlurIntensity level)
+3. greenScreen (chroma key replacement)
+4. None (raw background)
+
+If virtualBackground is set → it wins
+Else if backgroundBlur is true → blur applied
+Else if greenScreen is true AND physical green screen present → chroma replacement
+Else → no background modification
+```
+
+---
+
+## SkinEnhancementProcessor
+
+### Overview
+
+The `SkinEnhancementProcessor` is a class that manages the video processing pipeline for skin enhancement, touch-up, and beauty features. It handles initialization of the ML models, canvas processing, and cleanup.
+
+### Class Interface
+
+```javascript
+class SkinEnhancementProcessor {
+  // Static method to check if the browser/device supports skin enhancement
+  static isSupported(): boolean
+
+  // Instance lifecycle methods
+  async init(videoElement: HTMLVideoElement, options: SkinEnhancementOptions): Promise<void>
+  destroy(): void
+
+  // Runtime configuration
+  setOptions(options: Partial<SkinEnhancementOptions>): void
+  getOptions(): SkinEnhancementOptions
+}
+```
+
+### `isSupported()` Static Method
+
+| Attribute | Detail |
+|-----------|--------|
+| Returns | `boolean` |
+| Purpose | Checks if the current browser and device support the skin enhancement pipeline |
+| Checks | WebGL2 support, canvas rendering capability, sufficient GPU/CPU power, Web Workers availability |
+| Usage | Call before attempting to initialize. If `false`, skin enhancement features should be hidden or disabled in the UI. |
+
+**Support matrix:**
+
+| Browser | Desktop | Mobile |
+|---------|---------|--------|
+| Chrome 90+ | Supported | Supported (may be slower) |
+| Firefox 88+ | Supported | Limited support |
+| Safari 15+ | Supported | Supported (iOS 15+) |
+| Edge 90+ | Supported | Supported |
+| IE | Not supported | N/A |
+
+### `init()` Method
+
+| Attribute | Detail |
+|-----------|--------|
+| Parameters | `videoElement: HTMLVideoElement` - the camera video element to process; `options: SkinEnhancementOptions` - initial configuration |
+| Returns | `Promise<void>` - resolves when initialization is complete |
+| Purpose | Initializes the processing pipeline: loads ML models, creates canvas contexts, sets up processing loop |
+| Performance | Initialization takes 1-3 seconds depending on device. Shows a loading indicator during init. |
+| Error handling | Throws if device is not supported or resources cannot be allocated. Caller should catch and gracefully degrade. |
+
+**Initialization sequence:**
+```
+init() called
+    |
+    v
+1. Verify browser support (isSupported check)
+    |
+    v
+2. Load ML model for face detection / landmark identification
+    |
+    v
+3. Create offscreen canvas for processing
+    |
+    v
+4. Set up WebGL2 context for GPU-accelerated processing
+    |
+    v
+5. Start processing loop (requestAnimationFrame-based)
+    |
+    v
+6. Apply initial options (touchUpLevel, skinToneEven, etc.)
+    |
+    v
+7. Resolve promise → processing is active
+```
+
+### `destroy()` Method
+
+| Attribute | Detail |
+|-----------|--------|
+| Parameters | None |
+| Returns | `void` |
+| Purpose | Tears down the processing pipeline, releases GPU/memory resources, stops the processing loop |
+| When called | When leaving the session, disabling touch-up, or switching cameras |
+| Importance | MUST be called to prevent memory leaks. The processor holds GPU textures, canvas contexts, and ML model data. |
+
+**Destruction sequence:**
+```
+destroy() called
+    |
+    v
+1. Stop requestAnimationFrame processing loop
+    |
+    v
+2. Release WebGL2 textures and buffers
+    |
+    v
+3. Close offscreen canvas
+    |
+    v
+4. Unload ML model from memory
+    |
+    v
+5. Clear all internal references
+    |
+    v
+6. Processor is now inactive (must call init() again to reuse)
+```
+
+### Lifecycle Management
+
+The `SkinEnhancementProcessor` follows a strict lifecycle:
+
+```
++-------------------+
+|   NOT INITIALIZED  |
+| (initial state)    |
++--------+----------+
+         |
+         | init()
+         v
++-------------------+
+|      ACTIVE        |
+| (processing frames)|
++--------+----------+
+         |
+         | destroy()
+         v
++-------------------+
+|    DESTROYED       |
+| (resources freed)  |
++-------------------+
+```
+
+**Key rules:**
+- `init()` can only be called from NOT INITIALIZED state
+- `destroy()` can only be called from ACTIVE state
+- After `destroy()`, a new instance must be created or `init()` called again
+- `setOptions()` can only be called during ACTIVE state
+- Switching cameras requires `destroy()` then `init()` with the new video element
+
+### SkinEnhancementOptions
+
+The options object passed to `init()` and `setOptions()`:
+
+```javascript
+{
+  touchUpLevel: 50,          // number (0-100)
+  skinToneEven: 0,           // number (0-100)
+  blemishReduction: 0,       // number (0-100)
+  eyeBrightness: 0,          // number (0-100)
+  teethWhitening: 0,         // number (0-100)
+  autoLightCorrection: 0,    // number (0-100) or boolean
+  colorTemperature: 0,       // number (-100 to +100)
+  exposure: 0,               // number (-100 to +100)
+  contrast: 0,               // number (-100 to +100)
+  activeFilter: null,        // string or null
 }
 ```
 
 ---
 
-## Troubleshooting
+## Screen Sharing
 
-### Issue: Microphone Not Working
+### Initiating Screen Share
 
-| Step | Action |
-|---|---|
-| 1 | Check if the microphone is muted (look for red/crossed mic icon) |
-| 2 | Check browser permissions: browser should have microphone access granted for the R-Link domain |
-| 3 | Check device selection: ensure the correct microphone is selected in Settings |
-| 4 | Check if another application is using the microphone exclusively |
-| 5 | Try unplugging and re-plugging the microphone |
-| 6 | Try a different browser |
-| 7 | On macOS, check System Preferences > Privacy > Microphone permissions |
-| 8 | On Windows, check Settings > Privacy > Microphone permissions |
+1. User clicks the screen share button in BottomControls
+2. Browser's native screen picker dialog appears
+3. User selects what to share:
+   - **Entire screen** - Full desktop/monitor
+   - **Application window** - A specific application window
+   - **Browser tab** - A specific browser tab (with optional audio)
+4. On selection, `isScreenSharing` is set to `true`
+5. Screen share feed is added to the session
 
-### Issue: Camera Not Working
+### Screen Share Behavior in Layouts
 
-| Step | Action |
-|---|---|
-| 1 | Check if the camera is turned off (look for red/crossed camera icon) |
-| 2 | Check browser permissions: browser should have camera access granted |
-| 3 | Check device selection: ensure the correct camera is selected |
-| 4 | Check if another application is using the camera (Zoom, Teams, etc.) |
-| 5 | Check if `cameraOffOnJoin` is enabled (camera starts off by default) |
-| 6 | Try refreshing the page |
-| 7 | Check OS-level privacy settings for camera access |
-| 8 | Try a different browser or device |
+| Layout Type | Screen Share Behavior |
+|-------------|----------------------|
+| Meeting: `gallery` | Screen share takes the largest tile; participants shrink |
+| Meeting: `speaker_filmstrip` | Screen share replaces the main area |
+| Meeting: `screen_thumbnails` | Screen share fills 80%; participant thumbnails in 20% |
+| Meeting: `presenter_pip` | Screen share fills canvas; presenter in PiP |
+| Meeting: `focus` | Screen share fills canvas entirely |
+| Webinar: any | Screen share appears in the content area; host may be in PiP |
+| Live Stream: any | Screen share can be assigned to a scene or used as a media source |
 
-### Issue: Virtual Background Not Working or Looks Bad
+### Screen Share Settings
 
-| Step | Action |
-|---|---|
-| 1 | Check if the device supports virtual backgrounds (requires GPU acceleration) |
-| 2 | Ensure good lighting (backlit conditions make segmentation worse) |
-| 3 | Use a solid-colored background for better edge detection |
-| 4 | Try the green screen mode with a physical green screen for best results |
-| 5 | Reduce video resolution if performance is poor |
-| 6 | Close other GPU-intensive applications |
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| Share audio | `boolean` | `false` | Share system audio along with screen (browser tab audio). Only supported when sharing a browser tab in Chrome. |
+| Optimize for video | `boolean` | `false` | When enabled, prioritizes frame rate over resolution. Better for sharing videos or animations. |
 
-### Issue: Touch-Up Appearance Not Available
+### Ending Screen Share
 
-| Step | Action |
-|---|---|
-| 1 | The feature requires `SkinEnhancementProcessor.isSupported()` to return `true` |
-| 2 | Check that the browser supports WebGL (type `chrome://gpu` in Chrome address bar) |
-| 3 | Ensure hardware acceleration is enabled in browser settings |
-| 4 | The feature may not work on older devices or integrated GPUs |
-| 5 | Try using Chrome or Edge (best WebGL support) |
-| 6 | If the feature is unavailable, the customer's device does not meet hardware requirements |
-
-### Issue: Audio Echo or Feedback
-
-| Step | Action |
-|---|---|
-| 1 | Use headphones instead of speakers to prevent echo |
-| 2 | Enable noise suppression |
-| 3 | Reduce speaker volume |
-| 4 | Ensure only one browser tab with R-Link is open |
-| 5 | Move the microphone away from the speakers |
-
-### Issue: Noise Suppression Not Reducing Background Noise
-
-| Step | Action |
-|---|---|
-| 1 | Verify noise suppression is enabled in Settings |
-| 2 | Noise suppression works best for steady-state noise (fans, AC) |
-| 3 | It may not fully eliminate loud or sudden noises |
-| 4 | Try using a headset with a directional microphone for better results |
-| 5 | Consider muting when not speaking in noisy environments |
-
-### Issue: Video Appears Dark or Washed Out
-
-| Step | Action |
-|---|---|
-| 1 | Enable `autoLightCorrection` for automatic adjustment |
-| 2 | Enable `lowLightAdjust` if in a dimly lit room |
-| 3 | Manually adjust `exposure` slider to brighten the image |
-| 4 | Adjust `contrast` to improve image clarity |
-| 5 | Adjust `colorTemperature` if the image looks too blue or too yellow |
-| 6 | Improve physical lighting: face a window or add a desk lamp |
-
-### Issue: Screen Share Shows Black Screen
-
-| Step | Action |
-|---|---|
-| 1 | Some applications (especially DRM-protected content) cannot be screen shared |
-| 2 | On macOS, check System Preferences > Privacy > Screen Recording -- the browser must be listed |
-| 3 | Try sharing the entire screen instead of a specific window |
-| 4 | Try sharing a browser tab instead of a window |
-| 5 | Restart the browser and try again |
-| 6 | On Windows, disable hardware acceleration in the application being shared |
+- Click the screen share button again in BottomControls
+- Click the "Stop Sharing" button in the browser's native screen share indicator
+- Close/minimize the shared application window (some browsers auto-stop)
+- `isScreenSharing` is set to `false`
 
 ---
 
-## FAQ
+## Setup Page Details
 
-**Q: Do other participants see my touch-up and filters?**
-A: Yes. Touch-up appearance, filters, and virtual backgrounds are applied to your video stream before it is sent to other participants. Everyone sees the enhanced version.
+### Device Selection and Management
 
-**Q: Does noise suppression affect my voice quality?**
-A: Mild noise suppression has minimal impact. Aggressive noise suppression may slightly alter voice tone or add minor artifacts. If voice quality is a priority (e.g., podcasting), consider disabling noise suppression and using a high-quality microphone in a quiet environment.
+The Setup Page (before joining the session) provides comprehensive device selection:
 
-**Q: Can I use an external webcam and a built-in camera simultaneously?**
-A: No. Only one camera can be active at a time. Select the desired camera in the device selection dropdown.
+#### Camera Selection
 
-**Q: Why does my mirror video look reversed to me but correct to others?**
-A: Mirror video only affects your local preview. It makes your video look like a mirror so your movements feel natural. Other participants always see the non-mirrored (correct) orientation.
+| Feature | Detail |
+|---------|--------|
+| Dropdown | Lists all `videoinput` devices from `enumerateDevices()` |
+| Preview | Live video preview from selected camera |
+| Switch | Instantly switches preview when a different camera is selected |
+| Default | System default camera, or last used camera (stored in localStorage) |
+| None option | "No Camera" option available for audio-only participation |
+| Label display | Shows device label (e.g., "HD Pro Webcam C920") when permissions granted; "Camera 1", "Camera 2" when permissions not yet granted |
 
-**Q: Can I take a snapshot of my video settings to reuse later?**
-A: Settings persist within the browser session but may reset if cache is cleared. There is no explicit "save settings profile" feature. Custom backgrounds persist in the `customBackgrounds` array.
+#### Microphone Selection
 
-**Q: Does HD video use more data?**
-A: Yes. HD video requires approximately 2-4x more bandwidth than standard definition. If you are on a metered connection, be aware of increased data usage.
+| Feature | Detail |
+|---------|--------|
+| Dropdown | Lists all `audioinput` devices from `enumerateDevices()` |
+| Audio meter | Live audio level meter shows input from selected mic |
+| Switch | Instantly switches audio input when a different mic is selected |
+| Default | System default mic, or last used mic (stored in localStorage) |
+| None option | "No Microphone" option available for listen-only participation |
+| Label display | Shows device label when permissions granted |
 
-**Q: What happens if my internet connection drops during a session?**
-A: The `NetworkMonitor` component (in Live Stream mode) tracks connection quality. If the connection drops briefly, the system attempts to reconnect automatically. If the drop is prolonged, other participants see a frozen frame or placeholder until the connection is restored.
+#### Speaker Selection
 
-**Q: Can I use multiple monitors with screen sharing?**
-A: Yes. When you start screen sharing, the browser's share picker shows all connected monitors. Select the specific monitor you want to share.
+| Feature | Detail |
+|---------|--------|
+| Dropdown | Lists all `audiooutput` devices from `enumerateDevices()` |
+| Test button | Plays a test tone through the selected speaker |
+| Default | System default speaker |
+| Browser support | Requires `HTMLMediaElement.setSinkId()` support. Not available in all browsers (notably Firefox has limited support). |
+| Fallback | When `setSinkId` is not supported, shows "Speaker selection not supported in this browser" with the system default being used. |
 
-**Q: Why is my virtual background flickering or showing artifacts?**
-A: This is usually caused by poor lighting, complex backgrounds (busy patterns behind you), or insufficient GPU performance. Try improving lighting, using a simpler background, or switching to green screen mode.
+### Audio Level Meter (Detailed)
+
+The audio level meter provides visual confirmation that the microphone is working:
+
+| Attribute | Detail |
+|-----------|--------|
+| Implementation | Web Audio API: `AudioContext` > `MediaStreamSource` > `AnalyserNode` |
+| Update frequency | ~60 FPS (tied to `requestAnimationFrame`) |
+| Visualization type | Horizontal bar with optional frequency spectrum |
+| Data source | `AnalyserNode.getByteFrequencyData()` for frequency visualization or `AnalyserNode.getByteTimeDomainData()` for waveform |
+| Bar behavior | Bounces in real-time with audio input; at rest when silent |
+| Color | Green for normal levels, yellow for moderate, red for clipping/too loud |
+| Purpose | Confirms mic is picking up audio; helps user adjust speaking volume and mic distance |
+
+**Technical implementation flow:**
+```
+1. Get microphone MediaStream from selected device
+    |
+    v
+2. Create AudioContext
+    |
+    v
+3. Create MediaStreamSource from the mic stream
+    |
+    v
+4. Create AnalyserNode (fftSize: 256 or 512)
+    |
+    v
+5. Connect: MediaStreamSource → AnalyserNode
+    |
+    v
+6. In animation loop:
+   a. Call analyser.getByteFrequencyData(dataArray)
+   b. Calculate average volume level from frequency data
+   c. Render bar/spectrum visualization to canvas or DOM element
+    |
+    v
+7. On mic change or page leave:
+   a. Disconnect nodes
+   b. Close AudioContext
+```
+
+### Permission Status Indicators
+
+Each device permission shows a status badge:
+
+| Permission | Status Values | Visual |
+|------------|--------------|--------|
+| Camera | `pending` / `granted` / `denied` | Yellow clock / Green check / Red X |
+| Microphone | `pending` / `granted` / `denied` | Yellow clock / Green check / Red X |
+
+**Detailed status descriptions:**
+
+| Status | Meaning | User Action |
+|--------|---------|-------------|
+| `pending` | Permission has not been requested yet, or the browser prompt is showing | Wait for browser prompt to appear; click "Allow" when it does |
+| `granted` | Permission was given; device is accessible | No action needed. Device is working. |
+| `denied` | Permission was explicitly denied by the user or is blocked at browser/OS level | Click the lock/camera icon in the address bar > Allow > Refresh the page. On macOS, check System Preferences > Privacy > Camera/Microphone. On Windows, check Settings > Privacy > Camera/Microphone. |
+
+### Setup Page Persistence
+
+| Setting | Persisted | Storage |
+|---------|-----------|---------|
+| Selected camera device ID | Yes | localStorage |
+| Selected microphone device ID | Yes | localStorage |
+| Selected speaker device ID | Yes | localStorage |
+| Display name | Yes | localStorage (or from user account) |
+| Camera on/off preference | Yes | localStorage (via `cameraOffOnJoin`) |
+| Mic mute preference | Yes | localStorage (via `muteOnJoin`) |
+
+---
+
+## Complete Settings Reference Table
+
+All media-related settings in one table:
+
+| Setting | Type | Default | Range | Category | Description |
+|---------|------|---------|-------|----------|-------------|
+| `isMuted` | boolean | false | - | Core | Microphone mute state |
+| `isCameraOn` | boolean | true | - | Core | Camera on/off state |
+| `isScreenSharing` | boolean | false | - | Core | Screen sharing state |
+| `mirrorVideo` | boolean | true | - | Video | Mirror self-view |
+| `hdVideo` | boolean | false | - | Video | High-definition video |
+| `muteOnJoin` | boolean | false | - | Audio | Auto-mute on join |
+| `cameraOffOnJoin` | boolean | false | - | Video | Auto camera off on join |
+| `colorMode` | string | 'dark' | 'dark'/'light' | General | UI color scheme |
+| `noiseSuppression` | boolean | true | - | Audio | AI noise suppression |
+| `autoAdjustMic` | boolean | true | - | Audio | Auto mic level |
+| `touchUpAppearance` | boolean | false | - | Appearance | Master touch-up toggle |
+| `touchUpLevel` | number | 50 | 0-100 | Appearance | Touch-up intensity |
+| `greenScreen` | boolean | false | - | Appearance | Chroma key mode |
+| `skinToneEven` | number | 0 | 0-100 | Skin | Skin tone evening |
+| `blemishReduction` | number | 0 | 0-100 | Skin | Blemish reduction |
+| `eyeBrightness` | number | 0 | 0-100 | Skin | Eye brightness |
+| `teethWhitening` | number | 0 | 0-100 | Skin | Teeth whitening |
+| `lowLightAdjust` | boolean | false | - | Light | Low-light compensation |
+| `autoLightCorrection` | number/bool | 0/false | 0-100 | Light | Auto light correction |
+| `colorTemperature` | number | 0 | -100 to +100 | Light | Color temperature |
+| `exposure` | number | 0 | -100 to +100 | Light | Exposure adjustment |
+| `contrast` | number | 0 | -100 to +100 | Light | Contrast adjustment |
+| `activeFilter` | string/null | null | preset names | Filter | Active video filter |
+| `virtualBackground` | string/null | null | image URLs | Background | Virtual background |
+| `customBackgrounds` | array | [] | - | Background | Custom uploaded backgrounds |
+| `backgroundBlur` | boolean | false | - | Background | Background blur |
+| `backgroundBlurIntensity` | number | 70 | 0-100 | Background | Blur intensity |
+
+---
+
+## Troubleshooting Guide
+
+### Symptom: Microphone not working (no audio transmitted)
+
+**Diagnostic steps:**
+1. Check `isMuted` state - is the mic muted? (look for red mic icon)
+2. Check permission status - is microphone permission granted?
+3. Check the audio level meter on the setup page - does it show activity?
+4. Verify the correct microphone is selected in the dropdown
+5. Test the microphone in another application
+
+**Common fixes:**
+- Click the mic button to unmute
+- Grant microphone permission in browser settings
+- Select the correct microphone from the device dropdown
+- Close other applications that may be using the mic exclusively
+- Restart the browser if the mic was recently plugged in (device enumeration may need refresh)
+- Check OS-level microphone privacy settings (Windows: Settings > Privacy > Microphone)
+
+### Symptom: Camera shows black/frozen image
+
+**Diagnostic steps:**
+1. Check `isCameraOn` state
+2. Check camera permission status
+3. Verify the correct camera is selected
+4. Check if another application is using the camera
+
+**Common fixes:**
+- Click the camera button to turn it on
+- Grant camera permission in browser settings
+- Select a different camera from the dropdown
+- Close Zoom, Teams, or other apps that lock the camera
+- Check OS camera privacy settings
+- Try unplugging and replugging the external camera
+
+### Symptom: Touch-up / skin enhancement not working
+
+**Diagnostic steps:**
+1. Check if `touchUpAppearance` is enabled
+2. Verify the browser supports `SkinEnhancementProcessor` (call `isSupported()`)
+3. Check browser console for WebGL errors
+4. Verify sufficient GPU resources
+
+**Common fixes:**
+- Enable `touchUpAppearance` in settings
+- Use Chrome for best support
+- Enable hardware acceleration in browser settings (chrome://settings > Advanced > System > "Use hardware acceleration")
+- Close GPU-intensive applications
+- Update graphics drivers
+
+### Symptom: Virtual background has rough edges / person cutout is bad
+
+**Diagnostic steps:**
+1. Check lighting - is the user well-lit?
+2. Check if `greenScreen` mode might produce better results
+3. Check the contrast between the user and their physical background
+
+**Common fixes:**
+- Improve lighting (face should be well-lit, avoid backlighting)
+- Use a solid, contrasting physical background
+- Enable `greenScreen` mode with a physical green screen for best results
+- Lower camera resolution (sometimes helps segmentation model performance)
+- Try a different virtual background image (some work better than others)
+
+### Symptom: Screen share is laggy / low quality
+
+**Diagnostic steps:**
+1. Check internet bandwidth
+2. Check if "Optimize for video" is enabled (improves frame rate at cost of resolution)
+3. Check if HD video is enabled (competing for bandwidth)
+4. Verify CPU usage
+
+**Common fixes:**
+- Enable "Optimize for video" if sharing video content
+- Disable HD video to free bandwidth for screen share
+- Close unnecessary browser tabs and applications
+- Share a specific window instead of entire screen (less data to capture)
+- Share a browser tab (most efficient mode in Chrome)
+
+### Symptom: Audio echo or feedback
+
+**Diagnostic steps:**
+1. Check if the user is using speakers (not headphones)
+2. Check if noise suppression is enabled
+3. Check if multiple audio output devices are playing simultaneously
+
+**Common fixes:**
+- Use headphones/earbuds to eliminate echo
+- Enable `noiseSuppression`
+- Reduce speaker volume
+- Increase physical distance between microphone and speakers
+- Use a headset with built-in microphone
+
+### Symptom: Low-light adjustment makes video grainy
+
+**Diagnostic steps:**
+1. `lowLightAdjust` is designed for dim environments but can introduce noise
+2. Check actual lighting conditions
+
+**Common fixes:**
+- Add more physical lighting (desk lamp, ring light)
+- Adjust `exposure` manually instead of using auto low-light
+- Reduce camera resolution (less noise at lower resolution)
+- Balance `lowLightAdjust` with `touchUpAppearance` for smoother result
+
+### Symptom: Audio level meter shows activity but others can't hear
+
+**Diagnostic steps:**
+1. Check `isMuted` state (the meter shows local input, mute only affects transmission)
+2. Check network connectivity
+3. Check if `autoAdjustMic` is adjusting level too low
+
+**Common fixes:**
+- Unmute the microphone
+- Check internet connection
+- Disable `autoAdjustMic` and manually increase system mic volume
+- Rejoin the session to reset the audio connection
+
+---
+
+## Frequently Asked Questions
+
+### Q: Do other participants see my touch-up effects?
+**A:** Yes. Touch-up, skin enhancement, filters, and virtual backgrounds are applied to the video feed before it is transmitted. All participants see the processed video, not the raw camera feed.
+
+### Q: Does mirroring affect what others see?
+**A:** No. The `mirrorVideo` setting only affects your self-view. Other participants always see the non-mirrored (true orientation) video. Text behind you will appear correctly to others even if it looks reversed to you.
+
+### Q: Can I use a virtual background without a green screen?
+**A:** Yes. R-Link uses AI-based person segmentation that works without a physical green screen. The `greenScreen` option is an alternative mode for users who have a physical green/blue backdrop, which provides cleaner edges.
+
+### Q: Why can't I select a speaker on Firefox?
+**A:** Speaker selection requires the `HTMLMediaElement.setSinkId()` API, which Firefox does not fully support. On Firefox, audio plays through the system default speaker. Use Chrome, Edge, or Safari for speaker selection.
+
+### Q: Will noise suppression affect music or non-speech audio?
+**A:** Yes. Noise suppression is optimized for speech and will likely suppress or degrade music, instruments, and other non-speech audio. Disable `noiseSuppression` when sharing music or non-speech audio.
+
+### Q: Can I save my effects settings as a preset?
+**A:** Currently, there is no preset/profile system for effects settings. Settings are saved individually in localStorage and persist between sessions, but you cannot create named presets to switch between different configurations.
+
+### Q: What is the performance impact of all effects enabled simultaneously?
+**A:** Enabling all effects (touch-up, skin enhancement, virtual background, filters, light adjustments) will significantly increase CPU and GPU usage. On lower-end devices, this may cause frame drops. Recommended to enable only the effects you need. Most impactful: virtual background > skin enhancement > filters.
+
+### Q: Does screen sharing share my cursor?
+**A:** Yes, when sharing an entire screen or application window, your cursor is visible to other participants. When sharing a browser tab, cursor visibility depends on the browser.
+
+### Q: Can I change devices during a live session?
+**A:** Yes. Camera, microphone, and speaker can be changed via the Settings panel during a live session. The switch happens in real-time. For camera changes, the `SkinEnhancementProcessor` will need to reinitialize (brief visual flicker may occur).
 
 ---
 
 ## Known Limitations
 
-1. **No token-based settings persistence**: Media settings are stored in-session and may reset across browser sessions if cache is cleared.
-2. **Single camera only**: Cannot use multiple cameras simultaneously.
-3. **Touch-up requires GPU**: The `SkinEnhancementProcessor` requires WebGL and GPU support; not available on all devices.
-4. **Virtual backgrounds are CPU/GPU intensive**: May cause performance issues on older hardware.
-5. **No audio effects/equalization**: There is no built-in EQ, compression, or audio effects beyond noise suppression.
-6. **Noise suppression quality varies**: Effectiveness depends on the type and volume of background noise.
-7. **Green screen mode requires physical setup**: The green screen toggle only enables chroma key processing; a physical green screen is required.
-8. **Filter list is fixed**: Users cannot create custom filters or import filter presets.
-9. **No per-device settings profiles**: Settings apply globally, not per-device. If you switch cameras, you may need to readjust settings.
-10. **Screen sharing limited by OS permissions**: macOS and some Windows configurations require explicit screen recording permissions at the OS level.
-11. **No picture-in-picture for local preview**: The local preview is only visible within the Studio; it cannot be popped out to a floating window.
+1. **No multi-camera support:** Users can only have one active camera at a time. Switching cameras during a session requires the video feed to briefly reinitialize.
+
+2. **Virtual background quality varies:** AI-based segmentation quality depends on lighting, background contrast, and device processing power. Hair edges and transparent objects (glasses) may not segment cleanly.
+
+3. **Speaker selection browser support:** `setSinkId` is not universally supported. Firefox and some Safari versions cannot change the audio output device. Users must change their default speaker at the OS level.
+
+4. **No persistent effect presets:** Users cannot create named profiles for different effect configurations. All settings are saved as individual values.
+
+5. **SkinEnhancementProcessor requires GPU:** Skin enhancement features require WebGL2 support and a capable GPU. Devices without GPU support (some virtual machines, very old devices) cannot use these features.
+
+6. **Screen share audio limited to Chrome:** Sharing system/tab audio during screen share is only supported in Chrome when sharing a browser tab. Other browsers and share modes do not support audio sharing.
+
+7. **Custom backgrounds not synced:** Custom uploaded backgrounds are stored in localStorage/IndexedDB and do not sync across devices or browsers. Users must re-upload backgrounds on each device.
+
+8. **No recording of individual audio tracks:** The platform records the mixed audio output. Individual participant audio tracks cannot be separated in post-production.
+
+9. **Touch-up processing adds latency:** Skin enhancement processing adds a small amount of latency (~10-30ms) to the video feed. This is generally imperceptible but may be noticeable on very slow devices.
+
+10. **Filter preview not available before joining:** Video filters can only be previewed after joining the session. The setup page shows the raw camera feed without filter options.
 
 ---
 
 ## Plan Requirements
 
-| Feature | Basic | Business |
-|---|---|---|
-| Microphone controls (mute, noise suppression, auto-adjust) | Yes | Yes |
-| Camera controls (on/off, mirror, HD) | Yes | Yes |
-| Virtual backgrounds | Yes | Yes |
-| Custom background upload | Yes | Yes |
-| Green screen mode | Yes | Yes |
-| Touch-up appearance | Yes | Yes |
-| Skin enhancement (all sub-settings) | Yes | Yes |
-| Light & color adjustments | Yes | Yes |
-| Filters | Yes | Yes |
+| Feature | Basic Plan | Business Plan |
+|---------|-----------|---------------|
+| Camera/mic controls | Yes | Yes |
 | Screen sharing | Yes | Yes |
-| Device selection | Yes | Yes |
-| Multi-track recording | No | Yes |
-| Cloud recording | No | Yes |
-| Local recording | Yes | Yes |
-| Live streaming controls | No | Yes |
-| Network monitor | No | Yes (Live Stream) |
-| Stream health monitor | No | Yes (Live Stream) |
-
-Most media controls are available on both Basic and Business plans. The primary plan-gated features in this category are multi-track recording, cloud recording, and live streaming controls, which require the Business plan.
+| Mirror video | Yes | Yes |
+| HD video | No | Yes |
+| Noise suppression | Yes | Yes |
+| Auto-adjust mic | Yes | Yes |
+| Mute/camera off on join | Yes | Yes |
+| Color mode (dark/light) | Yes | Yes |
+| Touch-up appearance (basic) | Yes | Yes |
+| Touch-up level slider | Yes | Yes |
+| Skin tone evening | No | Yes |
+| Blemish reduction | No | Yes |
+| Eye brightness | No | Yes |
+| Teeth whitening | No | Yes |
+| Low-light adjustment | Yes | Yes |
+| Auto light correction | No | Yes |
+| Color temperature | No | Yes |
+| Exposure adjustment | No | Yes |
+| Contrast adjustment | No | Yes |
+| Video filters | No | Yes |
+| Virtual backgrounds (preset) | Yes (limited set) | Yes (full set) |
+| Custom background upload | No | Yes |
+| Background blur | Yes | Yes |
+| Green screen mode | No | Yes |
 
 ---
 
 ## Related Documents
 
-- [08-studio-interface.md](./08-studio-interface.md) -- Studio layout and component overview
-- [07-session-types.md](./07-session-types.md) -- Session types and layout configurations
-- [06-rooms-management.md](./06-rooms-management.md) -- Room settings that affect default media configuration
-- [05-authentication-and-access.md](./05-authentication-and-access.md) -- Access requirements
-- [31-troubleshooting.md](./31-troubleshooting.md) -- General troubleshooting including media device issues
-- [02-plans-and-pricing.md](./02-plans-and-pricing.md) -- Plan comparison for feature availability
+- [05 - Authentication and Access](./05-authentication-and-access.md) - Media settings are per-user and tied to the authenticated session
+- [06 - Rooms Management](./06-rooms-management.md) - Room settings interact with the entry flow before the setup page
+- [07 - Session Types](./07-session-types.md) - Session type determines which features are available in the studio
+- [08 - Studio Interface](./08-studio-interface.md) - The studio layout where media controls are accessed and used
