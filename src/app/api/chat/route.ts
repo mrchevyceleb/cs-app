@@ -8,31 +8,97 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json()
-    const { ticketId, message } = body
+    const { ticketId, message, customerName, customerEmail, language } = body
 
-    if (!ticketId || !message) {
+    if (!message) {
       return NextResponse.json(
-        { error: 'Missing ticketId or message' },
+        { error: 'Missing message' },
         { status: 400 }
       )
     }
 
-    // Fetch ticket with customer info and assigned agent
-    const { data: ticket, error: ticketError } = await supabase
-      .from('tickets')
-      .select(`
-        *,
-        customer:customers(*),
-        assigned_agent:agents!assigned_agent_id(preferred_language)
-      `)
-      .eq('id', ticketId)
-      .single()
+    let ticket: any
+    let currentTicketId = ticketId
 
-    if (ticketError || !ticket) {
-      return NextResponse.json(
-        { error: 'Ticket not found' },
-        { status: 404 }
-      )
+    // If no ticketId, create a new ticket for this chat session
+    if (!currentTicketId) {
+      // Find or create customer
+      let customerId: string | null = null
+
+      if (customerEmail) {
+        const { data: existingCustomer } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('email', customerEmail)
+          .single()
+
+        if (existingCustomer) {
+          customerId = existingCustomer.id
+        } else {
+          // Create new customer
+          const { data: newCustomer, error: customerError } = await supabase
+            .from('customers')
+            .insert({
+              email: customerEmail,
+              name: customerName || customerEmail.split('@')[0],
+              preferred_language: language || 'en',
+            })
+            .select('id')
+            .single()
+
+          if (!customerError && newCustomer) {
+            customerId = newCustomer.id
+          }
+        }
+      }
+
+      // Create new ticket
+      const { data: newTicket, error: createError } = await supabase
+        .from('tickets')
+        .insert({
+          subject: 'Chat: ' + message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+          status: 'open',
+          priority: 'medium',
+          channel: 'widget',
+          customer_id: customerId,
+          ai_handled: true,
+        })
+        .select(`
+          *,
+          customer:customers(*),
+          assigned_agent:agents!assigned_agent_id(preferred_language)
+        `)
+        .single()
+
+      if (createError || !newTicket) {
+        return NextResponse.json(
+          { error: 'Failed to create ticket' },
+          { status: 500 }
+        )
+      }
+
+      ticket = newTicket
+      currentTicketId = newTicket.id
+    } else {
+      // Fetch existing ticket with customer info and assigned agent
+      const { data: existingTicket, error: ticketError } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          customer:customers(*),
+          assigned_agent:agents!assigned_agent_id(preferred_language)
+        `)
+        .eq('id', currentTicketId)
+        .single()
+
+      if (ticketError || !existingTicket) {
+        return NextResponse.json(
+          { error: 'Ticket not found' },
+          { status: 404 }
+        )
+      }
+
+      ticket = existingTicket
     }
 
     // Detect language and translate for agent if needed
@@ -55,7 +121,7 @@ export async function POST(request: NextRequest) {
     const { error: saveError } = await supabase
       .from('messages')
       .insert({
-        ticket_id: ticketId,
+        ticket_id: currentTicketId,
         sender_type: 'customer',
         content: message,
         original_language: detectedLanguage !== 'en' ? detectedLanguage : null,
@@ -70,7 +136,7 @@ export async function POST(request: NextRequest) {
     const { data: previousMessages } = await supabase
       .from('messages')
       .select('*')
-      .eq('ticket_id', ticketId)
+      .eq('ticket_id', currentTicketId)
       .order('created_at', { ascending: true })
       .limit(20)
 
@@ -79,13 +145,13 @@ export async function POST(request: NextRequest) {
       .from('tickets')
       .select('subject, status')
       .eq('customer_id', ticket.customer_id)
-      .neq('id', ticketId)
+      .neq('id', currentTicketId)
       .order('created_at', { ascending: false })
       .limit(5)
 
     // Build conversation context
     const context: ConversationContext = {
-      ticketId,
+      ticketId: currentTicketId,
       customerId: ticket.customer_id,
       customerName: ticket.customer?.name || 'Customer',
       preferredLanguage: ticket.customer?.preferred_language || 'en',
@@ -103,7 +169,7 @@ export async function POST(request: NextRequest) {
     const { data: savedMessage, error: aiSaveError } = await supabase
       .from('messages')
       .insert({
-        ticket_id: ticketId,
+        ticket_id: currentTicketId,
         sender_type: 'ai',
         content: aiResponse.content,
         content_translated: aiResponse.translatedContent,
@@ -125,7 +191,7 @@ export async function POST(request: NextRequest) {
         status: aiResponse.shouldEscalate ? 'escalated' : ticket.status,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', ticketId)
+      .eq('id', currentTicketId)
 
     // If escalation is needed, update the ticket
     if (aiResponse.shouldEscalate) {
@@ -135,20 +201,19 @@ export async function POST(request: NextRequest) {
           ai_handled: false,
           status: 'escalated',
         })
-        .eq('id', ticketId)
+        .eq('id', currentTicketId)
     }
 
+    // Return flat structure that ChatWidget expects
     return NextResponse.json({
       success: true,
-      message: {
-        id: savedMessage?.id,
-        content: aiResponse.content,
-        translatedContent: aiResponse.translatedContent,
-        originalLanguage: aiResponse.originalLanguage,
-        confidence: aiResponse.confidence,
-        shouldEscalate: aiResponse.shouldEscalate,
-        escalationReason: aiResponse.escalationReason,
-      },
+      ticketId: currentTicketId, // Return ticketId so widget can track it
+      message: aiResponse.content,
+      confidence: aiResponse.confidence,
+      shouldEscalate: aiResponse.shouldEscalate,
+      escalationReason: aiResponse.escalationReason,
+      translatedContent: aiResponse.translatedContent,
+      originalLanguage: aiResponse.originalLanguage,
     })
   } catch (error) {
     console.error('Chat API error:', error)

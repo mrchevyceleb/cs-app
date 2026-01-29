@@ -106,12 +106,12 @@ export function NovaCopilot() {
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
         buffer = lines.pop() || '' // Keep the last partial line
-        
+
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6))
-              
+
               if (data.type === 'text' && data.content) {
                 assistantContent += data.content
               } else if (data.type === 'tool_start' && data.tool) {
@@ -121,15 +121,35 @@ export function NovaCopilot() {
                 assistantContent += `\n**Error:** ${data.error}\n`
               }
 
-              setMessages(prev => prev.map(msg => 
-                msg.id === assistantMessageId 
+              setMessages(prev => prev.map(msg =>
+                msg.id === assistantMessageId
                   ? { ...msg, content: assistantContent }
                   : msg
               ))
-              
+
             } catch (e) {
               console.error('Error parsing SSE data:', e)
             }
+          }
+        }
+      }
+
+      // Flush any remaining buffered data
+      if (buffer.trim()) {
+        if (buffer.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(buffer.slice(6))
+
+            if (data.type === 'text' && data.content) {
+              assistantContent += data.content
+              setMessages(prev => prev.map(msg =>
+                msg.id === assistantMessageId
+                  ? { ...msg, content: assistantContent }
+                  : msg
+              ))
+            }
+          } catch (e) {
+            console.error('Error parsing final SSE data:', e)
           }
         }
       }

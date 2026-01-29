@@ -70,6 +70,7 @@ export function WidgetChat({
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const pendingMessageRef = useRef<string | null>(null) // Track pending message to prevent race condition
 
   // Scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -140,11 +141,19 @@ export function WidgetChat({
           // Don't add internal notes
           if (newMsg.metadata?.is_internal) return
 
-          // Check if message already exists (could be our own message)
+          // Check if message already exists (could be our own message or a duplicate)
           setMessages((prev) => {
+            // Skip if message ID already exists
             if (prev.some((m) => m.id === newMsg.id)) {
               return prev
             }
+
+            // Skip if this is our pending message (prevents race condition)
+            // The POST response will handle replacing the temp message
+            if (pendingMessageRef.current && newMsg.id === pendingMessageRef.current) {
+              return prev
+            }
+
             return [...prev, {
               id: newMsg.id,
               sender_type: newMsg.sender_type,
@@ -195,10 +204,18 @@ export function WidgetChat({
 
       const data = await response.json()
 
+      // Track this message ID to prevent duplicate from real-time subscription
+      pendingMessageRef.current = data.message.id
+
       // Replace optimistic message with real one
       setMessages((prev) =>
         prev.map((m) => (m.id === tempId ? data.message : m))
       )
+
+      // Clear pending message after a short delay (to allow subscription to process)
+      setTimeout(() => {
+        pendingMessageRef.current = null
+      }, 1000)
     } catch (err) {
       // Remove optimistic message on error
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
