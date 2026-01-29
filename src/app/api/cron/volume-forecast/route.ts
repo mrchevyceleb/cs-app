@@ -123,11 +123,13 @@ export async function POST(request: NextRequest) {
         const dayAvg = dayOfWeekAvg.get(dayOfWeek) || (lastWeekCount / 7)
 
         // Add daily average (prorated for partial days)
-        const hoursRemaining = Math.min(
-          24,
-          (forecastEnd.getTime() - currentDate.getTime()) / (60 * 60 * 1000)
-        )
-        predictedVolume += (dayAvg / 24) * hoursRemaining
+        const endOfCurrentDay = new Date(currentDate)
+        endOfCurrentDay.setHours(23, 59, 59, 999)
+        const periodEnd = endOfCurrentDay < forecastEnd ? endOfCurrentDay : forecastEnd
+        const hoursRemaining = (periodEnd.getTime() - currentDate.getTime()) / (60 * 60 * 1000)
+        if (hoursRemaining > 0) {
+          predictedVolume += (dayAvg / 24) * hoursRemaining
+        }
 
         currentDate.setDate(currentDate.getDate() + 1)
         currentDate.setHours(0, 0, 0, 0)
@@ -178,7 +180,7 @@ export async function POST(request: NextRequest) {
 
     const { data: pastForecasts } = await supabase
       .from('volume_forecasts')
-      .select('id, forecast_for, predicted_volume')
+      .select('id, forecast_for, forecast_hours, predicted_volume')
       .lte('forecast_for', now.toISOString())
       .gte('forecast_for', twentyFourHoursAgo.toISOString())
       .is('actual_volume', null)
@@ -186,7 +188,8 @@ export async function POST(request: NextRequest) {
     if (pastForecasts && pastForecasts.length > 0) {
       for (const forecast of pastForecasts) {
         const forecastDate = new Date(forecast.forecast_for)
-        const forecastStart = new Date(forecastDate.getTime() - 24 * 60 * 60 * 1000)
+        const forecastHours = forecast.forecast_hours ?? 24
+        const forecastStart = new Date(forecastDate.getTime() - forecastHours * 60 * 60 * 1000)
 
         // Count actual tickets in that period
         const { count: actualCount } = await supabase

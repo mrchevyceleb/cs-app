@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
         tags
       `)
       .eq('status', 'resolved')
+      .eq('ai_handled', true)
+      .not('ai_confidence', 'is', null)
       .gte('created_at', thirtyDaysAgo.toISOString())
 
     if (ticketsError) {

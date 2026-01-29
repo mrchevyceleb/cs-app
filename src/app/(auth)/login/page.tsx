@@ -61,10 +61,10 @@ export default function LoginPage() {
         <div className="flex justify-center mb-4">
           <Logo size="lg" />
         </div>
-        <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+        <CardTitle className="text-2xl font-bold text-foreground">
           {isSignUp ? 'Create an account' : 'Welcome back'}
         </CardTitle>
-        <CardDescription className="text-gray-500 dark:text-gray-400">
+        <CardDescription className="text-muted-foreground">
           {isSignUp
             ? 'Sign up to get started with the support dashboard'
             : 'Sign in to access the support dashboard'}
@@ -72,8 +72,8 @@ export default function LoginPage() {
       </CardHeader>
       <CardContent>
         {(error || errorParam) && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-            <p className="text-sm text-red-600 dark:text-red-400">
+          <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+            <p className="text-sm text-destructive">
               {error || errorParam}
             </p>
           </div>
@@ -81,7 +81,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="email" className="text-sm font-medium text-foreground">
               Email address
             </label>
             <Input
@@ -90,13 +90,13 @@ export default function LoginPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-300 border-gray-300 dark:border-gray-600"
+              className="h-11"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="password" className="text-sm font-medium text-foreground">
               Password
             </label>
             <Input
@@ -105,14 +105,14 @@ export default function LoginPage() {
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-300 border-gray-300 dark:border-gray-600"
+              className="h-11"
               required
             />
           </div>
 
           {isSignUp && (
             <div className="space-y-2">
-              <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
                 Confirm Password
               </label>
               <Input
@@ -121,7 +121,7 @@ export default function LoginPage() {
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="h-11 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-300 border-gray-300 dark:border-gray-600"
+                className="h-11"
                 required
               />
             </div>
@@ -143,8 +143,8 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+        <div className="mt-6 pt-6 border-t border-border">
+          <p className="text-sm text-center text-muted-foreground">
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button
               type="button"
@@ -154,7 +154,7 @@ export default function LoginPage() {
                 setPassword('')
                 setConfirmPassword('')
               }}
-              className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+              className="font-medium text-primary hover:text-primary/80"
             >
               {isSignUp ? 'Sign in' : 'Sign up'}
             </button>
