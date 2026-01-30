@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertCircle, RefreshCw, BarChart3, BookOpen, Search, TrendingUp, AlertTriangle } from 'lucide-react'
+import { AlertCircle, RefreshCw, BarChart3, BookOpen, Search, TrendingUp, AlertTriangle, Sparkles, FileText, Hash } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,35 @@ interface KnowledgeArticle {
   title: string
   content: string
   category: string | null
+  source_file: string | null
+  section_path: string | null
+  file_number: number | null
+  chunk_index: number | null
+  is_kb_source: boolean | null
   created_at: string
+}
+
+interface SearchResult {
+  id: string
+  title: string
+  content: string
+  category: string | null
+  source_file: string | null
+  section_path: string | null
+  file_number: number | null
+  chunk_index: number | null
+  is_kb_source: boolean | null
+  similarity: number
+  combined_score?: number
+}
+
+interface DocumentGroup {
+  source_file: string
+  display_name: string
+  category: string | null
+  file_number: number | null
+  chunks: KnowledgeArticle[]
+  first_content: string
 }
 
 interface KBMetrics {
@@ -51,16 +80,47 @@ interface KBMetrics {
 
 type TabType = 'articles' | 'effectiveness'
 
-const CATEGORIES = [
-  'Live Streaming',
-  'Technical Support',
-  'Commerce',
-  'Account & Security',
-  'Billing & Plans',
-  'Gamification',
-  'Integrations',
-  'General',
-]
+const CATEGORIES = ['Foundation', 'Studio Core', 'Studio Features', 'Admin', 'General']
+
+/** Format a KB filename like "02-plans-and-pricing.md" -> "Plans and Pricing" */
+function formatFileName(filename: string): string {
+  return filename
+    .replace(/^\d+-/, '')       // remove leading number prefix
+    .replace(/\.md$/, '')       // remove .md extension
+    .replace(/-/g, ' ')         // dashes to spaces
+    .replace(/\b\w/g, c => c.toUpperCase()) // title case
+}
+
+/** Group articles by source_file into document groups */
+function groupByDocument(articles: KnowledgeArticle[]): { documents: DocumentGroup[]; manualArticles: KnowledgeArticle[] } {
+  const kbArticles = articles.filter(a => a.is_kb_source && a.source_file)
+  const manualArticles = articles.filter(a => !a.is_kb_source || !a.source_file)
+
+  const groups = new Map<string, KnowledgeArticle[]>()
+  for (const article of kbArticles) {
+    const key = article.source_file!
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(article)
+  }
+
+  const documents: DocumentGroup[] = Array.from(groups.entries()).map(([source_file, chunks]) => {
+    // Sort chunks by chunk_index
+    chunks.sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0))
+    return {
+      source_file,
+      display_name: formatFileName(source_file),
+      category: chunks[0]?.category ?? null,
+      file_number: chunks[0]?.file_number ?? null,
+      chunks,
+      first_content: chunks[0]?.content ?? '',
+    }
+  })
+
+  // Sort documents by file_number
+  documents.sort((a, b) => (a.file_number ?? 999) - (b.file_number ?? 999))
+
+  return { documents, manualArticles }
+}
 
 export default function KnowledgePage() {
   const [articles, setArticles] = useState<KnowledgeArticle[]>([])
@@ -69,10 +129,18 @@ export default function KnowledgePage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [total, setTotal] = useState(0)
 
+  // Search mode state
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [isSearchMode, setIsSearchMode] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
+
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingArticle, setEditingArticle] = useState<KnowledgeArticle | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Document detail dialog
+  const [selectedDocument, setSelectedDocument] = useState<DocumentGroup | null>(null)
 
   // Form state
   const [formTitle, setFormTitle] = useState('')
@@ -95,13 +163,17 @@ export default function KnowledgePage() {
   const [metricsLoading, setMetricsLoading] = useState(false)
   const [metricsError, setMetricsError] = useState<string | null>(null)
 
-  // Fetch articles
+  // Ingest state
+  const [isIngesting, setIsIngesting] = useState(false)
+  const [ingestDialogOpen, setIngestDialogOpen] = useState(false)
+  const [ingestResult, setIngestResult] = useState<string | null>(null)
+
+  // Browse mode: fetch articles from API
   const fetchArticles = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams()
-      if (searchQuery) params.set('search', searchQuery)
       if (categoryFilter && categoryFilter !== 'all') params.set('category', categoryFilter)
 
       const response = await fetch(`/api/knowledge?${params.toString()}`)
@@ -119,8 +191,40 @@ export default function KnowledgePage() {
     } finally {
       setLoading(false)
     }
-  }, [searchQuery, categoryFilter])
+  }, [categoryFilter])
 
+  // Search mode: hybrid search
+  const performSearch = useCallback(async (query: string) => {
+    if (!query.trim() || query.trim().length < 2) {
+      setIsSearchMode(false)
+      setSearchResults([])
+      return
+    }
+
+    setIsSearchMode(true)
+    setIsSearching(true)
+    try {
+      const response = await fetch('/api/knowledge/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, hybrid: true, matchCount: 15 }),
+      })
+      const data = await response.json()
+
+      if (response.ok) {
+        setSearchResults(data.results || [])
+      } else {
+        setSearchResults([])
+      }
+    } catch (err) {
+      console.error('Search failed:', err)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }, [])
+
+  // Fetch articles on mount and when category changes
   useEffect(() => {
     fetchArticles()
   }, [fetchArticles])
@@ -150,13 +254,41 @@ export default function KnowledgePage() {
     }
   }, [activeTab, fetchMetrics])
 
-  // Debounced search
+  // Debounced search (400ms for hybrid which generates embeddings)
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchArticles()
-    }, 300)
+      if (searchQuery.trim()) {
+        performSearch(searchQuery)
+      } else {
+        setIsSearchMode(false)
+        setSearchResults([])
+      }
+    }, 400)
     return () => clearTimeout(timer)
-  }, [searchQuery, fetchArticles])
+  }, [searchQuery, performSearch])
+
+  // Group articles into documents
+  const { documents, manualArticles } = useMemo(() => groupByDocument(articles), [articles])
+
+  // Filter documents by category
+  const filteredDocuments = useMemo(() => {
+    if (categoryFilter === 'all') return documents
+    return documents.filter(d => d.category === categoryFilter)
+  }, [documents, categoryFilter])
+
+  const filteredManualArticles = useMemo(() => {
+    if (categoryFilter === 'all') return manualArticles
+    return manualArticles.filter(a => a.category === categoryFilter)
+  }, [manualArticles, categoryFilter])
+
+  // Category counts for pills
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const cat of CATEGORIES) {
+      counts[cat] = documents.filter(d => d.category === cat).length
+    }
+    return counts
+  }, [documents])
 
   // Open dialog for creating new article
   const handleCreateNew = () => {
@@ -167,7 +299,7 @@ export default function KnowledgePage() {
     setIsDialogOpen(true)
   }
 
-  // Open dialog for editing article
+  // Open dialog for editing article (manual articles only)
   const handleEdit = (article: KnowledgeArticle) => {
     setEditingArticle(article)
     setFormTitle(article.title)
@@ -238,6 +370,38 @@ export default function KnowledgePage() {
     setDeleteDialogOpen(true)
   }
 
+  // Handle ingest
+  const handleIngest = async () => {
+    setIngestDialogOpen(false)
+    setIsIngesting(true)
+    setIngestResult(null)
+    try {
+      const response = await fetch('/api/knowledge/ingest', {
+        method: 'POST',
+      })
+      const data = await response.json()
+      if (response.ok && data.success) {
+        setIngestResult(`Synced ${data.total_files} files, ${data.total_chunks} sections created`)
+        fetchArticles()
+      } else {
+        setIngestResult(`Error: ${data.error || 'Ingestion failed'}`)
+      }
+    } catch (err) {
+      console.error('Ingestion failed:', err)
+      setIngestResult('Network error during ingestion')
+    } finally {
+      setIsIngesting(false)
+    }
+  }
+
+  // Similarity score color
+  const similarityColor = (score: number) => {
+    const pct = Math.round(score * 100)
+    if (pct >= 80) return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+    if (pct >= 60) return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+    return 'bg-gray-50 text-gray-400 dark:bg-gray-900 dark:text-gray-500'
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -247,18 +411,44 @@ export default function KnowledgePage() {
             Knowledge Base
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Manage help articles for AI-powered responses ({total} articles)
+            {isSearchMode
+              ? `${searchResults.length} results for "${searchQuery}"`
+              : `${documents.length} documents, ${total} sections`
+            }
           </p>
         </div>
         {activeTab === 'articles' && (
-          <Button
-            onClick={handleCreateNew}
-            className="bg-primary-600 hover:bg-primary-700 text-white w-full sm:w-auto"
-          >
-            + Add Article
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              onClick={() => setIngestDialogOpen(true)}
+              variant="outline"
+              disabled={isIngesting}
+              className="gap-2 flex-1 sm:flex-initial"
+            >
+              <RefreshCw className={`w-4 h-4 ${isIngesting ? 'animate-spin' : ''}`} />
+              {isIngesting ? 'Syncing...' : 'Sync Knowledge Base'}
+            </Button>
+            <Button
+              onClick={handleCreateNew}
+              className="bg-primary-600 hover:bg-primary-700 text-white flex-1 sm:flex-initial"
+            >
+              + Add Article
+            </Button>
+          </div>
         )}
       </div>
+
+      {/* Ingest result banner */}
+      {ingestResult && (
+        <div className={`px-4 py-3 rounded-lg text-sm ${
+          ingestResult.startsWith('Error') || ingestResult.startsWith('Network')
+            ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+            : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+        }`}>
+          {ingestResult}
+          <button onClick={() => setIngestResult(null)} className="ml-3 text-xs underline">dismiss</button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
@@ -455,30 +645,22 @@ export default function KnowledgePage() {
       )}
 
       {activeTab === 'articles' && <>
-      {/* Filters */}
+      {/* Search */}
       <div className="flex flex-col sm:flex-row gap-4">
-        {/* Search */}
         <div className="relative flex-1 max-w-md">
           <Input
-            placeholder="Search articles..."
-            className="pl-10"
+            placeholder="Search knowledge base..."
+            className="pl-10 pr-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          {searchQuery && (
+            <Sparkles className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400" />
+          )}
         </div>
 
-        {/* Category Filter */}
+        {/* Category Filter Dropdown */}
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="All Categories" />
@@ -494,104 +676,304 @@ export default function KnowledgePage() {
         </Select>
       </div>
 
-      {/* Articles Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="glass border-0">
-              <CardHeader className="pb-2">
-                <Skeleton className="h-5 w-20 mb-2" />
-                <Skeleton className="h-6 w-full" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-4 w-full mb-2" />
-                <Skeleton className="h-4 w-2/3" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : error ? (
-        <Card className="glass border-0">
-          <CardContent className="py-12 text-center">
-            <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-7 h-7 text-red-500" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              Failed to load articles
-            </h3>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button
-              onClick={fetchArticles}
-              variant="outline"
-              className="gap-2"
+      {/* Category Pills */}
+      {!isSearchMode && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setCategoryFilter('all')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              categoryFilter === 'all'
+                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+            }`}
+          >
+            All ({documents.length})
+          </button>
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                categoryFilter === cat
+                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+              }`}
             >
-              <RefreshCw className="w-4 h-4" />
-              Try again
-            </Button>
-          </CardContent>
-        </Card>
-      ) : articles.length === 0 ? (
-        <Card className="glass border-0">
-          <CardContent className="py-12 text-center">
-            <div className="text-6xl mb-4">📚</div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              No articles found
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              {searchQuery || categoryFilter !== 'all'
-                ? 'Try adjusting your search or filters'
-                : 'Get started by adding your first knowledge base article'}
-            </p>
-            {!searchQuery && categoryFilter === 'all' && (
-              <Button
-                onClick={handleCreateNew}
-                className="bg-primary-600 hover:bg-primary-700 text-white"
-              >
-                + Add Your First Article
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {articles.map((article) => (
-            <Card
-              key={article.id}
-              className="glass border-0 hover:shadow-lg transition-all cursor-pointer group relative hover-lift"
-              onClick={() => handleEdit(article)}
-            >
-              <CardHeader className="pb-2">
-                {article.category && (
-                  <Badge variant="secondary" className="w-fit text-xs mb-2">
-                    {article.category}
-                  </Badge>
-                )}
-                <CardTitle className="text-base leading-snug pr-8 text-foreground">
-                  {article.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {article.content}
-                </p>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground/70">
-                    {new Date(article.created_at).toLocaleDateString()}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                    onClick={(e) => confirmDelete(article, e)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+              {cat} ({categoryCounts[cat] || 0})
+            </button>
           ))}
         </div>
       )}
+
+      {/* Search Results (ranked list) */}
+      {isSearchMode ? (
+        isSearching ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Card key={i} className="glass border-0">
+                <CardContent className="p-4">
+                  <div className="flex gap-3">
+                    <Skeleton className="h-6 w-6 rounded" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : searchResults.length === 0 ? (
+          <Card className="glass border-0">
+            <CardContent className="py-12 text-center">
+              <Search className="w-10 h-10 text-muted-foreground/40 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No results found</h3>
+              <p className="text-muted-foreground">
+                Try different keywords or check your spelling
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {searchResults.map((result, index) => (
+              <Card key={result.id} className="glass border-0 hover:shadow-md transition-all">
+                <CardContent className="p-4">
+                  <div className="flex gap-3 items-start">
+                    <span className="text-sm font-bold text-muted-foreground/60 w-6 text-right pt-0.5 flex-shrink-0">
+                      {index + 1}.
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        {result.category && (
+                          <Badge variant="secondary" className="text-[10px]">{result.category}</Badge>
+                        )}
+                        {result.source_file && (
+                          <span className="text-[10px] font-mono text-muted-foreground">{result.source_file}</span>
+                        )}
+                      </div>
+                      <h4 className="text-sm font-medium text-foreground">{result.title}</h4>
+                      {result.section_path && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{result.section_path}</p>
+                      )}
+                      <div className="text-sm text-muted-foreground line-clamp-2 mt-1 prose prose-sm dark:prose-invert max-w-none prose-p:m-0 prose-headings:m-0 prose-ul:m-0 prose-li:m-0">
+                        <ReactMarkdown>{result.content}</ReactMarkdown>
+                      </div>
+                    </div>
+                    {result.similarity > 0 && (
+                      <Badge className={`text-[10px] flex-shrink-0 ${similarityColor(result.similarity)}`}>
+                        {Math.round(result.similarity * 100)}%
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
+      ) : (
+        /* Browse Mode */
+        <>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Card key={i} className="glass border-0">
+                  <CardHeader className="pb-2">
+                    <Skeleton className="h-5 w-20 mb-2" />
+                    <Skeleton className="h-6 w-full" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : error ? (
+            <Card className="glass border-0">
+              <CardContent className="py-12 text-center">
+                <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="w-7 h-7 text-red-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Failed to load articles
+                </h3>
+                <p className="text-muted-foreground mb-4">{error}</p>
+                <Button
+                  onClick={fetchArticles}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Try again
+                </Button>
+              </CardContent>
+            </Card>
+          ) : filteredDocuments.length === 0 && filteredManualArticles.length === 0 ? (
+            <Card className="glass border-0">
+              <CardContent className="py-12 text-center">
+                <div className="text-6xl mb-4">
+                  <BookOpen className="w-14 h-14 text-muted-foreground/30 mx-auto" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  No articles found
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  {categoryFilter !== 'all'
+                    ? 'Try a different category or sync the knowledge base'
+                    : 'Get started by syncing the knowledge base or adding an article'}
+                </p>
+                {categoryFilter === 'all' && (
+                  <div className="flex gap-2 justify-center">
+                    <Button
+                      onClick={() => setIngestDialogOpen(true)}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Sync Knowledge Base
+                    </Button>
+                    <Button
+                      onClick={handleCreateNew}
+                      className="bg-primary-600 hover:bg-primary-700 text-white"
+                    >
+                      + Add Article
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* KB Documents Grid */}
+              {filteredDocuments.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredDocuments.map((doc) => (
+                    <Card
+                      key={doc.source_file}
+                      className="glass border-0 hover:shadow-lg transition-all cursor-pointer group relative hover-lift"
+                      onClick={() => setSelectedDocument(doc)}
+                    >
+                      <CardHeader className="pb-2">
+                        {doc.category && (
+                          <Badge variant="secondary" className="w-fit text-xs mb-2">
+                            {doc.category}
+                          </Badge>
+                        )}
+                        <CardTitle className="text-base leading-snug text-foreground flex items-center gap-2">
+                          <FileText className="w-4 h-4 flex-shrink-0 text-indigo-500" />
+                          {doc.display_name}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-sm text-muted-foreground line-clamp-3 prose prose-sm dark:prose-invert max-w-none prose-p:m-0 prose-headings:m-0 prose-ul:m-0 prose-li:m-0">
+                          <ReactMarkdown>{doc.first_content}</ReactMarkdown>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
+                            <Hash className="w-3 h-3" />
+                            {doc.chunks.length} sections
+                          </div>
+                          <span className="text-[10px] font-mono text-muted-foreground/50">
+                            {doc.source_file}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* Manual Articles Section */}
+              {filteredManualArticles.length > 0 && (
+                <>
+                  {filteredDocuments.length > 0 && (
+                    <div className="flex items-center gap-3 pt-4">
+                      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Manual Articles</h2>
+                      <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredManualArticles.map((article) => (
+                      <Card
+                        key={article.id}
+                        className="glass border-0 hover:shadow-lg transition-all cursor-pointer group relative hover-lift"
+                        onClick={() => handleEdit(article)}
+                      >
+                        <CardHeader className="pb-2">
+                          {article.category && (
+                            <Badge variant="secondary" className="w-fit text-xs mb-2">
+                              {article.category}
+                            </Badge>
+                          )}
+                          <CardTitle className="text-base leading-snug pr-8 text-foreground">
+                            {article.title}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground line-clamp-3">
+                            {article.content}
+                          </p>
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground/70">
+                              {new Date(article.created_at).toLocaleDateString()}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                              onClick={(e) => confirmDelete(article, e)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      {/* Document Detail Dialog */}
+      <Dialog open={!!selectedDocument} onOpenChange={(open) => { if (!open) setSelectedDocument(null) }}>
+        <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-indigo-500" />
+              {selectedDocument?.display_name}
+            </DialogTitle>
+            <DialogDescription className="flex items-center gap-2">
+              {selectedDocument?.category && (
+                <Badge variant="secondary" className="text-[10px]">{selectedDocument.category}</Badge>
+              )}
+              <span className="font-mono text-[10px]">{selectedDocument?.source_file}</span>
+              <span className="text-xs">{selectedDocument?.chunks.length} sections</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {selectedDocument?.chunks.map((chunk, i) => (
+              <div key={chunk.id} className="space-y-1">
+                {chunk.section_path && (
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {chunk.section_path}
+                  </h3>
+                )}
+                <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground prose-headings:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-code:bg-gray-100 prose-code:dark:bg-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-pre:bg-gray-100 prose-pre:dark:bg-gray-800 prose-a:text-indigo-600 prose-a:dark:text-indigo-400">
+                  <ReactMarkdown>{chunk.content}</ReactMarkdown>
+                </div>
+                {i < selectedDocument.chunks.length - 1 && (
+                  <div className="pt-4 border-b border-gray-100 dark:border-gray-800" />
+                )}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -693,8 +1075,34 @@ export default function KnowledgePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Ingest Confirmation Dialog */}
+      <Dialog open={ingestDialogOpen} onOpenChange={setIngestDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sync Knowledge Base</DialogTitle>
+            <DialogDescription>
+              This will re-sync all Knowledge Base files. Existing KB-sourced chunks will be replaced with fresh content.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIngestDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleIngest}
+              className="bg-primary-600 hover:bg-primary-700 text-white gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Sync Now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </>}
     </div>
   )
 }
-

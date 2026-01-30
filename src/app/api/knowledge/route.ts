@@ -10,13 +10,14 @@ export async function GET(request: NextRequest) {
 
     const category = searchParams.get('category')
     const search = searchParams.get('search')
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const limit = parseInt(searchParams.get('limit') || '500')
     const offset = parseInt(searchParams.get('offset') || '0')
 
     let query = supabase
       .from('knowledge_articles')
-      .select('id, title, content, category, created_at', { count: 'exact' })
-      .order('created_at', { ascending: false })
+      .select('id, title, content, category, source_file, section_path, file_number, chunk_index, is_kb_source, created_at', { count: 'exact' })
+      .order('file_number', { ascending: true, nullsFirst: false })
+      .order('chunk_index', { ascending: true })
       .range(offset, offset + limit - 1)
 
     if (category) {
