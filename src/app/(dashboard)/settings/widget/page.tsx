@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -33,6 +35,9 @@ export default function WidgetSettingsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [copiedField, setCopiedField] = useState<'embedCode' | null>(null)
+  const [devEmbedEnabled, setDevEmbedEnabled] = useState(false)
+  const [devEmbedLoading, setDevEmbedLoading] = useState(false)
+  const isDev = process.env.NODE_ENV === 'development'
 
   // Form state
   const [companyName, setCompanyName] = useState('')
@@ -64,6 +69,24 @@ export default function WidgetSettingsPage() {
 
     fetchSettings()
   }, [])
+
+  useEffect(() => {
+    if (!isDev) return
+
+    async function fetchDevEmbed() {
+      try {
+        const response = await fetch('/api/widget/dev-embed')
+        if (response.ok) {
+          const data = await response.json()
+          setDevEmbedEnabled(Boolean(data.enabled))
+        }
+      } catch (error) {
+        console.error('Failed to fetch dev embed setting:', error)
+      }
+    }
+
+    fetchDevEmbed()
+  }, [isDev])
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -108,6 +131,26 @@ export default function WidgetSettingsPage() {
       console.error('Failed to copy:', error)
     }
   }, [])
+
+  const handleDevEmbedToggle = async (enabled: boolean) => {
+    setDevEmbedLoading(true)
+    try {
+      const response = await fetch('/api/widget/dev-embed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setDevEmbedEnabled(Boolean(data.enabled))
+      }
+    } catch (error) {
+      console.error('Failed to update dev embed setting:', error)
+    } finally {
+      setDevEmbedLoading(false)
+    }
+  }
 
   const getEmbedCode = () => {
     if (!settings) return ''
@@ -304,6 +347,35 @@ export default function WidgetSettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {isDev && (
+        <Card className="bg-card border-border/70">
+          <CardHeader>
+            <CardTitle className="text-base">Development Embedding</CardTitle>
+            <CardDescription>
+              Allow the widget to be embedded from any origin in development
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="dev-embed-toggle"
+                checked={devEmbedEnabled}
+                onCheckedChange={(checked) => handleDevEmbedToggle(Boolean(checked))}
+                disabled={devEmbedLoading}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="dev-embed-toggle" className="text-sm font-medium">
+                  Allow embedding from any origin (dev only)
+                </Label>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Useful when your host page runs on changing localhost ports.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
