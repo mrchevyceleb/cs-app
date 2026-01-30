@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Send, Loader2, AlertCircle, User, Headphones, Sparkles, BookOpen, ChevronDown, ChevronUp } from 'lucide-react'
+import { Send, Loader2, AlertCircle, User, Headphones, Sparkles, BookOpen, ChevronDown, ChevronUp, Search, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { WidgetSession, WidgetMessage_DB, WidgetTicket } from '@/types/widget'
 import { createClient } from '@supabase/supabase-js'
@@ -69,6 +69,7 @@ export function WidgetChat({
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedSource, setExpandedSource] = useState<string | null>(null)
+  const [toolStatus, setToolStatus] = useState<string | null>(null) // e.g. "Searching knowledge base..."
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const pendingMessageRef = useRef<string | null>(null) // Track pending message to prevent race condition
@@ -141,6 +142,11 @@ export function WidgetChat({
           const newMsg = payload.new as WidgetMessage_DB & { metadata?: { is_internal?: boolean } }
           // Don't add internal notes
           if (newMsg.metadata?.is_internal) return
+
+          // Clear tool status when a new AI/agent message arrives
+          if (newMsg.sender_type === 'ai' || newMsg.sender_type === 'agent') {
+            setToolStatus(null)
+          }
 
           // Check if message already exists (could be our own message or a duplicate)
           setMessages((prev) => {
@@ -369,6 +375,30 @@ export function WidgetChat({
             </div>
           )
         })}
+        {/* Agent tool status indicator */}
+        {toolStatus && (
+          <div className="flex gap-2 flex-row">
+            <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900">
+              {toolStatus.includes('web') ? (
+                <Globe className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-pulse" />
+              ) : toolStatus.includes('knowledge') || toolStatus.includes('Searching') ? (
+                <Search className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-pulse" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-pulse" />
+              )}
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                AI Assistant
+              </span>
+              <div className="px-3 py-2 rounded-2xl rounded-bl-md bg-purple-50 dark:bg-purple-900/30">
+                <p className="text-sm text-purple-700 dark:text-purple-300 italic">
+                  {toolStatus}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 

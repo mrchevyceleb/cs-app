@@ -22,6 +22,8 @@ export interface RoutingDecision {
   escalation_reason?: string;
   processing_time_ms: number;
   model_used: string;
+  /** ID of the ai_agent_session if processed by the agentic engine */
+  agent_session_id?: string;
 }
 
 // Channel inbound log
@@ -91,6 +93,7 @@ export interface ChannelConfig {
   ai_auto_respond: boolean;
   ai_confidence_threshold: number;
   ai_escalation_keywords: string[] | null;
+  ai_agent_mode: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -103,6 +106,7 @@ export interface ChannelConfigInsert {
   ai_auto_respond?: boolean;
   ai_confidence_threshold?: number;
   ai_escalation_keywords?: string[] | null;
+  ai_agent_mode?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -115,6 +119,7 @@ export interface ChannelConfigUpdate {
   ai_auto_respond?: boolean;
   ai_confidence_threshold?: number;
   ai_escalation_keywords?: string[] | null;
+  ai_agent_mode?: boolean;
   created_at?: string;
   updated_at?: string;
 }

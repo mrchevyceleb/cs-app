@@ -10,6 +10,9 @@ import {
   type ConversationContext,
 } from '@/lib/openai/chat'
 import { searchKnowledgeHybrid, formatKBResultsForPrompt } from '@/lib/knowledge/search'
+import { getAgentConfig } from '@/lib/ai-agent/config'
+import { agenticSolveStreaming } from '@/lib/ai-agent/engine'
+import type { AgentStreamEvent, AgentResult } from '@/lib/ai-agent/types'
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,7 +52,170 @@ export async function POST(request: NextRequest) {
       processedMessage = await translateText(message, detectedLanguage, 'en')
     }
 
-    // Search knowledge base using hybrid search
+    // Fetch previous messages for context
+    const { data: previousMessages } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: true })
+      .limit(20)
+
+    const agentConfig = getAgentConfig()
+
+    // --- Agentic streaming mode ---
+    if (agentConfig.enabled) {
+      const conversationHistory = (previousMessages || []).map(m => ({
+        role: m.sender_type === 'customer' ? 'user' as const : 'assistant' as const,
+        content: m.content,
+      }))
+
+      const agentStream = agenticSolveStreaming({
+        message: processedMessage,
+        ticket: ticket as any,
+        customer: ticket.customer as any,
+        channel: 'widget',
+        previousMessages: conversationHistory,
+      })
+
+      const encoder = new TextEncoder()
+      const readable = new ReadableStream({
+        async start(controller) {
+          let fullContent = ''
+          let agentResult: AgentResult | null = null
+
+          try {
+            for await (const event of agentStream) {
+              switch (event.type) {
+                case 'thinking':
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ type: 'thinking' })}\n\n`)
+                  )
+                  break
+
+                case 'tool_call':
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({
+                      type: 'tool_status',
+                      tool: event.tool,
+                      status: event.description,
+                    })}\n\n`)
+                  )
+                  break
+
+                case 'tool_result':
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({
+                      type: 'tool_status',
+                      tool: event.tool,
+                      status: event.success ? 'Done' : 'No results',
+                    })}\n\n`)
+                  )
+                  break
+
+                case 'text_delta':
+                  fullContent += event.content
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ content: event.content, type: 'chunk' })}\n\n`)
+                  )
+                  break
+
+                case 'complete':
+                  agentResult = event.result
+                  break
+
+                case 'error':
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ type: 'error', error: event.error })}\n\n`)
+                  )
+                  break
+              }
+            }
+
+            // Handle translation if needed
+            let translatedContent: string | undefined
+            if (detectedLanguage !== 'en' && fullContent) {
+              translatedContent = await translateText(fullContent, 'en', detectedLanguage)
+            }
+
+            // Save the complete message to database
+            const { data: savedMessage } = await supabase
+              .from('messages')
+              .insert({
+                ticket_id: ticketId,
+                sender_type: 'ai',
+                content: fullContent,
+                content_translated: translatedContent,
+                original_language: detectedLanguage !== 'en' ? detectedLanguage : null,
+                confidence: agentResult ? Math.round(agentResult.confidence * 100) : 75,
+                metadata: agentResult ? {
+                  agent_mode: true,
+                  kb_article_ids: agentResult.kbArticleIds,
+                  web_searches: agentResult.webSearchCount,
+                  total_tool_calls: agentResult.totalToolCalls,
+                  duration_ms: agentResult.durationMs,
+                } : {},
+              })
+              .select()
+              .single()
+
+            // Log agent session
+            if (agentResult) {
+              const inputCost = (agentResult.inputTokens / 1_000_000) * 3
+              const outputCost = (agentResult.outputTokens / 1_000_000) * 15
+              await supabase
+                .from('ai_agent_sessions')
+                .insert({
+                  ticket_id: ticketId,
+                  message_id: savedMessage?.id || null,
+                  channel: 'widget',
+                  result_type: agentResult.type,
+                  total_tool_calls: agentResult.totalToolCalls,
+                  tool_calls_detail: agentResult.toolCallsDetail as any,
+                  kb_articles_used: agentResult.kbArticleIds,
+                  web_searches_performed: agentResult.webSearchCount,
+                  input_tokens: agentResult.inputTokens,
+                  output_tokens: agentResult.outputTokens,
+                  estimated_cost_usd: Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000,
+                  total_duration_ms: agentResult.durationMs,
+                  escalation_reason: agentResult.escalationReason,
+                  escalation_summary: agentResult.escalationSummary,
+                } as any)
+            }
+
+            // Send completion event
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'complete',
+                  messageId: savedMessage?.id,
+                  content: fullContent,
+                  translatedContent,
+                  originalLanguage: detectedLanguage !== 'en' ? detectedLanguage : undefined,
+                })}\n\n`
+              )
+            )
+
+            controller.close()
+          } catch (error) {
+            console.error('Agent streaming error:', error)
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: 'error', error: 'Streaming failed' })}\n\n`)
+            )
+            controller.close()
+          }
+        },
+      })
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      })
+    }
+
+    // --- Legacy OpenAI streaming mode (fallback) ---
     const relevantArticles = await searchKnowledgeHybrid({
       query: processedMessage,
       limit: 5,
@@ -59,16 +225,7 @@ export async function POST(request: NextRequest) {
     })
     const kbContext = formatKBResultsForPrompt(relevantArticles, 1500)
 
-    // Fetch previous messages for context
-    const { data: previousMessages } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('ticket_id', ticketId)
-      .order('created_at', { ascending: true })
-      .limit(20)
-
-    // Fetch customer's ticket history
-    const { data: ticketHistory } = await supabase
+    const ticketHistory = await supabase
       .from('tickets')
       .select('subject, status')
       .eq('customer_id', ticket.customer_id)
@@ -76,14 +233,12 @@ export async function POST(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(5)
 
-    // Build system prompt
     const systemPrompt = CUSTOMER_CHATBOT_SYSTEM_PROMPT
       .replace('{relevantArticles}', kbContext)
       .replace('{customerName}', ticket.customer?.name || 'Customer')
       .replace('{preferredLanguage}', ticket.customer?.preferred_language || 'en')
-      .replace('{ticketHistory}', (ticketHistory || []).map(t => `${t.subject} (${t.status})`).join(', ') || 'No previous issues')
+      .replace('{ticketHistory}', (ticketHistory.data || []).map(t => `${t.subject} (${t.status})`).join(', ') || 'No previous issues')
 
-    // Build messages array
     const messages = [
       { role: 'system' as const, content: systemPrompt },
       ...(previousMessages || []).map(m => ({
@@ -93,7 +248,6 @@ export async function POST(request: NextRequest) {
       { role: 'user' as const, content: processedMessage },
     ]
 
-    // Create streaming response
     const stream = await openai.chat.completions.create({
       model: CHAT_MODEL,
       messages,
@@ -102,7 +256,6 @@ export async function POST(request: NextRequest) {
       stream: true,
     })
 
-    // Create a readable stream for the response
     const encoder = new TextEncoder()
     const readable = new ReadableStream({
       async start(controller) {
@@ -113,20 +266,17 @@ export async function POST(request: NextRequest) {
             const content = chunk.choices[0]?.delta?.content || ''
             if (content) {
               fullContent += content
-              // Send chunk as SSE
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({ content, type: 'chunk' })}\n\n`)
               )
             }
           }
 
-          // After streaming is complete, handle translation if needed
           let translatedContent: string | undefined
           if (detectedLanguage !== 'en') {
             translatedContent = await translateText(fullContent, 'en', detectedLanguage)
           }
 
-          // Save the complete message to database with KB article references
           const kbArticleIds = relevantArticles.map(a => a.id)
           const { data: savedMessage } = await supabase
             .from('messages')
@@ -149,7 +299,6 @@ export async function POST(request: NextRequest) {
             .select()
             .single()
 
-          // Send completion event with metadata
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({

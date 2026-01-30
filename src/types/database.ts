@@ -1031,6 +1031,7 @@ export type Database = {
           ai_auto_respond: boolean
           ai_confidence_threshold: number
           ai_escalation_keywords: string[] | null
+          ai_agent_mode: boolean
           created_at: string
           updated_at: string
         }
@@ -1042,6 +1043,7 @@ export type Database = {
           ai_auto_respond?: boolean
           ai_confidence_threshold?: number
           ai_escalation_keywords?: string[] | null
+          ai_agent_mode?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -1053,10 +1055,84 @@ export type Database = {
           ai_auto_respond?: boolean
           ai_confidence_threshold?: number
           ai_escalation_keywords?: string[] | null
+          ai_agent_mode?: boolean
           created_at?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      // AI Agent Sessions (Migration 023)
+      ai_agent_sessions: {
+        Row: {
+          id: string
+          ticket_id: string | null
+          message_id: string | null
+          channel: string
+          result_type: 'response' | 'escalation' | 'timeout' | 'error'
+          total_tool_calls: number
+          tool_calls_detail: Json
+          kb_articles_used: string[]
+          web_searches_performed: number
+          input_tokens: number | null
+          output_tokens: number | null
+          estimated_cost_usd: number | null
+          total_duration_ms: number | null
+          escalation_reason: string | null
+          escalation_summary: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          ticket_id?: string | null
+          message_id?: string | null
+          channel: string
+          result_type: 'response' | 'escalation' | 'timeout' | 'error'
+          total_tool_calls?: number
+          tool_calls_detail?: Json
+          kb_articles_used?: string[]
+          web_searches_performed?: number
+          input_tokens?: number | null
+          output_tokens?: number | null
+          estimated_cost_usd?: number | null
+          total_duration_ms?: number | null
+          escalation_reason?: string | null
+          escalation_summary?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          ticket_id?: string | null
+          message_id?: string | null
+          channel?: string
+          result_type?: 'response' | 'escalation' | 'timeout' | 'error'
+          total_tool_calls?: number
+          tool_calls_detail?: Json
+          kb_articles_used?: string[]
+          web_searches_performed?: number
+          input_tokens?: number | null
+          output_tokens?: number | null
+          estimated_cost_usd?: number | null
+          total_duration_ms?: number | null
+          escalation_reason?: string | null
+          escalation_summary?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_sessions_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_agent_sessions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       // Webhook tables (Migration 016)
       webhook_endpoints: {
@@ -2334,3 +2410,11 @@ export type ProactiveEmailType =
   | 'post_resolution_checkin'
   | 'health_intervention'
   | 'issue_broadcast'
+
+// ==========================================
+// AI Agent Session Types (Migration 023)
+// ==========================================
+
+export type AiAgentSession = Database['public']['Tables']['ai_agent_sessions']['Row']
+export type AiAgentSessionInsert = Database['public']['Tables']['ai_agent_sessions']['Insert']
+export type AiAgentSessionUpdate = Database['public']['Tables']['ai_agent_sessions']['Update']

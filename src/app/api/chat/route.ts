@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateChatResponse, type ConversationContext, detectLanguage, translateText } from '@/lib/openai/chat'
+import { getAgentConfig } from '@/lib/ai-agent/config'
+import { agenticSolve } from '@/lib/ai-agent/engine'
 
 export async function POST(request: NextRequest) {
   try {
@@ -157,7 +159,92 @@ export async function POST(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(5)
 
-    // Build conversation context
+    const agentConfig = getAgentConfig()
+
+    // --- Agentic mode ---
+    if (agentConfig.enabled) {
+      const conversationHistory = (previousMessages || []).map(m => ({
+        role: m.sender_type === 'customer' ? 'user' as const : 'assistant' as const,
+        content: m.content,
+      }))
+
+      const agentResult = await agenticSolve({
+        message,
+        ticket: ticket as any,
+        customer: ticket.customer as any,
+        channel: 'widget',
+        previousMessages: conversationHistory,
+      })
+
+      const shouldEscalate = agentResult.type === 'escalation'
+      const confidence = Math.round(agentResult.confidence * 100)
+
+      // Save AI response to database
+      const { data: savedMessage, error: aiSaveError } = await supabase
+        .from('messages')
+        .insert({
+          ticket_id: currentTicketId,
+          sender_type: 'ai',
+          content: agentResult.content,
+          confidence,
+          metadata: {
+            agent_mode: true,
+            kb_article_ids: agentResult.kbArticleIds,
+            web_searches: agentResult.webSearchCount,
+            total_tool_calls: agentResult.totalToolCalls,
+          },
+        })
+        .select()
+        .single()
+
+      if (aiSaveError) {
+        console.error('Error saving AI message:', aiSaveError)
+      }
+
+      // Update ticket
+      await supabase
+        .from('tickets')
+        .update({
+          ai_confidence: agentResult.confidence,
+          status: shouldEscalate ? 'escalated' : ticket.status,
+          ai_handled: !shouldEscalate,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', currentTicketId)
+
+      // Log agent session
+      const inputCost = (agentResult.inputTokens / 1_000_000) * 3
+      const outputCost = (agentResult.outputTokens / 1_000_000) * 15
+      await supabase
+        .from('ai_agent_sessions')
+        .insert({
+          ticket_id: currentTicketId,
+          message_id: savedMessage?.id || null,
+          channel: 'widget',
+          result_type: agentResult.type,
+          total_tool_calls: agentResult.totalToolCalls,
+          tool_calls_detail: agentResult.toolCallsDetail as any,
+          kb_articles_used: agentResult.kbArticleIds,
+          web_searches_performed: agentResult.webSearchCount,
+          input_tokens: agentResult.inputTokens,
+          output_tokens: agentResult.outputTokens,
+          estimated_cost_usd: Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000,
+          total_duration_ms: agentResult.durationMs,
+          escalation_reason: agentResult.escalationReason,
+          escalation_summary: agentResult.escalationSummary,
+        } as any)
+
+      return NextResponse.json({
+        success: true,
+        ticketId: currentTicketId,
+        message: agentResult.content,
+        confidence,
+        shouldEscalate,
+        escalationReason: agentResult.escalationReason,
+      })
+    }
+
+    // --- Legacy mode (fallback) ---
     const context: ConversationContext = {
       ticketId: currentTicketId,
       customerId: ticket.customer_id,
@@ -170,10 +257,8 @@ export async function POST(request: NextRequest) {
       })),
     }
 
-    // Generate AI response
     const aiResponse = await generateChatResponse(message, context)
 
-    // Save AI response to database
     const { data: savedMessage, error: aiSaveError } = await supabase
       .from('messages')
       .insert({
@@ -191,7 +276,6 @@ export async function POST(request: NextRequest) {
       console.error('Error saving AI message:', aiSaveError)
     }
 
-    // Update ticket with AI confidence
     await supabase
       .from('tickets')
       .update({
@@ -201,7 +285,6 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', currentTicketId)
 
-    // If escalation is needed, update the ticket
     if (aiResponse.shouldEscalate) {
       await supabase
         .from('tickets')
@@ -212,10 +295,9 @@ export async function POST(request: NextRequest) {
         .eq('id', currentTicketId)
     }
 
-    // Return flat structure that ChatWidget expects
     return NextResponse.json({
       success: true,
-      ticketId: currentTicketId, // Return ticketId so widget can track it
+      ticketId: currentTicketId,
       message: aiResponse.content,
       confidence: aiResponse.confidence,
       shouldEscalate: aiResponse.shouldEscalate,

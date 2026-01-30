@@ -13,6 +13,9 @@ import { findOrCreateCustomer } from '@/lib/channels/customer';
 import { dispatchWebhook } from '@/lib/webhooks/service';
 import { sendSupportSms } from '@/lib/twilio/client';
 import { searchKnowledgeHybrid } from '@/lib/knowledge/search';
+import { getAgentConfig } from '@/lib/ai-agent/config';
+import { agenticSolve } from '@/lib/ai-agent/engine';
+import type { AgentResult } from '@/lib/ai-agent/types';
 
 // Lazy initialization to avoid build-time errors when env vars aren't available
 let _supabase: SupabaseClient<Database> | null = null;
@@ -110,15 +113,46 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     }
   }
 
-  // 3. Run AI triage
-  const routingDecision = await triageMessage({
-    message: request.message_content,
-    ticket,
-    customer,
-    channel: request.channel,
-  });
+  // 3. Get channel config early (needed for agent mode check)
+  const channelConfig = await getChannelConfig(request.channel);
+  const agentConfig = getAgentConfig();
+  const useAgentMode = agentConfig.enabled && (channelConfig?.ai_agent_mode ?? false);
 
-  // 4. Create customer message
+  // 4. Run AI triage (legacy) or agentic solve
+  let routingDecision: RoutingDecision;
+  let agentResult: AgentResult | null = null;
+
+  if (useAgentMode) {
+    // --- Agentic mode: Claude tool-use loop ---
+    agentResult = await agenticSolve({
+      message: request.message_content,
+      ticket,
+      customer,
+      channel: request.channel,
+    });
+
+    // Convert AgentResult → RoutingDecision for backward compatibility
+    routingDecision = {
+      intent: agentResult.type === 'escalation' ? 'escalation_requested' : 'agent_resolved',
+      confidence: agentResult.confidence,
+      action: agentResult.type === 'escalation' ? 'escalate' : 'auto_respond',
+      suggested_response: agentResult.type === 'response' ? agentResult.content : undefined,
+      knowledge_articles_used: agentResult.kbArticleIds,
+      escalation_reason: agentResult.escalationReason,
+      processing_time_ms: agentResult.durationMs,
+      model_used: agentConfig.model,
+    };
+  } else {
+    // --- Legacy triage mode (fallback) ---
+    routingDecision = await triageMessage({
+      message: request.message_content,
+      ticket,
+      customer,
+      channel: request.channel,
+    });
+  }
+
+  // 5. Create customer message
   const { data: message, error: msgError } = await getSupabase()
     .from('messages')
     .insert({
@@ -138,9 +172,11 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
   }
 
   // Update routing decision with timing
-  routingDecision.processing_time_ms = Date.now() - startTime;
+  if (!useAgentMode) {
+    routingDecision.processing_time_ms = Date.now() - startTime;
+  }
 
-  // 5. Update ticket
+  // 6. Update ticket
   const ticketUpdate: Partial<Ticket> = {
     updated_at: new Date().toISOString(),
     ai_confidence: routingDecision.confidence,
@@ -156,7 +192,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     .update(ticketUpdate)
     .eq('id', ticket.id);
 
-  // 6. Dispatch webhooks
+  // 7. Dispatch webhooks
   if (isNewTicket) {
     await dispatchWebhook('ticket.created', ticket.id, {
       ticket: {
@@ -198,55 +234,14 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     },
   });
 
-  // 7. Handle AI auto-response if applicable
+  // 8. Handle AI auto-response
   let aiResponse: IngestResponse['ai_response'] = undefined;
 
-  const channelConfig = await getChannelConfig(request.channel);
+  if (useAgentMode && agentResult && agentResult.type === 'response') {
+    // --- Agentic auto-response ---
+    const formattedResponse = formatResponseForChannel(agentResult.content, request.channel);
 
-  if (
-    routingDecision.action === 'auto_respond' &&
-    routingDecision.confidence >= (channelConfig?.ai_confidence_threshold || 0.85) &&
-    channelConfig?.ai_auto_respond
-  ) {
-    // Search KB for grounded response content
-    let kbArticleSource: string | null = null;
-    let kbArticleIds: string[] = [];
-    let responseContent = routingDecision.suggested_response ||
-      await generateResponse(routingDecision.intent, ticket, customer);
-
-    try {
-      const kbResults = await searchKnowledgeHybrid({
-        query: request.message_content,
-        limit: 3,
-        source: 'auto_response',
-        ticketId: ticket.id,
-      });
-
-      if (kbResults.length > 0) {
-        kbArticleIds = kbResults.map(r => r.id);
-        kbArticleSource = kbResults[0].title;
-
-        // Direct KB response for very high similarity FAQ/troubleshooting matches
-        const topResult = kbResults[0];
-        const isFaqOrTroubleshooting = topResult.metadata?.is_faq || topResult.metadata?.is_troubleshooting;
-        if (topResult.similarity > 0.92 && isFaqOrTroubleshooting) {
-          // Use KB content directly for fastest, most accurate response
-          responseContent = topResult.content;
-        }
-      }
-    } catch {
-      // Non-critical: continue with existing response
-    }
-
-    // Add KB article citation footer if applicable
-    if (kbArticleSource) {
-      responseContent = responseContent.trimEnd() + `\n\n[Source: ${kbArticleSource}]`;
-    }
-
-    // Format for channel
-    const formattedResponse = formatResponseForChannel(responseContent, request.channel);
-
-    // Create AI message with KB metadata
+    // Create AI message
     const { data: aiMessage } = await getSupabase()
       .from('messages')
       .insert({
@@ -254,12 +249,14 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
         sender_type: 'ai',
         content: formattedResponse,
         source: request.channel,
-        confidence: routingDecision.confidence,
+        confidence: agentResult.confidence,
         metadata: {
           routing_decision: routingDecision,
           auto_responded: true,
-          kb_article_ids: kbArticleIds,
-          kb_article_source: kbArticleSource,
+          agent_mode: true,
+          kb_article_ids: agentResult.kbArticleIds,
+          web_searches: agentResult.webSearchCount,
+          total_tool_calls: agentResult.totalToolCalls,
         } as any,
       })
       .select()
@@ -279,7 +276,154 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
       channel: request.channel,
     };
 
-    // Mark ticket as AI handled if auto-responded
+    // Mark ticket as AI handled
+    await getSupabase()
+      .from('tickets')
+      .update({
+        ai_handled: true,
+        ai_confidence: agentResult.confidence,
+      })
+      .eq('id', ticket.id);
+
+    // Log agent session
+    const estimatedCost = estimateAgentCost(agentResult.inputTokens, agentResult.outputTokens);
+    const { data: sessionData } = await getSupabase()
+      .from('ai_agent_sessions')
+      .insert({
+        ticket_id: ticket.id,
+        message_id: aiMessage?.id || null,
+        channel: request.channel,
+        result_type: agentResult.type,
+        total_tool_calls: agentResult.totalToolCalls,
+        tool_calls_detail: agentResult.toolCallsDetail as any,
+        kb_articles_used: agentResult.kbArticleIds,
+        web_searches_performed: agentResult.webSearchCount,
+        input_tokens: agentResult.inputTokens,
+        output_tokens: agentResult.outputTokens,
+        estimated_cost_usd: estimatedCost,
+        total_duration_ms: agentResult.durationMs,
+      } as any)
+      .select('id')
+      .single();
+
+    if (sessionData) {
+      routingDecision.agent_session_id = sessionData.id;
+    }
+
+    // Dispatch AI message webhook
+    if (aiMessage) {
+      await dispatchWebhook('message.created.ai', aiMessage.id, {
+        message: {
+          id: aiMessage.id,
+          ticket_id: ticket.id,
+          sender_type: 'ai',
+          content: aiMessage.content,
+          source: aiMessage.source,
+          created_at: aiMessage.created_at,
+        },
+        ticket: {
+          id: ticket.id,
+          subject: ticket.subject,
+          status: ticket.status,
+        },
+        customer: {
+          id: customer.id,
+          name: customer.name,
+          email: customer.email,
+        },
+      });
+    }
+  } else if (useAgentMode && agentResult && agentResult.type === 'escalation') {
+    // --- Agent escalation: log session ---
+    await getSupabase()
+      .from('ai_agent_sessions')
+      .insert({
+        ticket_id: ticket.id,
+        message_id: message.id,
+        channel: request.channel,
+        result_type: 'escalation',
+        total_tool_calls: agentResult.totalToolCalls,
+        tool_calls_detail: agentResult.toolCallsDetail as any,
+        kb_articles_used: agentResult.kbArticleIds,
+        web_searches_performed: agentResult.webSearchCount,
+        input_tokens: agentResult.inputTokens,
+        output_tokens: agentResult.outputTokens,
+        estimated_cost_usd: estimateAgentCost(agentResult.inputTokens, agentResult.outputTokens),
+        total_duration_ms: agentResult.durationMs,
+        escalation_reason: agentResult.escalationReason,
+        escalation_summary: agentResult.escalationSummary,
+      } as any);
+  } else if (
+    !useAgentMode &&
+    routingDecision.action === 'auto_respond' &&
+    routingDecision.confidence >= (channelConfig?.ai_confidence_threshold || 0.85) &&
+    channelConfig?.ai_auto_respond
+  ) {
+    // --- Legacy auto-response (unchanged) ---
+    let kbArticleSource: string | null = null;
+    let kbArticleIds: string[] = [];
+    let responseContent = routingDecision.suggested_response ||
+      await generateResponse(routingDecision.intent, ticket, customer);
+
+    try {
+      const kbResults = await searchKnowledgeHybrid({
+        query: request.message_content,
+        limit: 3,
+        source: 'auto_response',
+        ticketId: ticket.id,
+      });
+
+      if (kbResults.length > 0) {
+        kbArticleIds = kbResults.map(r => r.id);
+        kbArticleSource = kbResults[0].title;
+
+        const topResult = kbResults[0];
+        const isFaqOrTroubleshooting = topResult.metadata?.is_faq || topResult.metadata?.is_troubleshooting;
+        if (topResult.similarity > 0.92 && isFaqOrTroubleshooting) {
+          responseContent = topResult.content;
+        }
+      }
+    } catch {
+      // Non-critical
+    }
+
+    if (kbArticleSource) {
+      responseContent = responseContent.trimEnd() + `\n\n[Source: ${kbArticleSource}]`;
+    }
+
+    const formattedResponse = formatResponseForChannel(responseContent, request.channel);
+
+    const { data: aiMessage } = await getSupabase()
+      .from('messages')
+      .insert({
+        ticket_id: ticket.id,
+        sender_type: 'ai',
+        content: formattedResponse,
+        source: request.channel,
+        confidence: routingDecision.confidence,
+        metadata: {
+          routing_decision: routingDecision,
+          auto_responded: true,
+          kb_article_ids: kbArticleIds,
+          kb_article_source: kbArticleSource,
+        } as any,
+      })
+      .select()
+      .single();
+
+    const sendResult = await sendChannelResponse(
+      request.channel,
+      request.customer_identifier,
+      formattedResponse,
+      ticket.id
+    );
+
+    aiResponse = {
+      content: formattedResponse,
+      sent: sendResult.success,
+      channel: request.channel,
+    };
+
     await getSupabase()
       .from('tickets')
       .update({
@@ -288,7 +432,6 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
       })
       .eq('id', ticket.id);
 
-    // Dispatch AI message webhook
     if (aiMessage) {
       await dispatchWebhook('message.created.ai', aiMessage.id, {
         message: {
@@ -397,4 +540,14 @@ function generateSubject(content: string): string {
   const subject = firstSentence.slice(0, 50);
 
   return subject.length < firstSentence.length ? subject + '...' : subject;
+}
+
+/**
+ * Estimate cost in USD for an agent session
+ * Based on Claude Sonnet pricing: $3/M input, $15/M output tokens
+ */
+function estimateAgentCost(inputTokens: number, outputTokens: number): number {
+  const inputCost = (inputTokens / 1_000_000) * 3;
+  const outputCost = (outputTokens / 1_000_000) * 15;
+  return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000;
 }
