@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -112,17 +112,17 @@ export function CustomerContext({
     staleTime: 5 * 60 * 1000,
   })
 
-  const handleTagAdd = (tag: string) => {
+  const handleTagAdd = useCallback((tag: string) => {
     const currentTags = ticket.tags || []
     if (!currentTags.includes(tag)) {
       onUpdateTicket({ tags: [...currentTags, tag] })
     }
-  }
+  }, [ticket.tags, onUpdateTicket])
 
-  const handleTagRemove = (tag: string) => {
+  const handleTagRemove = useCallback((tag: string) => {
     const currentTags = ticket.tags || []
     onUpdateTicket({ tags: currentTags.filter((t) => t !== tag) })
-  }
+  }, [ticket.tags, onUpdateTicket])
 
   if (!customer) {
     return (

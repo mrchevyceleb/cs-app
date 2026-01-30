@@ -48,8 +48,9 @@ export function KeyboardShortcutsProvider({ children }: { children: React.ReactN
   // Command palette state
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
 
-  // Ticket actions
-  const [ticketActions, setTicketActions] = useState<TicketShortcutActions>({})
+  // Ticket actions (ref to avoid re-render loops when actions change)
+  const ticketActionsRef = useRef<TicketShortcutActions>({})
+  const ticketActions = ticketActionsRef.current
 
   // Get next ticket handler
   const [getNextTicketHandler, setGetNextTicketHandler] = useState<(() => void) | null>(null)
@@ -68,13 +69,13 @@ export function KeyboardShortcutsProvider({ children }: { children: React.ReactN
   const closeCommandPalette = useCallback(() => setIsCommandPaletteOpen(false), [])
   const toggleCommandPalette = useCallback(() => setIsCommandPaletteOpen(prev => !prev), [])
 
-  // Ticket action registration
+  // Ticket action registration (uses ref to avoid re-render cascade)
   const registerTicketActions = useCallback((actions: TicketShortcutActions) => {
-    setTicketActions(actions)
+    ticketActionsRef.current = actions
   }, [])
 
   const unregisterTicketActions = useCallback(() => {
-    setTicketActions({})
+    ticketActionsRef.current = {}
   }, [])
 
   // Message input ref setter
