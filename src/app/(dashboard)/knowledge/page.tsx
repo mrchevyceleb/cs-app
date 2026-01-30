@@ -911,9 +911,9 @@ export default function KnowledgePage() {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <p className="text-sm text-muted-foreground line-clamp-3">
-                            {article.content}
-                          </p>
+                          <div className="text-sm text-muted-foreground line-clamp-3 prose prose-sm dark:prose-invert max-w-none prose-p:m-0 prose-headings:m-0 prose-ul:m-0 prose-li:m-0">
+                            <ReactMarkdown>{article.content}</ReactMarkdown>
+                          </div>
                           <div className="mt-3 flex items-center justify-between">
                             <span className="text-xs text-muted-foreground/70">
                               {new Date(article.created_at).toLocaleDateString()}
