@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertCircle, RefreshCw, BarChart3, BookOpen, Search, TrendingUp, AlertTriangle, Sparkles, FileText, Hash } from 'lucide-react'
+import { AlertCircle, RefreshCw, BarChart3, BookOpen, Search, TrendingUp, AlertTriangle, Sparkles, FileText, Hash, Eye, PencilLine } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import {
   Dialog,
@@ -146,6 +146,7 @@ export default function KnowledgePage() {
   const [formTitle, setFormTitle] = useState('')
   const [formContent, setFormContent] = useState('')
   const [formCategory, setFormCategory] = useState('')
+  const [contentPreview, setContentPreview] = useState(false)
 
   // Delete confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -296,6 +297,7 @@ export default function KnowledgePage() {
     setFormTitle('')
     setFormContent('')
     setFormCategory('')
+    setContentPreview(false)
     setIsDialogOpen(true)
   }
 
@@ -305,6 +307,7 @@ export default function KnowledgePage() {
     setFormTitle(article.title)
     setFormContent(article.content)
     setFormCategory(article.category || '')
+    setContentPreview(false)
     setIsDialogOpen(true)
   }
 
@@ -1017,14 +1020,44 @@ export default function KnowledgePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="content">Content</Label>
-              <Textarea
-                id="content"
-                placeholder="Write the article content here. This will be used by the AI to provide helpful responses to customers..."
-                rows={8}
-                value={formContent}
-                onChange={(e) => setFormContent(e.target.value)}
-              />
+              <div className="flex items-center justify-between">
+                <Label htmlFor="content">Content</Label>
+                <div className="flex items-center gap-1 rounded-md border p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setContentPreview(false)}
+                    className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${!contentPreview ? 'bg-primary-600 text-white' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    <PencilLine className="h-3 w-3" />
+                    Write
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContentPreview(true)}
+                    className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${contentPreview ? 'bg-primary-600 text-white' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    <Eye className="h-3 w-3" />
+                    Preview
+                  </button>
+                </div>
+              </div>
+              {contentPreview ? (
+                <div className="min-h-[200px] rounded-md border p-3 prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-code:bg-gray-100 prose-code:dark:bg-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-a:text-indigo-600 prose-a:dark:text-indigo-400">
+                  {formContent ? (
+                    <ReactMarkdown>{formContent}</ReactMarkdown>
+                  ) : (
+                    <p className="text-muted-foreground italic">Nothing to preview</p>
+                  )}
+                </div>
+              ) : (
+                <Textarea
+                  id="content"
+                  placeholder="Write the article content here using Markdown. This will be used by the AI to provide helpful responses to customers..."
+                  rows={8}
+                  value={formContent}
+                  onChange={(e) => setFormContent(e.target.value)}
+                />
+              )}
             </div>
           </div>
 
