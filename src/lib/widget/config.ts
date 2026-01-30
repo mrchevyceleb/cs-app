@@ -9,10 +9,6 @@ import { DEFAULT_WIDGET_CONFIG } from '@/types/widget'
 export function parseWidgetConfig(attributes: Record<string, string | undefined>): Partial<WidgetConfig> {
   const config: Partial<WidgetConfig> = {}
 
-  if (attributes['data-api-key']) {
-    config.apiKey = attributes['data-api-key']
-  }
-
   if (attributes['data-position']) {
     const position = attributes['data-position']
     if (position === 'bottom-right' || position === 'bottom-left') {
@@ -54,7 +50,6 @@ export function parseWidgetConfig(attributes: Record<string, string | undefined>
  */
 export function mergeWidgetConfig(partial: Partial<WidgetConfig>): WidgetConfig {
   return {
-    apiKey: partial.apiKey || '',
     ...DEFAULT_WIDGET_CONFIG,
     ...partial,
   }
@@ -84,14 +79,6 @@ export function generateWidgetCSSVariables(config: WidgetConfig): Record<string,
     '--widget-primary-rgb': primaryRgbStr,
     '--widget-z-index': String(config.zIndex || DEFAULT_WIDGET_CONFIG.zIndex),
   }
-}
-
-/**
- * Validate API key format
- */
-export function isValidApiKey(apiKey: string): boolean {
-  // API keys should start with 'wk_' prefix
-  return apiKey.startsWith('wk_') && apiKey.length > 10
 }
 
 /**

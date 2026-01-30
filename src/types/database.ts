@@ -896,7 +896,6 @@ export type Database = {
       widget_settings: {
         Row: {
           id: string
-          api_key: string
           company_name: string
           greeting: string
           primary_color: string
@@ -907,7 +906,6 @@ export type Database = {
         }
         Insert: {
           id?: string
-          api_key: string
           company_name?: string
           greeting?: string
           primary_color?: string
@@ -918,7 +916,6 @@ export type Database = {
         }
         Update: {
           id?: string
-          api_key?: string
           company_name?: string
           greeting?: string
           primary_color?: string

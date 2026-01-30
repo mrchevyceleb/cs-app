@@ -14,22 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import { ArrowLeft, Copy, Check, Eye, EyeOff, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Copy, Check } from 'lucide-react'
 
 interface WidgetSettings {
   id: string
-  api_key: string
   company_name: string
   greeting: string
   primary_color: string
@@ -43,10 +31,8 @@ export default function WidgetSettingsPage() {
   const [settings, setSettings] = useState<WidgetSettings | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [isRegenerating, setIsRegenerating] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [showApiKey, setShowApiKey] = useState(false)
-  const [copiedField, setCopiedField] = useState<'apiKey' | 'embedCode' | null>(null)
+  const [copiedField, setCopiedField] = useState<'embedCode' | null>(null)
 
   // Form state
   const [companyName, setCompanyName] = useState('')
@@ -113,33 +99,7 @@ export default function WidgetSettingsPage() {
     }
   }
 
-  const handleRegenerateKey = async () => {
-    setIsRegenerating(true)
-
-    try {
-      const response = await fetch('/api/widget/settings/regenerate-key', {
-        method: 'POST',
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setSettings(data.settings)
-        setShowApiKey(true)
-        setSaveMessage({ type: 'success', text: 'API key regenerated. Please update your embed code.' })
-      } else {
-        const error = await response.json()
-        setSaveMessage({ type: 'error', text: error.error || 'Failed to regenerate API key' })
-      }
-    } catch (error) {
-      console.error('Failed to regenerate API key:', error)
-      setSaveMessage({ type: 'error', text: 'Failed to regenerate API key' })
-    } finally {
-      setIsRegenerating(false)
-      setTimeout(() => setSaveMessage(null), 5000)
-    }
-  }
-
-  const copyToClipboard = useCallback(async (text: string, field: 'apiKey' | 'embedCode') => {
+  const copyToClipboard = useCallback(async (text: string, field: 'embedCode') => {
     try {
       await navigator.clipboard.writeText(text)
       setCopiedField(field)
@@ -149,17 +109,11 @@ export default function WidgetSettingsPage() {
     }
   }, [])
 
-  const maskApiKey = (key: string) => {
-    if (key.length <= 8) return key
-    return key.substring(0, 6) + '...' + key.substring(key.length - 4)
-  }
-
   const getEmbedCode = () => {
     if (!settings) return ''
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
     return `<script
   src="${baseUrl}/widget/loader.js"
-  data-api-key="${settings.api_key}"
   data-position="${position}"
   data-primary-color="${primaryColor}"
   data-company-name="${companyName}"
@@ -296,71 +250,6 @@ export default function WidgetSettingsPage() {
               >
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* API Key Card */}
-      <Card className="bg-card border-border/70">
-        <CardHeader>
-          <CardTitle className="text-base">API Key</CardTitle>
-          <CardDescription>Your unique API key for widget authentication</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <Skeleton className="h-10 w-full" />
-          ) : settings && (
-            <>
-              <div className="flex gap-2">
-                <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-md font-mono text-sm">
-                  {showApiKey ? settings.api_key : maskApiKey(settings.api_key)}
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  title={showApiKey ? 'Hide API key' : 'Show API key'}
-                >
-                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => copyToClipboard(settings.api_key, 'apiKey')}
-                  title="Copy API key"
-                >
-                  {copiedField === 'apiKey' ? (
-                    <Check className="h-4 w-4 text-emerald-500" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="gap-2" disabled={isRegenerating}>
-                    <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
-                    Regenerate API Key
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Regenerate API Key?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will invalidate your current API key. Any existing widget installations
-                      will stop working until you update them with the new key.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleRegenerateKey}>
-                      Regenerate
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </>
           )}
         </CardContent>

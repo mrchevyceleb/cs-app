@@ -1,7 +1,6 @@
 // Widget configuration types
 
 export interface WidgetConfig {
-  apiKey: string
   position: 'bottom-right' | 'bottom-left'
   primaryColor: string
   greeting: string
@@ -10,7 +9,7 @@ export interface WidgetConfig {
   zIndex?: number
 }
 
-export const DEFAULT_WIDGET_CONFIG: Omit<WidgetConfig, 'apiKey'> = {
+export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
   position: 'bottom-right',
   primaryColor: '#4F46E5',
   greeting: 'Hi! How can we help you today?',

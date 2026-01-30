@@ -4,7 +4,6 @@
  * Usage:
  * <script
  *   src="https://your-domain.com/widget/loader.js"
- *   data-api-key="wk_abc123..."
  *   data-position="bottom-right"
  *   data-primary-color="#9333EA"
  *   data-greeting="Hi! How can we help?"
@@ -47,7 +46,6 @@
 
   // Extract configuration from data attributes
   var config = {
-    apiKey: script.getAttribute('data-api-key') || '',
     position: script.getAttribute('data-position') || 'bottom-right',
     primaryColor: script.getAttribute('data-primary-color') || '#4F46E5',
     greeting: script.getAttribute('data-greeting') || 'Hi! How can we help you today?',
@@ -102,7 +100,6 @@
 
     // Build iframe URL with config params
     var params = new URLSearchParams();
-    params.set('apiKey', config.apiKey);
     params.set('position', config.position);
     params.set('primaryColor', config.primaryColor);
     params.set('greeting', config.greeting);

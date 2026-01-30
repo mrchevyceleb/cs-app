@@ -10,7 +10,6 @@ import { subscribeToMessages, sendToParent } from '@/lib/widget/messaging'
 
 export default function WidgetPage() {
   const [config, setConfig] = useState<WidgetConfig>({
-    apiKey: '',
     ...DEFAULT_WIDGET_CONFIG,
   })
   const [state, setState] = useState<WidgetState>(INITIAL_WIDGET_STATE)
@@ -37,7 +36,6 @@ export default function WidgetPage() {
     const params = new URLSearchParams(window.location.search)
     const urlConfig: Partial<WidgetConfig> = {}
 
-    if (params.get('apiKey')) urlConfig.apiKey = params.get('apiKey')!
     if (params.get('position')) {
       const pos = params.get('position')
       if (pos === 'bottom-right' || pos === 'bottom-left') {
