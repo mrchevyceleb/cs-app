@@ -10,6 +10,7 @@ import { ToastProvider } from '@/components/ui/toast'
 import { NovaCopilotProvider } from '@/contexts/NovaCopilotContext'
 import { NovaCopilot } from '@/components/dashboard/NovaCopilot'
 import { RealtimeProvider } from '@/contexts/RealtimeContext'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 export default function DashboardLayout({
   children,
@@ -23,6 +24,7 @@ export default function DashboardLayout({
 
   return (
     <ToastProvider>
+      <TooltipProvider>
       <KeyboardShortcutsProvider>
         <CommandPaletteProvider>
           <RealtimeProvider>
@@ -62,6 +64,7 @@ export default function DashboardLayout({
           </RealtimeProvider>
         </CommandPaletteProvider>
       </KeyboardShortcutsProvider>
+      </TooltipProvider>
     </ToastProvider>
   )
 }
