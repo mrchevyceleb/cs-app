@@ -113,10 +113,10 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     }
   }
 
-  // 3. Get channel config early (needed for agent mode check)
+  // 3. Get channel config and agent config
   const channelConfig = await getChannelConfig(request.channel);
   const agentConfig = getAgentConfig();
-  const useAgentMode = agentConfig.enabled && (channelConfig?.ai_agent_mode ?? false);
+  const useAgentMode = agentConfig.enabled;
 
   // 4. Run AI triage (legacy) or agentic solve
   let routingDecision: RoutingDecision;
