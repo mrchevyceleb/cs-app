@@ -52,14 +52,22 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Ensure we have a customer
+      if (!customerId) {
+        return NextResponse.json(
+          { error: 'Customer identification required' },
+          { status: 400 }
+        )
+      }
+
       // Create new ticket
       const { data: newTicket, error: createError } = await supabase
         .from('tickets')
         .insert({
           subject: 'Chat: ' + message.substring(0, 50) + (message.length > 50 ? '...' : ''),
           status: 'open',
-          priority: 'medium',
-          channel: 'widget',
+          priority: 'normal',
+          source_channel: 'widget',
           customer_id: customerId,
           ai_handled: true,
         })
