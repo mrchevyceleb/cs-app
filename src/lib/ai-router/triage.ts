@@ -5,13 +5,12 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { withFallback } from '@/lib/claude/client';
 import type { ChannelType, RoutingDecision } from '@/types/channels';
 import type { Ticket, Customer } from '@/types/database';
 import { TRIAGE_PROMPT, RESPONSE_PROMPT } from './prompts';
 import { searchKnowledgeHybrid, formatKBResultsForPrompt } from '@/lib/knowledge/search';
 import type { KBSearchResult } from '@/lib/knowledge/types';
-
-const anthropic = new Anthropic();
 
 interface TriageInput {
   message: string;
@@ -76,17 +75,19 @@ export async function triageMessage(input: TriageInput): Promise<RoutingDecision
   const context = buildTriageContext(input, knowledgeArticles);
 
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: TRIAGE_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: context,
-        },
-      ],
-    });
+    const response = await withFallback(client =>
+      client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: TRIAGE_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: context,
+          },
+        ],
+      })
+    );
 
     // Parse response
     const responseText = response.content
@@ -161,23 +162,25 @@ export async function generateResponse(
       ? `\n\nRelevant Knowledge Base Articles:\n${formatKBResultsForPrompt(kbResults, 1000)}`
       : '';
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: RESPONSE_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Generate a response for:
+    const response = await withFallback(client =>
+      client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: RESPONSE_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: `Generate a response for:
 Intent: ${intent}
 Customer name: ${customer.name || 'Customer'}
 Ticket subject: ${ticket.subject}
 ${kbContext}
 
 The response should be helpful, professional, and concise. If KB articles are provided, base your response on them and cite the source.`,
-        },
-      ],
-    });
+          },
+        ],
+      })
+    );
 
     return response.content
       .filter((block): block is Anthropic.TextBlock => block.type === 'text')

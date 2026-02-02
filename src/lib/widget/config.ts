@@ -42,6 +42,10 @@ export function parseWidgetConfig(attributes: Record<string, string | undefined>
     }
   }
 
+  if (attributes['data-agent-avatar-url']) {
+    config.agentAvatarUrl = attributes['data-agent-avatar-url']
+  }
+
   return config
 }
 

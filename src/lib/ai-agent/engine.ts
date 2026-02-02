@@ -8,12 +8,11 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk'
+import { getAnthropicClient, withFallback, getFallbackClient } from '@/lib/claude/client'
 import { getAgentConfig } from './config'
 import { getAgentSystemPrompt } from './prompts'
 import { AGENT_TOOLS, executeTool, type ToolContext } from './tools'
 import type { AgentInput, AgentResult, AgentStreamEvent, ToolCallLog } from './types'
-
-const anthropic = new Anthropic()
 
 /**
  * Non-streaming agentic solve.
@@ -76,13 +75,15 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
       }
     }
 
-    const response = await anthropic.messages.create({
-      model: config.model,
-      max_tokens: 1024,
-      system: systemPrompt,
-      tools: AGENT_TOOLS,
-      messages,
-    })
+    const response = await withFallback(client =>
+      client.messages.create({
+        model: config.model,
+        max_tokens: 1024,
+        system: systemPrompt,
+        tools: AGENT_TOOLS,
+        messages,
+      })
+    )
 
     totalInputTokens += response.usage?.input_tokens || 0
     totalOutputTokens += response.usage?.output_tokens || 0
@@ -204,12 +205,14 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
   }
 
   // Max rounds exhausted — ask Claude for a final response without tools
-  const finalResponse = await anthropic.messages.create({
-    model: config.model,
-    max_tokens: 1024,
-    system: systemPrompt + '\n\nYou have used all your tool rounds. Provide your best response with the information gathered.',
-    messages,
-  })
+  const finalResponse = await withFallback(client =>
+    client.messages.create({
+      model: config.model,
+      max_tokens: 1024,
+      system: systemPrompt + '\n\nYou have used all your tool rounds. Provide your best response with the information gathered.',
+      messages,
+    })
+  )
 
   totalInputTokens += finalResponse.usage?.input_tokens || 0
   totalOutputTokens += finalResponse.usage?.output_tokens || 0
@@ -295,13 +298,15 @@ export async function* agenticSolveStreaming(
       return
     }
 
-    const response = await anthropic.messages.create({
-      model: config.model,
-      max_tokens: 1024,
-      system: systemPrompt,
-      tools: AGENT_TOOLS,
-      messages,
-    })
+    const response = await withFallback(client =>
+      client.messages.create({
+        model: config.model,
+        max_tokens: 1024,
+        system: systemPrompt,
+        tools: AGENT_TOOLS,
+        messages,
+      })
+    )
 
     totalInputTokens += response.usage?.input_tokens || 0
     totalOutputTokens += response.usage?.output_tokens || 0
@@ -444,28 +449,40 @@ export async function* agenticSolveStreaming(
   }
 
   // Final streaming response after all tool rounds
-  const stream = anthropic.messages.stream({
+  // Try primary key, fall back to secondary on rate limit
+  const streamParams = {
     model: config.model,
     max_tokens: 1024,
     system: systemPrompt + '\n\nProvide your best response with the information gathered.',
     messages,
-  })
+  } as const
 
   let fullContent = ''
 
-  for await (const event of stream) {
-    if (
-      event.type === 'content_block_delta' &&
-      event.delta.type === 'text_delta'
-    ) {
-      fullContent += event.delta.text
-      yield { type: 'text_delta', content: event.delta.text }
+  const consumeStream = async function* (client: Anthropic) {
+    const s = client.messages.stream(streamParams)
+    for await (const event of s) {
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        fullContent += event.delta.text
+        yield { type: 'text_delta' as const, content: event.delta.text }
+      }
     }
+    const msg = await s.finalMessage()
+    totalInputTokens += msg.usage?.input_tokens || 0
+    totalOutputTokens += msg.usage?.output_tokens || 0
   }
 
-  const finalMessage = await stream.finalMessage()
-  totalInputTokens += finalMessage.usage?.input_tokens || 0
-  totalOutputTokens += finalMessage.usage?.output_tokens || 0
+  try {
+    yield* consumeStream(getAnthropicClient())
+  } catch (err) {
+    const fallback = getFallbackClient()
+    if (err instanceof Anthropic.APIError && (err.status === 429 || err.status === 529) && fallback) {
+      fullContent = '' // reset partial content
+      yield* consumeStream(fallback)
+    } else {
+      throw err
+    }
+  }
 
   yield {
     type: 'complete',

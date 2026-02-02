@@ -39,7 +39,7 @@ export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
   theme: 'auto',
   zIndex: 999999,
   agentName: 'Nova',
-  agentAvatarUrl: '/widget/nova-avatar.png',
+  agentAvatarUrl: undefined,
   teaser: DEFAULT_TEASER_CONFIG,
 }
 

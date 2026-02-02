@@ -122,12 +122,20 @@ export function WidgetLauncher({ config, onClick, style }: WidgetLauncherProps) 
           onClick={onClick}
         >
           {/* Nova avatar */}
-          <div
-            className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: `${config.primaryColor}20` }}
-          >
-            <Sparkles className="w-4 h-4" style={{ color: config.primaryColor }} />
-          </div>
+          {config.agentAvatarUrl ? (
+            <img
+              src={config.agentAvatarUrl}
+              alt={config.agentName || 'Nova'}
+              className="flex-shrink-0 w-8 h-8 rounded-full object-cover"
+            />
+          ) : (
+            <div
+              className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: `${config.primaryColor}20` }}
+            >
+              <Sparkles className="w-4 h-4" style={{ color: config.primaryColor }} />
+            </div>
+          )}
 
           {/* Message text */}
           <p className="text-sm text-gray-800 dark:text-gray-200 leading-snug min-h-[20px]">

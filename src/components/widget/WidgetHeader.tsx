@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, ArrowLeft, LogOut, Sparkles, MoreVertical, MessageSquarePlus, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { WidgetConfig, WidgetState } from '@/types/widget'
@@ -25,10 +25,15 @@ export function WidgetHeader({
   onPastConversations,
 }: WidgetHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const agentName = config.agentName || 'Nova'
+  const agentAvatarUrl = config.agentAvatarUrl
   const isChatView = state.currentView === 'chat'
+  const showAvatar = agentAvatarUrl && !avatarError
+
+  const handleAvatarError = useCallback(() => setAvatarError(true), [])
 
   // Close menu on outside click
   useEffect(() => {
@@ -94,9 +99,18 @@ export function WidgetHeader({
 
         {/* Nova avatar + title for chat view */}
         {isChatView && (
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
+          showAvatar ? (
+            <img
+              src={agentAvatarUrl}
+              alt={agentName}
+              className="w-8 h-8 rounded-full object-cover ring-2 ring-white/20"
+              onError={handleAvatarError}
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+          )
         )}
 
         <div className="flex flex-col">

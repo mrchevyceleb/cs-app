@@ -10,6 +10,7 @@
  *   data-company-name="Acme Support"
  *   data-theme="auto"
  *   data-agent-name="Nova"
+ *   data-agent-avatar-url="/widget/nova-avatar.png"
  * ></script>
  */
 (function() {
@@ -53,7 +54,8 @@
     companyName: script.getAttribute('data-company-name') || 'Support',
     theme: script.getAttribute('data-theme') || 'auto',
     zIndex: parseInt(script.getAttribute('data-z-index') || '999999', 10),
-    agentName: script.getAttribute('data-agent-name') || 'Nova'
+    agentName: script.getAttribute('data-agent-name') || 'Nova',
+    agentAvatarUrl: script.getAttribute('data-agent-avatar-url') || ''
   };
 
   // State
@@ -114,6 +116,9 @@
     params.set('companyName', config.companyName);
     params.set('theme', config.theme);
     params.set('agentName', config.agentName);
+    if (config.agentAvatarUrl) {
+      params.set('agentAvatarUrl', config.agentAvatarUrl);
+    }
 
     iframe.src = baseUrl + '/widget?' + params.toString();
 

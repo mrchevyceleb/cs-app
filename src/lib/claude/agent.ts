@@ -1,5 +1,6 @@
 import type { MessageParam, ContentBlockParam, ToolResultBlockParam } from '@anthropic-ai/sdk/resources/messages'
-import { getAnthropicClient, COPILOT_MODEL } from './client'
+import Anthropic from '@anthropic-ai/sdk'
+import { getAnthropicClient, getFallbackClient, COPILOT_MODEL } from './client'
 import { copilotTools } from './tools'
 import { NOVA_SYSTEM_PROMPT } from './prompts'
 import { executeTool } from './handlers'
@@ -134,13 +135,14 @@ export async function runAgentLoop(
   ]
 
   let iterations = 0
+  let activeClient = getAnthropicClient()
 
   while (iterations < MAX_ITERATIONS) {
     iterations++
 
     try {
-      // Create streaming message request
-      const stream = getAnthropicClient().messages.stream({
+      // Create streaming message request (uses activeClient which may be the fallback)
+      const stream = activeClient.messages.stream({
         model: COPILOT_MODEL,
         max_tokens: 4096,
         system: systemPrompt,
@@ -260,6 +262,16 @@ export async function runAgentLoop(
       callbacks.onDone()
       return
     } catch (error) {
+      // On rate limit (429) or overloaded (529), switch to fallback key and retry this iteration
+      if (error instanceof Anthropic.APIError && (error.status === 429 || error.status === 529)) {
+        const fallback = getFallbackClient()
+        if (fallback && activeClient !== fallback) {
+          console.warn(`Rate limited (${error.status}), switching to fallback API key`)
+          activeClient = fallback
+          iterations-- // don't count this as a real iteration
+          continue
+        }
+      }
       console.error('Agent loop error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       callbacks.onError(errorMessage)

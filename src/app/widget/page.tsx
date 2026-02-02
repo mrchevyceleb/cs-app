@@ -105,6 +105,7 @@ export default function WidgetPage() {
         }
       }
       if (params.get('agentName')) urlConfig.agentName = params.get('agentName')!
+      if (params.get('agentAvatarUrl')) urlConfig.agentAvatarUrl = params.get('agentAvatarUrl')!
 
       setConfig(prev => ({ ...prev, ...urlConfig }))
       setIsLoading(false)

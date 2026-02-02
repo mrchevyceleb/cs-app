@@ -8,7 +8,7 @@ import type {
   TicketSearchResult,
   TicketSummary,
 } from '../types'
-import { getAnthropicClient, COPILOT_MODEL } from '../client'
+import { withFallback, COPILOT_MODEL } from '../client'
 import { TICKET_SUMMARY_PROMPT } from '../prompts'
 
 /**
@@ -374,11 +374,13 @@ export async function getTicketSummary(
     // Generate summary using Claude
     const prompt = TICKET_SUMMARY_PROMPT.replace('{messages}', messagesText)
 
-    const response = await getAnthropicClient().messages.create({
-      model: COPILOT_MODEL,
-      max_tokens: 500,
-      messages: [{ role: 'user', content: prompt }],
-    })
+    const response = await withFallback(client =>
+      client.messages.create({
+        model: COPILOT_MODEL,
+        max_tokens: 500,
+        messages: [{ role: 'user', content: prompt }],
+      })
+    )
 
     // Parse the response
     const responseText = response.content[0].type === 'text' ? response.content[0].text : ''

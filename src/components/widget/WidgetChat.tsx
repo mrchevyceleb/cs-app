@@ -57,8 +57,11 @@ export function WidgetChat({
   const streamingMsgIdRef = useRef<string | null>(null)
   const lastInitialTicketIdRef = useRef<string | null>(initialTicketId)
 
+  const [avatarError, setAvatarError] = useState(false)
   const agentName = config.agentName || 'Nova'
   const agentAvatarUrl = config.agentAvatarUrl
+  const showAvatar = agentAvatarUrl && !avatarError
+  const handleAvatarError = useCallback(() => setAvatarError(true), [])
 
   // Sender icon and styling
   const senderConfig = {
@@ -385,9 +388,18 @@ export function WidgetChat({
         {/* Welcome message (local only, not saved to DB) */}
         {showWelcome && (
           <div className="flex gap-2 flex-row">
-            <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900">
-              <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            </div>
+            {showAvatar ? (
+              <img
+                src={agentAvatarUrl}
+                alt={agentName}
+                className="flex-shrink-0 w-7 h-7 rounded-full object-cover"
+                onError={handleAvatarError}
+              />
+            ) : (
+              <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900">
+                <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              </div>
+            )}
             <div className="flex flex-col items-start max-w-[80%]">
               <div className="flex items-center gap-1.5 mb-0.5">
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -417,27 +429,36 @@ export function WidgetChat({
               )}
             >
               {/* Avatar */}
-              <div
-                className={cn(
-                  'flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center',
-                  message.sender_type === 'customer'
-                    ? 'bg-primary-100 dark:bg-primary-900'
-                    : message.sender_type === 'ai'
-                    ? 'bg-purple-100 dark:bg-purple-900'
-                    : 'bg-gray-200 dark:bg-gray-700'
-                )}
-              >
-                <Icon
-                  className={cn(
-                    'w-4 h-4',
-                    message.sender_type === 'customer'
-                      ? 'text-primary-600 dark:text-primary-400'
-                      : message.sender_type === 'ai'
-                      ? 'text-purple-600 dark:text-purple-400'
-                      : 'text-gray-600 dark:text-gray-400'
-                  )}
+              {message.sender_type === 'ai' && showAvatar ? (
+                <img
+                  src={agentAvatarUrl}
+                  alt={agentName}
+                  className="flex-shrink-0 w-7 h-7 rounded-full object-cover"
+                  onError={handleAvatarError}
                 />
-              </div>
+              ) : (
+                <div
+                  className={cn(
+                    'flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center',
+                    message.sender_type === 'customer'
+                      ? 'bg-primary-100 dark:bg-primary-900'
+                      : message.sender_type === 'ai'
+                      ? 'bg-purple-100 dark:bg-purple-900'
+                      : 'bg-gray-200 dark:bg-gray-700'
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      'w-4 h-4',
+                      message.sender_type === 'customer'
+                        ? 'text-primary-600 dark:text-primary-400'
+                        : message.sender_type === 'ai'
+                        ? 'text-purple-600 dark:text-purple-400'
+                        : 'text-gray-600 dark:text-gray-400'
+                    )}
+                  />
+                </div>
+              )}
 
               {/* Message content */}
               <div
