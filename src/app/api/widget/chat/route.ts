@@ -70,6 +70,20 @@ export async function POST(request: NextRequest) {
       }
 
       ticketId = newTicket.id
+    } else {
+      const { data: existingTicket, error: ticketLookupError } = await supabase
+        .from('tickets')
+        .select('id, customer_id')
+        .eq('id', ticketId)
+        .single()
+
+      if (ticketLookupError || !existingTicket) {
+        return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+      }
+
+      if (existingTicket.customer_id !== session.customerId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
     }
 
     // Save customer message

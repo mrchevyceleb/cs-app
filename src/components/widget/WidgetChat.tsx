@@ -55,6 +55,7 @@ export function WidgetChat({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const pendingMessageRef = useRef<Set<string>>(new Set())
   const streamingMsgIdRef = useRef<string | null>(null)
+  const lastInitialTicketIdRef = useRef<string | null>(initialTicketId)
 
   const agentName = config.agentName || 'Nova'
 
@@ -92,6 +93,7 @@ export function WidgetChat({
   useEffect(() => {
     async function fetchMessages() {
       if (!session?.token || !ticketId) return
+      if (streamingMsgIdRef.current) return
 
       setIsLoading(true)
       try {
@@ -114,6 +116,19 @@ export function WidgetChat({
       fetchMessages()
     }
   }, [session?.token, ticketId, isNewSession])
+
+  // Sync local state when parent changes the ticket
+  useEffect(() => {
+    if (lastInitialTicketIdRef.current === initialTicketId) return
+    lastInitialTicketIdRef.current = initialTicketId
+    setTicketId(initialTicketId)
+    setMessages([])
+    setError(null)
+    setToolStatus(null)
+    setExpandedSource(null)
+    pendingMessageRef.current = new Set()
+    streamingMsgIdRef.current = null
+  }, [initialTicketId])
 
   // Scroll to bottom when messages change
   useEffect(() => {
