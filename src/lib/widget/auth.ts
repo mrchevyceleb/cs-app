@@ -125,9 +125,10 @@ export async function validateWidgetToken(token: string): Promise<WidgetSession 
     return {
       token,
       customerId: tokenData.customer_id,
-      customerEmail: customer.email || '',
+      customerEmail: customer.email || null,
       customerName: customer.name,
       expiresAt: tokenData.expires_at,
+      isAnonymous: !customer.email,
     }
   } catch (error) {
     console.error('Widget auth error:', error)
@@ -183,6 +184,56 @@ export async function findOrCreateCustomer(
     return newCustomer
   } catch (error) {
     console.error('Find/create customer error:', error)
+    return null
+  }
+}
+
+/**
+ * Find or create an anonymous customer by fingerprint
+ */
+export async function findOrCreateAnonymousCustomer(
+  fingerprint?: string
+): Promise<{ id: string; name: string | null; email: string | null } | null> {
+  try {
+    const supabase = getServiceClient()
+
+    // If fingerprint provided, try to find existing anonymous customer
+    if (fingerprint) {
+      const { data: existing, error: findError } = await supabase
+        .from('customers')
+        .select('id, name, email')
+        .is('email', null)
+        .eq('metadata->>fingerprint', fingerprint)
+        .single()
+
+      if (existing && !findError) {
+        return existing
+      }
+    }
+
+    // Create new anonymous customer
+    const { data: newCustomer, error: createError } = await supabase
+      .from('customers')
+      .insert({
+        email: null,
+        name: null,
+        metadata: {
+          source: 'widget',
+          anonymous: true,
+          fingerprint: fingerprint || null,
+        },
+      })
+      .select('id, name, email')
+      .single()
+
+    if (createError) {
+      console.error('Error creating anonymous customer:', createError)
+      return null
+    }
+
+    return newCustomer
+  } catch (error) {
+    console.error('Find/create anonymous customer error:', error)
     return null
   }
 }
@@ -280,4 +331,29 @@ export function clearWidgetSession(): void {
   } catch (error) {
     console.error('Failed to clear widget session:', error)
   }
+}
+
+/**
+ * Generate a simple browser fingerprint (client-side only)
+ * Uses UA + screen dimensions + timezone for basic uniqueness
+ */
+export function generateFingerprint(): string {
+  if (typeof window === 'undefined') return ''
+
+  const parts = [
+    navigator.userAgent,
+    `${screen.width}x${screen.height}`,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.language,
+  ]
+
+  // Simple hash
+  const str = parts.join('|')
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash |= 0
+  }
+  return 'fp_' + Math.abs(hash).toString(36)
 }

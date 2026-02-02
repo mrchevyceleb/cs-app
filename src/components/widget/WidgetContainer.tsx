@@ -21,6 +21,7 @@ interface WidgetContainerProps {
   onNavigate: (view: WidgetView, ticketId?: string | null) => void
   onSelectTicket: (ticketId: string) => void
   onTicketCreated: (ticketId: string) => void
+  onNewConversation: () => void
 }
 
 export function WidgetContainer({
@@ -34,6 +35,7 @@ export function WidgetContainer({
   onNavigate,
   onSelectTicket,
   onTicketCreated,
+  onNewConversation,
 }: WidgetContainerProps) {
   const launcherPosition = getLauncherPositionStyles(config.position)
   const containerPosition = getContainerPositionStyles(config.position)
@@ -69,7 +71,10 @@ export function WidgetContainer({
           <WidgetChat
             session={session}
             ticketId={state.currentTicketId}
+            config={config}
+            isNewSession={!state.currentTicketId}
             onBack={() => onNavigate('tickets', null)}
+            onTicketCreated={onTicketCreated}
           />
         )
       default:
@@ -124,10 +129,14 @@ export function WidgetContainer({
             config={config}
             state={state}
             onClose={onClose}
-            onBack={state.currentView === 'chat' || state.currentView === 'new-ticket'
-              ? () => onNavigate('tickets', null)
+            onBack={state.currentView === 'tickets' || state.currentView === 'new-ticket'
+              ? () => onNavigate('chat', null)
               : undefined}
             onLogout={state.isAuthenticated ? onLogout : undefined}
+            onNewConversation={onNewConversation}
+            onPastConversations={state.isAuthenticated
+              ? () => onNavigate('tickets', null)
+              : undefined}
           />
 
           {/* Content */}

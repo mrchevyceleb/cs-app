@@ -9,6 +9,7 @@
  *   data-greeting="Hi! How can we help?"
  *   data-company-name="Acme Support"
  *   data-theme="auto"
+ *   data-agent-name="Nova"
  * ></script>
  */
 (function() {
@@ -51,7 +52,8 @@
     greeting: script.getAttribute('data-greeting') || 'Hi! How can we help you today?',
     companyName: script.getAttribute('data-company-name') || 'Support',
     theme: script.getAttribute('data-theme') || 'auto',
-    zIndex: parseInt(script.getAttribute('data-z-index') || '999999', 10)
+    zIndex: parseInt(script.getAttribute('data-z-index') || '999999', 10),
+    agentName: script.getAttribute('data-agent-name') || 'Nova'
   };
 
   // State
@@ -72,18 +74,23 @@
     // Create container
     container = document.createElement('div');
     container.id = CONTAINER_ID;
+
+    // Start with teaser-friendly size (transparent, pointer-events passthrough)
+    var side = config.position === 'bottom-left' ? 'left' : 'right';
     container.style.cssText = [
       'position: fixed',
       'z-index: ' + config.zIndex,
       'transition: all 0.3s ease',
-      config.position === 'bottom-left' ? 'left: 20px' : 'right: 20px',
+      side + ': 20px',
       'bottom: 20px',
-      'width: 60px',
-      'height: 60px',
+      'width: 340px',
+      'height: 100px',
       'border: none',
-      'overflow: hidden',
-      'border-radius: 30px',
-      'box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15)'
+      'overflow: visible',
+      'border-radius: 0',
+      'background: transparent',
+      'box-shadow: none',
+      'pointer-events: none'
     ].join('; ');
 
     // Create iframe
@@ -95,7 +102,8 @@
       'width: 100%',
       'height: 100%',
       'border: none',
-      'background: transparent'
+      'background: transparent',
+      'pointer-events: auto'
     ].join('; ');
 
     // Build iframe URL with config params
@@ -105,6 +113,7 @@
     params.set('greeting', config.greeting);
     params.set('companyName', config.companyName);
     params.set('theme', config.theme);
+    params.set('agentName', config.agentName);
 
     iframe.src = baseUrl + '/widget?' + params.toString();
 
@@ -116,32 +125,57 @@
   function updateContainerSize() {
     if (!container) return;
 
+    var side = config.position === 'bottom-left' ? 'left' : 'right';
+    var otherSide = config.position === 'bottom-left' ? 'right' : 'left';
+
     if (!isOpen) {
-      // Collapsed (launcher only)
-      container.style.width = '60px';
-      container.style.height = '60px';
-      container.style.borderRadius = '30px';
+      // Collapsed: teaser-friendly transparent container
+      container.style.width = '340px';
+      container.style.height = '100px';
+      container.style.borderRadius = '0';
+      container.style.boxShadow = 'none';
+      container.style.background = 'transparent';
       container.style.bottom = '20px';
-      container.style[config.position === 'bottom-left' ? 'left' : 'right'] = '20px';
+      container.style[side] = '20px';
+      container.style[otherSide] = 'auto';
+      container.style.top = 'auto';
+      container.style.pointerEvents = 'none';
+      container.style.overflow = 'visible';
+      if (iframe) {
+        iframe.style.pointerEvents = 'auto';
+      }
     } else if (isMobile()) {
       // Full screen on mobile
       container.style.width = '100%';
       container.style.height = '100%';
       container.style.borderRadius = '0';
+      container.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+      container.style.background = 'white';
       container.style.bottom = '0';
       container.style.left = '0';
       container.style.right = '0';
       container.style.top = '0';
+      container.style.pointerEvents = 'auto';
+      container.style.overflow = 'hidden';
+      if (iframe) {
+        iframe.style.pointerEvents = 'auto';
+      }
     } else {
       // Expanded on desktop
       container.style.width = '400px';
       container.style.height = '600px';
       container.style.borderRadius = '16px';
+      container.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+      container.style.background = 'white';
       container.style.bottom = '20px';
-      container.style[config.position === 'bottom-left' ? 'left' : 'right'] = '20px';
-      // Remove the other side positioning
-      container.style[config.position === 'bottom-left' ? 'right' : 'left'] = 'auto';
+      container.style[side] = '20px';
+      container.style[otherSide] = 'auto';
       container.style.top = 'auto';
+      container.style.pointerEvents = 'auto';
+      container.style.overflow = 'hidden';
+      if (iframe) {
+        iframe.style.pointerEvents = 'auto';
+      }
     }
   }
 

@@ -3,13 +3,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Send, Loader2, AlertCircle, User, Headphones, Sparkles, BookOpen, ChevronDown, ChevronUp, Search, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { WidgetSession, WidgetMessage_DB, WidgetTicket } from '@/types/widget'
+import type { WidgetSession, WidgetConfig, StreamingMessage } from '@/types/widget'
 import { createClient } from '@supabase/supabase-js'
 
 interface WidgetChatProps {
   session: WidgetSession | null
   ticketId: string | null
+  config: WidgetConfig
+  isNewSession: boolean
   onBack: () => void
+  onTicketCreated: (ticketId: string) => void
 }
 
 // Format relative time
@@ -32,92 +35,92 @@ function formatRelativeTime(date: string): string {
   })
 }
 
-// Sender icon and styling
-const senderConfig = {
-  customer: {
-    icon: User,
-    label: 'You',
-    align: 'right' as const,
-    bgColor: 'bg-primary-600 dark:bg-primary-700',
-    textColor: 'text-white',
-  },
-  agent: {
-    icon: Headphones,
-    label: 'Support',
-    align: 'left' as const,
-    bgColor: 'bg-gray-100 dark:bg-gray-800',
-    textColor: 'text-gray-900 dark:text-gray-100',
-  },
-  ai: {
-    icon: Sparkles,
-    label: 'AI Assistant',
-    align: 'left' as const,
-    bgColor: 'bg-purple-50 dark:bg-purple-900/30',
-    textColor: 'text-gray-900 dark:text-gray-100',
-  },
-}
-
 export function WidgetChat({
   session,
-  ticketId,
+  ticketId: initialTicketId,
+  config,
+  isNewSession,
   onBack,
+  onTicketCreated,
 }: WidgetChatProps) {
-  const [ticket, setTicket] = useState<WidgetTicket | null>(null)
-  const [messages, setMessages] = useState<WidgetMessage_DB[]>([])
+  const [messages, setMessages] = useState<StreamingMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedSource, setExpandedSource] = useState<string | null>(null)
-  const [toolStatus, setToolStatus] = useState<string | null>(null) // e.g. "Searching knowledge base..."
+  const [toolStatus, setToolStatus] = useState<string | null>(null)
+  const [ticketId, setTicketId] = useState<string | null>(initialTicketId)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const pendingMessageRef = useRef<string | null>(null) // Track pending message to prevent race condition
+  const pendingMessageRef = useRef<Set<string>>(new Set())
+  const streamingMsgIdRef = useRef<string | null>(null)
+
+  const agentName = config.agentName || 'Nova'
+
+  // Sender icon and styling
+  const senderConfig = {
+    customer: {
+      icon: User,
+      label: 'You',
+      align: 'right' as const,
+      bgColor: 'bg-primary-600 dark:bg-primary-700',
+      textColor: 'text-white',
+    },
+    agent: {
+      icon: Headphones,
+      label: 'Support',
+      align: 'left' as const,
+      bgColor: 'bg-gray-100 dark:bg-gray-800',
+      textColor: 'text-gray-900 dark:text-gray-100',
+    },
+    ai: {
+      icon: Sparkles,
+      label: agentName,
+      align: 'left' as const,
+      bgColor: 'bg-purple-50 dark:bg-purple-900/30',
+      textColor: 'text-gray-900 dark:text-gray-100',
+    },
+  }
 
   // Scroll to bottom
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
-  // Fetch ticket and messages
+  // Fetch existing ticket messages (when resuming a conversation)
   useEffect(() => {
-    async function fetchTicket() {
+    async function fetchMessages() {
       if (!session?.token || !ticketId) return
 
       setIsLoading(true)
-      setError(null)
-
       try {
         const response = await fetch(`/api/widget/tickets/${ticketId}`, {
-          headers: {
-            Authorization: `Bearer ${session.token}`,
-          },
+          headers: { Authorization: `Bearer ${session.token}` },
         })
 
-        if (!response.ok) {
-          throw new Error('Failed to load conversation')
+        if (response.ok) {
+          const data = await response.json()
+          setMessages(data.messages || [])
         }
-
-        const data = await response.json()
-        setTicket(data.ticket)
-        setMessages(data.messages || [])
       } catch (err) {
-        setError('Failed to load conversation')
-        console.error('Fetch ticket error:', err)
+        console.error('Fetch messages error:', err)
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchTicket()
-  }, [session?.token, ticketId])
+    if (ticketId && !isNewSession) {
+      fetchMessages()
+    }
+  }, [session?.token, ticketId, isNewSession])
 
   // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom()
   }, [messages, scrollToBottom])
 
-  // Set up real-time subscription
+  // Set up real-time subscription for agent/human messages
   useEffect(() => {
     if (!ticketId) return
 
@@ -139,28 +142,16 @@ export function WidgetChat({
           filter: `ticket_id=eq.${ticketId}`,
         },
         (payload) => {
-          const newMsg = payload.new as WidgetMessage_DB & { metadata?: { is_internal?: boolean } }
-          // Don't add internal notes
+          const newMsg = payload.new as StreamingMessage & { metadata?: { is_internal?: boolean } }
           if (newMsg.metadata?.is_internal) return
 
-          // Clear tool status when a new AI/agent message arrives
-          if (newMsg.sender_type === 'ai' || newMsg.sender_type === 'agent') {
-            setToolStatus(null)
+          // Skip if this message came through our SSE stream
+          if (pendingMessageRef.current.has(newMsg.id)) {
+            return
           }
 
-          // Check if message already exists (could be our own message or a duplicate)
           setMessages((prev) => {
-            // Skip if message ID already exists
-            if (prev.some((m) => m.id === newMsg.id)) {
-              return prev
-            }
-
-            // Skip if this is our pending message (prevents race condition)
-            // The POST response will handle replacing the temp message
-            if (pendingMessageRef.current && newMsg.id === pendingMessageRef.current) {
-              return prev
-            }
-
+            if (prev.some((m) => m.id === newMsg.id)) return prev
             return [...prev, {
               id: newMsg.id,
               sender_type: newMsg.sender_type,
@@ -168,6 +159,10 @@ export function WidgetChat({
               created_at: newMsg.created_at,
             }]
           })
+
+          if (newMsg.sender_type === 'ai' || newMsg.sender_type === 'agent') {
+            setToolStatus(null)
+          }
         }
       )
       .subscribe()
@@ -177,17 +172,18 @@ export function WidgetChat({
     }
   }, [ticketId])
 
-  // Send message
+  // Send message via SSE streaming
   const handleSend = async () => {
-    if (!newMessage.trim() || !session?.token || !ticketId || isSending) return
+    if (!newMessage.trim() || !session?.token || isSending) return
 
     const messageContent = newMessage.trim()
     setNewMessage('')
     setIsSending(true)
+    setError(null)
 
-    // Optimistic update
+    // Optimistic customer message
     const tempId = `temp-${Date.now()}`
-    const optimisticMessage: WidgetMessage_DB = {
+    const optimisticMessage: StreamingMessage = {
       id: tempId,
       sender_type: 'customer',
       content: messageContent,
@@ -195,41 +191,161 @@ export function WidgetChat({
     }
     setMessages((prev) => [...prev, optimisticMessage])
 
+    // Create streaming AI placeholder
+    const streamingId = `streaming-${Date.now()}`
+    streamingMsgIdRef.current = streamingId
+    const streamingMessage: StreamingMessage = {
+      id: streamingId,
+      sender_type: 'ai',
+      content: '',
+      created_at: new Date().toISOString(),
+      isStreaming: true,
+    }
+
     try {
-      const response = await fetch(`/api/widget/tickets/${ticketId}`, {
+      const response = await fetch('/api/widget/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.token}`,
         },
-        body: JSON.stringify({ content: messageContent }),
+        body: JSON.stringify({
+          content: messageContent,
+          ticketId: ticketId || undefined,
+        }),
       })
 
       if (!response.ok) {
         throw new Error('Failed to send message')
       }
 
-      const data = await response.json()
+      // Add streaming placeholder
+      setMessages((prev) => [...prev, streamingMessage])
 
-      // Track this message ID to prevent duplicate from real-time subscription
-      pendingMessageRef.current = data.message.id
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No response body')
 
-      // Replace optimistic message with real one
-      setMessages((prev) =>
-        prev.map((m) => (m.id === tempId ? data.message : m))
-      )
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let fullAiContent = ''
+      let realMessageId: string | null = null
+      let realCustomerMsgId: string | null = null
 
-      // Clear pending message after a short delay (to allow subscription to process)
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const jsonStr = line.slice(6).trim()
+          if (!jsonStr) continue
+
+          try {
+            const event = JSON.parse(jsonStr)
+
+            switch (event.type) {
+              case 'ticket': {
+                // Got ticketId and customer messageId from server
+                if (event.ticketId && !ticketId) {
+                  setTicketId(event.ticketId)
+                  onTicketCreated(event.ticketId)
+                }
+                if (event.messageId) {
+                  realCustomerMsgId = event.messageId
+                  pendingMessageRef.current.add(event.messageId)
+                  // Replace temp customer message with real ID
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === tempId ? { ...m, id: event.messageId } : m
+                    )
+                  )
+                }
+                break
+              }
+
+              case 'thinking': {
+                setToolStatus('Thinking...')
+                break
+              }
+
+              case 'tool_status': {
+                const label = event.status || event.tool || 'Working...'
+                setToolStatus(label)
+                break
+              }
+
+              case 'chunk': {
+                setToolStatus(null)
+                fullAiContent += event.content
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === streamingId
+                      ? { ...m, content: fullAiContent }
+                      : m
+                  )
+                )
+                break
+              }
+
+              case 'complete': {
+                setToolStatus(null)
+                realMessageId = event.messageId || null
+                if (event.content) {
+                  fullAiContent = event.content
+                }
+                // Track this message ID to prevent duplicate from realtime
+                if (realMessageId) {
+                  pendingMessageRef.current.add(realMessageId)
+                }
+                // Finalize streaming message
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === streamingId
+                      ? {
+                          ...m,
+                          id: realMessageId || streamingId,
+                          content: fullAiContent,
+                          isStreaming: false,
+                        }
+                      : m
+                  )
+                )
+                break
+              }
+
+              case 'error': {
+                setToolStatus(null)
+                setError(event.error || 'Something went wrong')
+                // Remove streaming placeholder on error
+                setMessages((prev) => prev.filter((m) => m.id !== streamingId))
+                break
+              }
+            }
+          } catch {
+            // Skip invalid JSON
+          }
+        }
+      }
+
+      // Clean up pending refs after a delay
       setTimeout(() => {
-        pendingMessageRef.current = null
-      }, 1000)
+        if (realMessageId) pendingMessageRef.current.delete(realMessageId)
+        if (realCustomerMsgId) pendingMessageRef.current.delete(realCustomerMsgId)
+      }, 3000)
     } catch (err) {
-      // Remove optimistic message on error
-      setMessages((prev) => prev.filter((m) => m.id !== tempId))
+      // Remove optimistic + streaming messages on error
+      setMessages((prev) => prev.filter((m) => m.id !== tempId && m.id !== streamingId))
       setError('Failed to send message. Please try again.')
-      setNewMessage(messageContent) // Restore message
+      setNewMessage(messageContent)
+      setToolStatus(null)
     } finally {
       setIsSending(false)
+      streamingMsgIdRef.current = null
       textareaRef.current?.focus()
     }
   }
@@ -242,7 +358,7 @@ export function WidgetChat({
     }
   }
 
-  // Loading state
+  // Loading state (only for resuming existing conversations)
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-6">
@@ -254,39 +370,37 @@ export function WidgetChat({
     )
   }
 
-  // Error state
-  if (error && !ticket) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-6">
-        <AlertCircle className="h-10 w-10 text-red-400" />
-        <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>
-        <button
-          onClick={onBack}
-          className="mt-4 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          Go back
-        </button>
-      </div>
-    )
-  }
+  const showWelcome = messages.length === 0 && !isSending
 
   return (
     <div className="flex flex-col h-full">
-      {/* Ticket subject */}
-      {ticket && (
-        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <h2 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-            {ticket.subject}
-          </h2>
-        </div>
-      )}
-
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Welcome message (local only, not saved to DB) */}
+        {showWelcome && (
+          <div className="flex gap-2 flex-row">
+            <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900">
+              <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div className="flex flex-col items-start max-w-[80%]">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  {agentName}
+                </span>
+              </div>
+              <div className="px-3 py-2 rounded-2xl rounded-bl-md bg-purple-50 dark:bg-purple-900/30 text-gray-900 dark:text-gray-100">
+                <p className="text-sm">
+                  Hey! I&apos;m {agentName}, your AI assistant. How can I help?
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {messages.map((message) => {
-          const config = senderConfig[message.sender_type] || senderConfig.agent
-          const Icon = config.icon
-          const isRight = config.align === 'right'
+          const cfg = senderConfig[message.sender_type] || senderConfig.agent
+          const Icon = cfg.icon
+          const isRight = cfg.align === 'right'
 
           return (
             <div
@@ -328,27 +442,35 @@ export function WidgetChat({
               >
                 <div className={cn('flex items-center gap-1.5 mb-0.5', isRight && 'flex-row-reverse')}>
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                    {config.label}
+                    {cfg.label}
                   </span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
-                    {formatRelativeTime(message.created_at)}
-                  </span>
+                  {!message.isStreaming && (
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {formatRelativeTime(message.created_at)}
+                    </span>
+                  )}
                 </div>
                 <div
                   className={cn(
                     'px-3 py-2 rounded-2xl',
-                    config.bgColor,
-                    config.textColor,
+                    cfg.bgColor,
+                    cfg.textColor,
                     isRight ? 'rounded-br-md' : 'rounded-bl-md'
                   )}
                 >
                   <p className="text-sm whitespace-pre-wrap break-words">
                     {message.content}
+                    {message.isStreaming && (
+                      <span className="inline-block w-1.5 h-4 ml-0.5 bg-purple-500 animate-pulse align-text-bottom rounded-sm" />
+                    )}
+                    {message.isStreaming && !message.content && !toolStatus && (
+                      <span className="text-gray-400 italic">Thinking...</span>
+                    )}
                   </p>
                 </div>
 
                 {/* Related Article card for AI messages with KB citations */}
-                {message.sender_type === 'ai' && message.content.includes('[Source:') && (() => {
+                {message.sender_type === 'ai' && !message.isStreaming && message.content.includes('[Source:') && (() => {
                   const sourceMatch = message.content.match(/\[Source:\s*([^\]]+)\]/)
                   if (!sourceMatch) return null
                   const sourceTitle = sourceMatch[1].trim()
@@ -375,13 +497,14 @@ export function WidgetChat({
             </div>
           )
         })}
-        {/* Agent tool status indicator */}
+
+        {/* Tool status indicator */}
         {toolStatus && (
           <div className="flex gap-2 flex-row">
             <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900">
-              {toolStatus.includes('web') ? (
+              {toolStatus.toLowerCase().includes('web') || toolStatus.toLowerCase().includes('search') ? (
                 <Globe className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-pulse" />
-              ) : toolStatus.includes('knowledge') || toolStatus.includes('Searching') ? (
+              ) : toolStatus.toLowerCase().includes('knowledge') ? (
                 <Search className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-pulse" />
               ) : (
                 <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-pulse" />
@@ -389,7 +512,7 @@ export function WidgetChat({
             </div>
             <div className="flex flex-col items-start">
               <span className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
-                AI Assistant
+                {agentName}
               </span>
               <div className="px-3 py-2 rounded-2xl rounded-bl-md bg-purple-50 dark:bg-purple-900/30">
                 <p className="text-sm text-purple-700 dark:text-purple-300 italic">
@@ -424,7 +547,7 @@ export function WidgetChat({
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder={`Message ${agentName}...`}
             disabled={isSending}
             rows={1}
             className={cn(

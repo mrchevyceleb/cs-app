@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { WidgetContainer } from '@/components/widget/WidgetContainer'
 import { WidgetThemeProvider } from '@/components/widget/WidgetThemeProvider'
 import type { WidgetConfig, WidgetState, WidgetSession, WidgetIdentifyPayload } from '@/types/widget'
 import { DEFAULT_WIDGET_CONFIG, INITIAL_WIDGET_STATE } from '@/types/widget'
-import { loadWidgetSession, saveWidgetSession, clearWidgetSession } from '@/lib/widget/auth'
+import { loadWidgetSession, saveWidgetSession, clearWidgetSession, generateFingerprint } from '@/lib/widget/auth'
 import { subscribeToMessages, sendToParent } from '@/lib/widget/messaging'
 
 export default function WidgetPage() {
@@ -15,49 +15,98 @@ export default function WidgetPage() {
   const [state, setState] = useState<WidgetState>(INITIAL_WIDGET_STATE)
   const [session, setSession] = useState<WidgetSession | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const initRef = useRef(false)
+
+  // Create anonymous session
+  const createAnonymousSession = useCallback(async () => {
+    try {
+      const fingerprint = generateFingerprint()
+      const response = await fetch('/api/widget/auth/anonymous', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint }),
+      })
+
+      if (!response.ok) return null
+
+      const data = await response.json()
+      const newSession: WidgetSession = {
+        token: data.token,
+        customerId: data.customerId,
+        customerEmail: data.customerEmail,
+        customerName: data.customerName,
+        expiresAt: data.expiresAt,
+        isAnonymous: true,
+      }
+
+      setSession(newSession)
+      saveWidgetSession(newSession)
+      setState(prev => ({
+        ...prev,
+        customerId: newSession.customerId,
+        customerEmail: newSession.customerEmail,
+        customerName: newSession.customerName,
+      }))
+
+      return newSession
+    } catch (error) {
+      console.error('Anonymous auth error:', error)
+      return null
+    }
+  }, [])
 
   // Initialize widget
   useEffect(() => {
-    // Load session from localStorage
-    const savedSession = loadWidgetSession()
-    if (savedSession) {
-      setSession(savedSession)
-      setState(prev => ({
-        ...prev,
-        isAuthenticated: true,
-        customerEmail: savedSession.customerEmail,
-        customerName: savedSession.customerName,
-        customerId: savedSession.customerId,
-        currentView: 'tickets',
-      }))
-    }
+    if (initRef.current) return
+    initRef.current = true
 
-    // Parse config from URL params
-    const params = new URLSearchParams(window.location.search)
-    const urlConfig: Partial<WidgetConfig> = {}
-
-    if (params.get('position')) {
-      const pos = params.get('position')
-      if (pos === 'bottom-right' || pos === 'bottom-left') {
-        urlConfig.position = pos
+    async function init() {
+      // Load session from localStorage
+      const savedSession = loadWidgetSession()
+      if (savedSession) {
+        setSession(savedSession)
+        setState(prev => ({
+          ...prev,
+          isAuthenticated: !savedSession.isAnonymous,
+          customerEmail: savedSession.customerEmail,
+          customerName: savedSession.customerName,
+          customerId: savedSession.customerId,
+        }))
+      } else {
+        // Auto-create anonymous session
+        await createAnonymousSession()
       }
-    }
-    if (params.get('primaryColor')) urlConfig.primaryColor = params.get('primaryColor')!
-    if (params.get('greeting')) urlConfig.greeting = params.get('greeting')!
-    if (params.get('companyName')) urlConfig.companyName = params.get('companyName')!
-    if (params.get('theme')) {
-      const theme = params.get('theme')
-      if (theme === 'light' || theme === 'dark' || theme === 'auto') {
-        urlConfig.theme = theme
+
+      // Parse config from URL params
+      const params = new URLSearchParams(window.location.search)
+      const urlConfig: Partial<WidgetConfig> = {}
+
+      if (params.get('position')) {
+        const pos = params.get('position')
+        if (pos === 'bottom-right' || pos === 'bottom-left') {
+          urlConfig.position = pos
+        }
       }
+      if (params.get('primaryColor')) urlConfig.primaryColor = params.get('primaryColor')!
+      if (params.get('greeting')) urlConfig.greeting = params.get('greeting')!
+      if (params.get('companyName')) urlConfig.companyName = params.get('companyName')!
+      if (params.get('theme')) {
+        const theme = params.get('theme')
+        if (theme === 'light' || theme === 'dark' || theme === 'auto') {
+          urlConfig.theme = theme
+        }
+      }
+      if (params.get('agentName')) urlConfig.agentName = params.get('agentName')!
+
+      setConfig(prev => ({ ...prev, ...urlConfig }))
+      setIsLoading(false)
+
+      // Notify parent that widget is ready
+      sendToParent('widget:ready')
     }
 
-    setConfig(prev => ({ ...prev, ...urlConfig }))
-    setIsLoading(false)
-
-    // Notify parent that widget is ready
-    sendToParent('widget:ready')
-  }, [])
+    init()
+  }, [createAnonymousSession])
 
   // Subscribe to messages from parent
   useEffect(() => {
@@ -87,20 +136,13 @@ export default function WidgetPage() {
     }
   }, [])
 
-  // Handle widget open
+  // Handle widget open - always go to chat
   const handleOpen = useCallback(() => {
-    setState(prev => {
-      // If not authenticated, show auth view
-      if (!prev.isAuthenticated) {
-        return { ...prev, isOpen: true, currentView: 'auth' }
-      }
-      // If has current ticket, show chat
-      if (prev.currentTicketId) {
-        return { ...prev, isOpen: true, currentView: 'chat' }
-      }
-      // Otherwise show tickets list
-      return { ...prev, isOpen: true, currentView: 'tickets' }
-    })
+    setState(prev => ({
+      ...prev,
+      isOpen: true,
+      currentView: 'chat',
+    }))
   }, [])
 
   // Handle widget close
@@ -108,7 +150,7 @@ export default function WidgetPage() {
     setState(prev => ({ ...prev, isOpen: false }))
   }, [])
 
-  // Handle identify (pre-fill customer info)
+  // Handle identify (pre-fill customer info / upgrade anonymous session)
   const handleIdentify = useCallback(async (payload: WidgetIdentifyPayload) => {
     try {
       const response = await fetch('/api/widget/auth', {
@@ -128,6 +170,7 @@ export default function WidgetPage() {
           customerEmail: data.customerEmail,
           customerName: data.customerName,
           expiresAt: data.expiresAt,
+          isAnonymous: false,
         }
         setSession(newSession)
         saveWidgetSession(newSession)
@@ -137,7 +180,6 @@ export default function WidgetPage() {
           customerEmail: newSession.customerEmail,
           customerName: newSession.customerName,
           customerId: newSession.customerId,
-          currentView: prev.isOpen ? 'tickets' : prev.currentView,
         }))
       }
     } catch (error) {
@@ -165,6 +207,7 @@ export default function WidgetPage() {
         customerEmail: data.customerEmail,
         customerName: data.customerName,
         expiresAt: data.expiresAt,
+        isAnonymous: false,
       }
 
       setSession(newSession)
@@ -175,7 +218,7 @@ export default function WidgetPage() {
         customerEmail: newSession.customerEmail,
         customerName: newSession.customerName,
         customerId: newSession.customerId,
-        currentView: 'tickets',
+        currentView: 'chat',
       }))
 
       return true
@@ -197,9 +240,11 @@ export default function WidgetPage() {
       customerName: null,
       customerId: null,
       currentTicketId: null,
-      currentView: 'auth',
+      currentView: 'chat',
     }))
-  }, [])
+    // Re-create anonymous session
+    createAnonymousSession()
+  }, [createAnonymousSession])
 
   // Handle view navigation
   const handleNavigate = useCallback((view: WidgetState['currentView'], ticketId?: string | null) => {
@@ -223,13 +268,21 @@ export default function WidgetPage() {
   const handleTicketCreated = useCallback((ticketId: string) => {
     setState(prev => ({
       ...prev,
-      currentView: 'chat',
       currentTicketId: ticketId,
     }))
   }, [])
 
+  // Handle new conversation (reset to fresh chat)
+  const handleNewConversation = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      currentView: 'chat',
+      currentTicketId: null,
+    }))
+  }, [])
+
   if (isLoading) {
-    return null // Or a loading spinner
+    return null
   }
 
   return (
@@ -245,6 +298,7 @@ export default function WidgetPage() {
         onNavigate={handleNavigate}
         onSelectTicket={handleSelectTicket}
         onTicketCreated={handleTicketCreated}
+        onNewConversation={handleNewConversation}
       />
     </WidgetThemeProvider>
   )

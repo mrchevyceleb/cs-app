@@ -1,5 +1,24 @@
 // Widget configuration types
 
+export interface TeaserConfig {
+  enabled: boolean
+  messages: string[]
+  intervalMs: number
+  delayMs: number
+}
+
+export const DEFAULT_TEASER_CONFIG: TeaserConfig = {
+  enabled: true,
+  messages: [
+    'Hey! Running into any problems?',
+    'Anything I can do for you?',
+    'Curious about something?',
+    'Need a hand with anything?',
+  ],
+  intervalMs: 8000,
+  delayMs: 3000,
+}
+
 export interface WidgetConfig {
   position: 'bottom-right' | 'bottom-left'
   primaryColor: string
@@ -7,6 +26,8 @@ export interface WidgetConfig {
   companyName: string
   theme: 'light' | 'dark' | 'auto'
   zIndex?: number
+  agentName: string
+  teaser: TeaserConfig
 }
 
 export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
@@ -16,6 +37,8 @@ export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
   companyName: 'Support',
   theme: 'auto',
   zIndex: 999999,
+  agentName: 'Nova',
+  teaser: DEFAULT_TEASER_CONFIG,
 }
 
 // Widget state types
@@ -45,9 +68,10 @@ export const INITIAL_WIDGET_STATE: WidgetState = {
 export interface WidgetSession {
   token: string
   customerId: string
-  customerEmail: string
+  customerEmail: string | null
   customerName: string | null
   expiresAt: string | null
+  isAnonymous?: boolean
 }
 
 // Widget message types (for postMessage API)
@@ -98,6 +122,10 @@ export interface WidgetMessage_DB {
   created_at: string
 }
 
+export interface StreamingMessage extends WidgetMessage_DB {
+  isStreaming?: boolean
+}
+
 // API request/response types
 export interface WidgetAuthRequest {
   email: string
@@ -107,9 +135,10 @@ export interface WidgetAuthRequest {
 export interface WidgetAuthResponse {
   token: string
   customerId: string
-  customerEmail: string
+  customerEmail: string | null
   customerName: string | null
   expiresAt: string | null
+  isAnonymous?: boolean
 }
 
 export interface WidgetCreateTicketRequest {
