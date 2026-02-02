@@ -57,10 +57,9 @@ export async function POST(request: NextRequest) {
         .insert({
           subject,
           status: 'open',
-          priority: 'medium',
+          priority: 'normal',
           customer_id: session.customerId,
-          channel: 'widget',
-          metadata: { source: 'widget_chat', anonymous: session.isAnonymous || false },
+          source_channel: 'widget',
         })
         .select('id')
         .single()
@@ -189,6 +188,14 @@ export async function POST(request: NextRequest) {
               }
             }
 
+            // If agent produced no content, use a fallback
+            if (!fullContent.trim()) {
+              fullContent = 'I\'m sorry, I wasn\'t able to generate a response. A support agent will follow up with you shortly.'
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: fullContent })}\n\n`)
+              )
+            }
+
             // Save AI message to database
             const { data: savedAiMsg } = await supabase
               .from('messages')
@@ -253,9 +260,40 @@ export async function POST(request: NextRequest) {
           controller.close()
         } catch (error) {
           console.error('Widget chat streaming error:', error)
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: 'error', error: 'Streaming failed' })}\n\n`)
-          )
+
+          // Save a fallback message so the ticket isn't left without a response
+          const fallbackContent = 'I\'m sorry, I\'m having trouble connecting right now. A support agent will follow up with you shortly.'
+          try {
+            const { data: fallbackMsg } = await supabase
+              .from('messages')
+              .insert({
+                ticket_id: ticketId,
+                sender_type: 'ai',
+                content: fallbackContent,
+                confidence: 0,
+                metadata: { fallback: true, error: String(error) },
+              })
+              .select('id')
+              .single()
+
+            // Send the fallback as streamed content so the widget displays it
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: fallbackContent })}\n\n`)
+            )
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({
+                type: 'complete',
+                messageId: fallbackMsg?.id,
+                content: fallbackContent,
+              })}\n\n`)
+            )
+          } catch (saveError) {
+            console.error('Failed to save fallback message:', saveError)
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: 'error', error: 'Streaming failed' })}\n\n`)
+            )
+          }
+
           controller.close()
         }
       },
