@@ -7,15 +7,52 @@ import { cn } from '@/lib/utils'
 import type { WidgetSession, WidgetConfig, StreamingMessage } from '@/types/widget'
 import { getWidgetSupabase } from '@/lib/widget/supabase'
 
-// Tool-status labels shown while the AI agent is working
-const TOOL_STATUS_LABELS: Record<string, string> = {
-  'Searching knowledge base...': 'Searching knowledge base...',
-  'Searching the web...': 'Searching the web...',
-  'Looking up customer info...': 'Looking up your account...',
-  'Reviewing conversation history...': 'Reviewing our conversation...',
-  'Connecting to support team...': 'Connecting to support team...',
-  'Processing...': 'Working on it...',
-  'Done': '', // no label for done
+// Generate a varied, context-aware acknowledgment so the user feels heard immediately
+function generateAcknowledgment(userMessage: string): string {
+  const msg = userMessage.toLowerCase()
+
+  const isIssue = /not working|broken|error|issue|problem|bug|crash|fail|can't|cannot|won't|doesn't|isn't|stuck|down|wrong/.test(msg)
+  const isQuestion = /\?$|how do|what is|where|when|why|can i|could you|is there|tell me/.test(msg)
+  const isUrgent = /urgent|asap|emergency|critical|immediately|right away/.test(msg)
+
+  const issueAcks = [
+    "Sorry you're running into that — let me look into it.",
+    "Sorry about that! Let me check what's going on.",
+    "That sounds frustrating. I'm looking into it now.",
+    "I hear you. Let me investigate this.",
+    "Thanks for letting me know — I'm on it.",
+    "Let me dig into that for you right away.",
+  ]
+
+  const questionAcks = [
+    "Great question! Let me find that out for you.",
+    "Let me look that up for you.",
+    "Good question — give me just a moment.",
+    "Sure thing, let me check on that.",
+    "Let me find the answer for you.",
+  ]
+
+  const urgentAcks = [
+    "I understand the urgency — looking into this right now.",
+    "On it. Let me find a solution for you immediately.",
+    "I hear you — prioritizing this now.",
+  ]
+
+  const generalAcks = [
+    "Got it! Let me look into that for you.",
+    "Thanks for reaching out! Working on this now.",
+    "I'm on it — just a moment.",
+    "Let me help you with that.",
+    "Sure thing! Looking into this now.",
+    "On it — one moment please.",
+  ]
+
+  let pool = generalAcks
+  if (isUrgent) pool = urgentAcks
+  else if (isIssue) pool = issueAcks
+  else if (isQuestion) pool = questionAcks
+
+  return pool[Math.floor(Math.random() * pool.length)]
 }
 
 interface WidgetChatProps {
@@ -228,17 +265,20 @@ export function WidgetChat({
     }
     setMessages((prev) => [...prev, optimisticMessage])
 
-    // Create streaming AI placeholder (no pre-canned text — real content will stream in)
+    // Create streaming AI placeholder with empathetic acknowledgment shown instantly
     const streamingId = `streaming-${Date.now()}`
     streamingMsgIdRef.current = streamingId
+    const ackText = generateAcknowledgment(messageContent)
     const streamingMessage: StreamingMessage = {
       id: streamingId,
       sender_type: 'ai',
-      content: '',
+      content: ackText,
       created_at: new Date().toISOString(),
       isStreaming: true,
       isAcknowledgment: true,
     }
+    // Show acknowledgment immediately — before the server responds
+    setMessages((prev) => [...prev, streamingMessage])
 
     try {
       const response = await fetch('/api/widget/chat', {
@@ -256,9 +296,6 @@ export function WidgetChat({
       if (!response.ok) {
         throw new Error('Failed to send message')
       }
-
-      // Add streaming placeholder
-      setMessages((prev) => [...prev, streamingMessage])
 
       const reader = response.body?.getReader()
       if (!reader) throw new Error('No response body')
@@ -315,25 +352,19 @@ export function WidgetChat({
               }
 
               case 'thinking':
-                // Keep the streaming placeholder in acknowledgment/thinking state
+                // Transition from acknowledgment text to thinking dots
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === streamingId
+                      ? { ...m, content: '', toolStatus: undefined }
+                      : m
+                  )
+                )
                 break
 
-              case 'tool_status': {
-                // Show tool activity in the streaming placeholder so the user
-                // knows the AI is actively working, not just idle
-                const statusLabel =
-                  TOOL_STATUS_LABELS[event.status] ?? event.status
-                if (statusLabel) {
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === streamingId
-                        ? { ...m, toolStatus: statusLabel }
-                        : m
-                    )
-                  )
-                }
+              case 'tool_status':
+                // Hidden from user — just keep showing thinking dots
                 break
-              }
 
               case 'chunk': {
                 fullAiContent += event.content
@@ -574,26 +605,11 @@ export function WidgetChat({
                       {message.isStreaming && message.content && !message.isAcknowledgment && (
                         <span className="inline-block w-1.5 h-4 ml-0.5 bg-purple-500 animate-pulse align-text-bottom rounded-sm" />
                       )}
-                      {message.isStreaming && message.isAcknowledgment && (
-                        <span className="inline-flex items-center gap-1.5 py-0.5">
-                          {message.toolStatus ? (
-                            <>
-                              <span className="text-xs text-purple-500 dark:text-purple-400 italic">
-                                {message.toolStatus}
-                              </span>
-                              <span className="inline-flex items-center gap-0.5">
-                                <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:0ms]" />
-                                <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:150ms]" />
-                                <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:300ms]" />
-                              </span>
-                            </>
-                          ) : (
-                            <span className="inline-flex items-center gap-0.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:0ms]" />
-                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:150ms]" />
-                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:300ms]" />
-                            </span>
-                          )}
+                      {message.isStreaming && message.isAcknowledgment && !message.content && (
+                        <span className="inline-flex items-center gap-0.5 py-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:0ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:150ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:300ms]" />
                         </span>
                       )}
                       {message.isStreaming && !message.content && !message.isAcknowledgment && (
