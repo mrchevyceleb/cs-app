@@ -7,16 +7,15 @@ import { cn } from '@/lib/utils'
 import type { WidgetSession, WidgetConfig, StreamingMessage } from '@/types/widget'
 import { getWidgetSupabase } from '@/lib/widget/supabase'
 
-const ACKNOWLEDGMENTS = [
-  'Got it! Let me look into that for you...',
-  'Good question — checking on that now...',
-  'On it! Give me just a moment...',
-  'Let me dig into that for you...',
-  'Sure thing — looking into this now...',
-]
-
-function getRandomAck(): string {
-  return ACKNOWLEDGMENTS[Math.floor(Math.random() * ACKNOWLEDGMENTS.length)]
+// Tool-status labels shown while the AI agent is working
+const TOOL_STATUS_LABELS: Record<string, string> = {
+  'Searching knowledge base...': 'Searching knowledge base...',
+  'Searching the web...': 'Searching the web...',
+  'Looking up customer info...': 'Looking up your account...',
+  'Reviewing conversation history...': 'Reviewing our conversation...',
+  'Connecting to support team...': 'Connecting to support team...',
+  'Processing...': 'Working on it...',
+  'Done': '', // no label for done
 }
 
 interface WidgetChatProps {
@@ -67,6 +66,7 @@ export function WidgetChat({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const pendingMessageRef = useRef<Set<string>>(new Set())
   const streamingMsgIdRef = useRef<string | null>(null)
+  const activeTempIdRef = useRef<string | null>(null)
   const lastInitialTicketIdRef = useRef<string | null>(initialTicketId)
 
   const [avatarError, setAvatarError] = useState(false)
@@ -176,6 +176,13 @@ export function WidgetChat({
             return
           }
 
+          // Skip customer messages while we have an active optimistic message
+          // (SSE ticket event will swap tempId → real ID)
+          if (activeTempIdRef.current && newMsg.sender_type === 'customer') {
+            pendingMessageRef.current.add(newMsg.id)
+            return
+          }
+
           // While streaming, skip AI messages — the SSE stream handles them.
           // Stash the ID so the complete handler can dedup if needed.
           if (streamingMsgIdRef.current && newMsg.sender_type === 'ai') {
@@ -212,6 +219,7 @@ export function WidgetChat({
 
     // Optimistic customer message
     const tempId = `temp-${Date.now()}`
+    activeTempIdRef.current = tempId
     const optimisticMessage: StreamingMessage = {
       id: tempId,
       sender_type: 'customer',
@@ -220,13 +228,13 @@ export function WidgetChat({
     }
     setMessages((prev) => [...prev, optimisticMessage])
 
-    // Create streaming AI placeholder
+    // Create streaming AI placeholder (no pre-canned text — real content will stream in)
     const streamingId = `streaming-${Date.now()}`
     streamingMsgIdRef.current = streamingId
     const streamingMessage: StreamingMessage = {
       id: streamingId,
       sender_type: 'ai',
-      content: getRandomAck(),
+      content: '',
       created_at: new Date().toISOString(),
       isStreaming: true,
       isAcknowledgment: true,
@@ -291,27 +299,48 @@ export function WidgetChat({
                 if (event.messageId) {
                   realCustomerMsgId = event.messageId
                   pendingMessageRef.current.add(event.messageId)
-                  // Replace temp customer message with real ID
+                  activeTempIdRef.current = null
+                  // Replace temp customer message with real ID,
+                  // filtering out any duplicate from real-time that slipped through
+                  setMessages((prev) => {
+                    const filtered = prev.filter(
+                      (m) => m.id !== event.messageId
+                    )
+                    return filtered.map((m) =>
+                      m.id === tempId ? { ...m, id: event.messageId } : m
+                    )
+                  })
+                }
+                break
+              }
+
+              case 'thinking':
+                // Keep the streaming placeholder in acknowledgment/thinking state
+                break
+
+              case 'tool_status': {
+                // Show tool activity in the streaming placeholder so the user
+                // knows the AI is actively working, not just idle
+                const statusLabel =
+                  TOOL_STATUS_LABELS[event.status] ?? event.status
+                if (statusLabel) {
                   setMessages((prev) =>
                     prev.map((m) =>
-                      m.id === tempId ? { ...m, id: event.messageId } : m
+                      m.id === streamingId
+                        ? { ...m, toolStatus: statusLabel }
+                        : m
                     )
                   )
                 }
                 break
               }
 
-              case 'thinking':
-              case 'tool_status':
-                // Silently consumed — typing indicator is shown via streaming placeholder
-                break
-
               case 'chunk': {
                 fullAiContent += event.content
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === streamingId
-                      ? { ...m, content: fullAiContent, isAcknowledgment: false }
+                      ? { ...m, content: fullAiContent, isAcknowledgment: false, toolStatus: undefined }
                       : m
                   )
                 )
@@ -341,6 +370,7 @@ export function WidgetChat({
                           content: fullAiContent,
                           isStreaming: false,
                           isAcknowledgment: false,
+                          toolStatus: undefined,
                         }
                       : m
                   )
@@ -374,6 +404,7 @@ export function WidgetChat({
     } finally {
       setIsSending(false)
       streamingMsgIdRef.current = null
+      activeTempIdRef.current = null
       textareaRef.current?.focus()
     }
   }
@@ -544,13 +575,26 @@ export function WidgetChat({
                         <span className="inline-block w-1.5 h-4 ml-0.5 bg-purple-500 animate-pulse align-text-bottom rounded-sm" />
                       )}
                       {message.isStreaming && message.isAcknowledgment && (
-                        <>
-                          <span className="inline-flex items-center gap-1 ml-1 py-0.5">
-                            <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:0ms]" />
-                            <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:150ms]" />
-                            <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:300ms]" />
-                          </span>
-                        </>
+                        <span className="inline-flex items-center gap-1.5 py-0.5">
+                          {message.toolStatus ? (
+                            <>
+                              <span className="text-xs text-purple-500 dark:text-purple-400 italic">
+                                {message.toolStatus}
+                              </span>
+                              <span className="inline-flex items-center gap-0.5">
+                                <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:0ms]" />
+                                <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:150ms]" />
+                                <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:300ms]" />
+                              </span>
+                            </>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:0ms]" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:150ms]" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:300ms]" />
+                            </span>
+                          )}
+                        </span>
                       )}
                       {message.isStreaming && !message.content && !message.isAcknowledgment && (
                         <span className="inline-flex items-center gap-1 py-0.5">

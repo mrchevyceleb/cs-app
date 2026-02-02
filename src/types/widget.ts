@@ -127,6 +127,7 @@ export interface WidgetMessage_DB {
 export interface StreamingMessage extends WidgetMessage_DB {
   isStreaming?: boolean
   isAcknowledgment?: boolean
+  toolStatus?: string
 }
 
 // API request/response types
