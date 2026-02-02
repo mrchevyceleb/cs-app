@@ -174,13 +174,17 @@ export async function POST(request: NextRequest) {
                   break
 
                 case 'tool_result':
-                  controller.enqueue(
-                    encoder.encode(`data: ${JSON.stringify({
-                      type: 'tool_status',
-                      tool: event.tool,
-                      status: event.success ? 'Done' : 'No results',
-                    })}\n\n`)
-                  )
+                  // Only show "Done" for successful results; skip failed ones
+                  // to avoid confusing "No results" display while agent continues working
+                  if (event.success) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({
+                        type: 'tool_status',
+                        tool: event.tool,
+                        status: 'Done',
+                      })}\n\n`)
+                    )
+                  }
                   break
 
                 case 'text_delta':

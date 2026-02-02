@@ -27,6 +27,7 @@ export interface WidgetConfig {
   theme: 'light' | 'dark' | 'auto'
   zIndex?: number
   agentName: string
+  agentAvatarUrl?: string
   teaser: TeaserConfig
 }
 
@@ -38,6 +39,7 @@ export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
   theme: 'auto',
   zIndex: 999999,
   agentName: 'Nova',
+  agentAvatarUrl: '/widget/nova-avatar.png',
   teaser: DEFAULT_TEASER_CONFIG,
 }
 

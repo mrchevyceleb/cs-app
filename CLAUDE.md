@@ -10,11 +10,16 @@ A modern customer support application built with Next.js 16, React 19, Supabase,
 # Install dependencies
 npm install
 
-# Set up environment variables (copy .env.example to .env.local)
-# Required: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+# Set up Doppler (one-time)
+doppler login
+doppler setup        # selects r-link-customer-service / dev from doppler.yaml
 
-# Run development server
+# Run development server (secrets injected from Doppler)
 npm run dev
+
+# Fallback: without Doppler, use .env.local
+# cp .env.example .env.local   # fill in values
+# npm run dev:local
 ```
 
 ## Tech Stack
@@ -244,34 +249,50 @@ window.csWidget.identify({ email: 'user@example.com', name: 'John' })
 
 ## Environment Variables
 
-```bash
-# Required
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+**Source of truth:** [Doppler](https://dashboard.doppler.com) project `r-link-customer-service`
 
-# AI (optional, enables AI features)
-ANTHROPIC_API_KEY=
-OPENAI_API_KEY=
+| Config | Purpose |
+|--------|---------|
+| `dev`  | Local development (`npm run dev`) |
+| `stg`  | Staging / preview deploys |
+| `prd`  | Production (synced to Vercel) |
 
-# Email (optional, enables notifications)
-RESEND_API_KEY=
+All variables are documented in `.env.example`. Key categories:
 
-# Twilio SMS (optional, enables SMS channel)
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_PHONE_NUMBER=
+| Category | Variables |
+|----------|-----------|
+| Core (required) | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
+| App URL | `NEXT_PUBLIC_APP_URL` |
+| AI Services | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `BRAVE_SEARCH_API_KEY` |
+| AI Agent Config | `AI_AGENT_ENABLED`, `AI_AGENT_MODEL`, `AI_AGENT_MAX_TOOL_ROUNDS`, `AI_AGENT_MAX_TOTAL_TOOLS`, `AI_AGENT_TIMEOUT_MS` |
+| Email / Resend | `RESEND_API_KEY`, `EMAIL_FROM`, `PORTAL_URL` |
+| Twilio SMS | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` |
+| Email Inbound | `INBOUND_EMAIL_ADDRESS`, `INBOUND_EMAIL_WEBHOOK_SECRET` |
+| Slack | `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET` |
+| Security | `CRON_SECRET`, `INTERNAL_API_KEY` |
+| Widget | `WIDGET_ALLOWED_ORIGINS`, `WIDGET_ALLOW_ALL_IN_DEV` |
+| Dev Only | `DEV_SKIP_AUTH` |
 
-# Email Inbound (optional, enables email channel)
-INBOUND_EMAIL_ADDRESS=support@yourdomain.com
-INBOUND_EMAIL_WEBHOOK_SECRET=
+**Not in Doppler** (auto-provided by Vercel): `VERCEL_URL`, `NODE_ENV`
 
-# Slack Integration (optional, enables Slack channel)
-SLACK_BOT_TOKEN=
-SLACK_SIGNING_SECRET=
-```
+### Adding a New Environment Variable
+1. Add the variable in Doppler dashboard for each config (`dev`, `stg`, `prd`)
+2. Add a blank entry to `.env.example` with a comment
+3. Use in code via `process.env.YOUR_VAR`
+
+### Vercel-Doppler Integration
+Doppler syncs secrets directly to Vercel environments so you never manage env vars in the Vercel dashboard:
+1. Doppler dashboard → Integrations → Vercel → Authorize
+2. Map `prd` config → Vercel "Production" environment
+3. Optionally map `dev` → Vercel "Development" / `stg` → "Preview"
+4. `NEXT_PUBLIC_*` vars are injected at build time automatically
 
 ## Development Guidelines
+
+### Dev Scripts
+- `npm run dev` — Primary. Runs `doppler run -- next dev` which injects secrets from Doppler `dev` config.
+- `npm run dev:local` — Fallback. Uses `.env.local` for developers without Doppler set up.
+- `npm run build` / `npm start` — Production build/start (secrets provided by Vercel via Doppler integration).
 
 ### Adding New API Routes
 1. Create route file in `src/app/api/<feature>/route.ts`

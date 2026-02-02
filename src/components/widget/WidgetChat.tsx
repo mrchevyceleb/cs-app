@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Send, Loader2, AlertCircle, User, Headphones, Sparkles, BookOpen, ChevronDown, ChevronUp, Search, Globe } from 'lucide-react'
+import { Send, Loader2, User, Headphones, Sparkles, BookOpen, ChevronDown, ChevronUp } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import { cn } from '@/lib/utils'
 import type { WidgetSession, WidgetConfig, StreamingMessage } from '@/types/widget'
 import { createClient } from '@supabase/supabase-js'
@@ -49,7 +50,6 @@ export function WidgetChat({
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedSource, setExpandedSource] = useState<string | null>(null)
-  const [toolStatus, setToolStatus] = useState<string | null>(null)
   const [ticketId, setTicketId] = useState<string | null>(initialTicketId)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -58,6 +58,7 @@ export function WidgetChat({
   const lastInitialTicketIdRef = useRef<string | null>(initialTicketId)
 
   const agentName = config.agentName || 'Nova'
+  const agentAvatarUrl = config.agentAvatarUrl
 
   // Sender icon and styling
   const senderConfig = {
@@ -124,7 +125,6 @@ export function WidgetChat({
     setTicketId(initialTicketId)
     setMessages([])
     setError(null)
-    setToolStatus(null)
     setExpandedSource(null)
     pendingMessageRef.current = new Set()
     streamingMsgIdRef.current = null
@@ -175,9 +175,7 @@ export function WidgetChat({
             }]
           })
 
-          if (newMsg.sender_type === 'ai' || newMsg.sender_type === 'agent') {
-            setToolStatus(null)
-          }
+          // No additional action needed for ai/agent messages
         }
       )
       .subscribe()
@@ -268,6 +266,9 @@ export function WidgetChat({
                 // Got ticketId and customer messageId from server
                 if (event.ticketId && !ticketId) {
                   setTicketId(event.ticketId)
+                  // Update ref BEFORE calling parent so the sync useEffect
+                  // won't reset messages when parent passes back the new ticketId
+                  lastInitialTicketIdRef.current = event.ticketId
                   onTicketCreated(event.ticketId)
                 }
                 if (event.messageId) {
@@ -283,19 +284,12 @@ export function WidgetChat({
                 break
               }
 
-              case 'thinking': {
-                setToolStatus('Thinking...')
+              case 'thinking':
+              case 'tool_status':
+                // Silently consumed — typing indicator is shown via streaming placeholder
                 break
-              }
-
-              case 'tool_status': {
-                const label = event.status || event.tool || 'Working...'
-                setToolStatus(label)
-                break
-              }
 
               case 'chunk': {
-                setToolStatus(null)
                 fullAiContent += event.content
                 setMessages((prev) =>
                   prev.map((m) =>
@@ -308,7 +302,6 @@ export function WidgetChat({
               }
 
               case 'complete': {
-                setToolStatus(null)
                 realMessageId = event.messageId || null
                 if (event.content) {
                   fullAiContent = event.content
@@ -334,7 +327,6 @@ export function WidgetChat({
               }
 
               case 'error': {
-                setToolStatus(null)
                 setError(event.error || 'Something went wrong')
                 // Remove streaming placeholder on error
                 setMessages((prev) => prev.filter((m) => m.id !== streamingId))
@@ -357,7 +349,6 @@ export function WidgetChat({
       setMessages((prev) => prev.filter((m) => m.id !== tempId && m.id !== streamingId))
       setError('Failed to send message. Please try again.')
       setNewMessage(messageContent)
-      setToolStatus(null)
     } finally {
       setIsSending(false)
       streamingMsgIdRef.current = null
@@ -473,15 +464,54 @@ export function WidgetChat({
                     isRight ? 'rounded-br-md' : 'rounded-bl-md'
                   )}
                 >
-                  <p className="text-sm whitespace-pre-wrap break-words">
-                    {message.content}
-                    {message.isStreaming && (
-                      <span className="inline-block w-1.5 h-4 ml-0.5 bg-purple-500 animate-pulse align-text-bottom rounded-sm" />
-                    )}
-                    {message.isStreaming && !message.content && !toolStatus && (
-                      <span className="text-gray-400 italic">Thinking...</span>
-                    )}
-                  </p>
+                  {message.sender_type === 'customer' ? (
+                    <p className="text-sm whitespace-pre-wrap break-words">
+                      {message.content}
+                    </p>
+                  ) : (
+                    <div className="text-sm break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                      {message.content ? (
+                        <ReactMarkdown
+                          components={{
+                            p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
+                            h1: ({ children }) => <h1 className="text-base font-bold mt-3 mb-1">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-sm font-bold mt-2.5 mb-1">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-0.5">{children}</h3>,
+                            ul: ({ children }) => <ul className="list-disc pl-4 my-1.5 space-y-0.5">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal pl-4 my-1.5 space-y-0.5">{children}</ol>,
+                            li: ({ children }) => <li>{children}</li>,
+                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                            em: ({ children }) => <em className="italic">{children}</em>,
+                            a: ({ href, children }) => (
+                              <a href={href} target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">{children}</a>
+                            ),
+                            code: ({ children }) => (
+                              <code className="bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded text-xs font-mono">{children}</code>
+                            ),
+                            pre: ({ children }) => (
+                              <pre className="bg-black/10 dark:bg-white/10 p-2 rounded my-1.5 overflow-x-auto text-xs">{children}</pre>
+                            ),
+                            hr: () => <hr className="my-2 border-current opacity-20" />,
+                            blockquote: ({ children }) => (
+                              <blockquote className="border-l-2 border-current opacity-70 pl-3 my-1.5 italic">{children}</blockquote>
+                            ),
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      ) : null}
+                      {message.isStreaming && message.content && (
+                        <span className="inline-block w-1.5 h-4 ml-0.5 bg-purple-500 animate-pulse align-text-bottom rounded-sm" />
+                      )}
+                      {message.isStreaming && !message.content && (
+                        <span className="inline-flex items-center gap-1 py-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:0ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:150ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:300ms]" />
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Related Article card for AI messages with KB citations */}
@@ -513,30 +543,6 @@ export function WidgetChat({
           )
         })}
 
-        {/* Tool status indicator */}
-        {toolStatus && (
-          <div className="flex gap-2 flex-row">
-            <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900">
-              {toolStatus.toLowerCase().includes('web') || toolStatus.toLowerCase().includes('search') ? (
-                <Globe className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-pulse" />
-              ) : toolStatus.toLowerCase().includes('knowledge') ? (
-                <Search className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-pulse" />
-              ) : (
-                <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-pulse" />
-              )}
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
-                {agentName}
-              </span>
-              <div className="px-3 py-2 rounded-2xl rounded-bl-md bg-purple-50 dark:bg-purple-900/30">
-                <p className="text-sm text-purple-700 dark:text-purple-300 italic">
-                  {toolStatus}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
         <div ref={messagesEndRef} />
       </div>
 

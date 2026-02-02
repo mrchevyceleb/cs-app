@@ -319,9 +319,15 @@ export async function* agenticSolveStreaming(
         .join('')
 
       if (textContent) {
-        // We already have the final text, stream it in chunks
-        for (let i = 0; i < textContent.length; i += 20) {
-          yield { type: 'text_delta', content: textContent.slice(i, i + 20) }
+        // Stream the pre-fetched text in small chunks with delays
+        // so the browser receives them progressively
+        const chunkSize = 12
+        for (let i = 0; i < textContent.length; i += chunkSize) {
+          yield { type: 'text_delta', content: textContent.slice(i, i + chunkSize) }
+          // Yield to event loop so each chunk flushes to the client
+          if (i + chunkSize < textContent.length) {
+            await new Promise(resolve => setTimeout(resolve, 8))
+          }
         }
 
         const result: AgentResult = {
