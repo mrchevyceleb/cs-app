@@ -17,6 +17,14 @@ export default function WidgetPage() {
   const [isLoading, setIsLoading] = useState(true)
   const initRef = useRef(false)
 
+  // Style the body for iframe transparency (root layout owns <body>)
+  useEffect(() => {
+    document.body.style.margin = '0'
+    document.body.style.padding = '0'
+    document.body.style.background = 'transparent'
+    document.body.style.overflow = 'hidden'
+  }, [])
+
   // Create anonymous session
   const createAnonymousSession = useCallback(async () => {
     try {

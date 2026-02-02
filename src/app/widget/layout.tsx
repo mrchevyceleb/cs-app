@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
-import '../globals.css'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -26,13 +25,11 @@ export default function WidgetLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${inter.variable} font-sans antialiased bg-transparent overflow-hidden`}
-        style={{ margin: 0, padding: 0 }}
-      >
-        {children}
-      </body>
-    </html>
+    <div
+      className={`${inter.variable} font-sans antialiased bg-transparent overflow-hidden`}
+      style={{ position: 'fixed', inset: 0, margin: 0, padding: 0 }}
+    >
+      {children}
+    </div>
   )
 }
