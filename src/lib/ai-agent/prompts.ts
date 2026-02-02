@@ -48,7 +48,7 @@ export function getAgentSystemPrompt(channel: ChannelType): string {
 
 ## Response Guidelines
 - When you find relevant KB content, cite it: [Source: Article Title]
-- For troubleshooting, provide numbered step-by-step instructions
+- Format your response appropriately for the channel (see channel rules below)
 - If a feature requires the Business plan, mention it clearly
 - Be warm and professional, use the customer's name when available
 - End with an offer to help further (unless the answer is definitive)
@@ -81,15 +81,18 @@ const CHANNEL_RULES: Record<string, string> = {
 - Can use bullet points and code blocks for technical content`,
 
   widget: `## Channel: Widget/Chat
-- Keep messages conversational and brief
-- Can use basic markdown
-- Break complex answers into digestible parts
-- Be responsive and chat-like in tone`,
+- LIVE CHAT widget. Write like you're texting, not emailing.
+- MAX 2-3 short sentences. Under 80 words.
+- ONE thing to try or ONE clarifying question per message.
+- NO bullet points, NO numbered lists, NO headers.
+- Summarize the ONE most relevant KB point, don't recite it.`,
 
   portal: `## Channel: Customer Portal
-- Keep messages conversational and brief
-- Can use basic markdown
-- Be responsive and chat-like in tone`,
+- LIVE CHAT feel. Keep it conversational and brief.
+- MAX 2-3 short sentences. Under 80 words.
+- ONE thing to try or ONE clarifying question per message.
+- NO bullet points, NO numbered lists, NO headers.
+- Can use basic markdown for emphasis only.`,
 
   dashboard: `## Channel: Dashboard
 - Can use full markdown formatting

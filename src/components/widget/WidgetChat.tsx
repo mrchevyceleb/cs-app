@@ -5,7 +5,19 @@ import { Send, Loader2, User, Headphones, Sparkles, BookOpen, ChevronDown, Chevr
 import ReactMarkdown from 'react-markdown'
 import { cn } from '@/lib/utils'
 import type { WidgetSession, WidgetConfig, StreamingMessage } from '@/types/widget'
-import { createClient } from '@supabase/supabase-js'
+import { getWidgetSupabase } from '@/lib/widget/supabase'
+
+const ACKNOWLEDGMENTS = [
+  'Got it! Let me look into that for you...',
+  'Good question — checking on that now...',
+  'On it! Give me just a moment...',
+  'Let me dig into that for you...',
+  'Sure thing — looking into this now...',
+]
+
+function getRandomAck(): string {
+  return ACKNOWLEDGMENTS[Math.floor(Math.random() * ACKNOWLEDGMENTS.length)]
+}
 
 interface WidgetChatProps {
   session: WidgetSession | null
@@ -142,12 +154,8 @@ export function WidgetChat({
   useEffect(() => {
     if (!ticketId) return
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-    if (!supabaseUrl || !supabaseAnonKey) return
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+    const supabase = getWidgetSupabase()
+    if (!supabase) return
 
     const subscription = supabase
       .channel(`widget-ticket-${ticketId}`)
@@ -168,6 +176,13 @@ export function WidgetChat({
             return
           }
 
+          // While streaming, skip AI messages — the SSE stream handles them.
+          // Stash the ID so the complete handler can dedup if needed.
+          if (streamingMsgIdRef.current && newMsg.sender_type === 'ai') {
+            pendingMessageRef.current.add(newMsg.id)
+            return
+          }
+
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMsg.id)) return prev
             return [...prev, {
@@ -177,8 +192,6 @@ export function WidgetChat({
               created_at: newMsg.created_at,
             }]
           })
-
-          // No additional action needed for ai/agent messages
         }
       )
       .subscribe()
@@ -213,9 +226,10 @@ export function WidgetChat({
     const streamingMessage: StreamingMessage = {
       id: streamingId,
       sender_type: 'ai',
-      content: '',
+      content: getRandomAck(),
       created_at: new Date().toISOString(),
       isStreaming: true,
+      isAcknowledgment: true,
     }
 
     try {
@@ -297,7 +311,7 @@ export function WidgetChat({
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === streamingId
-                      ? { ...m, content: fullAiContent }
+                      ? { ...m, content: fullAiContent, isAcknowledgment: false }
                       : m
                   )
                 )
@@ -313,19 +327,24 @@ export function WidgetChat({
                 if (realMessageId) {
                   pendingMessageRef.current.add(realMessageId)
                 }
-                // Finalize streaming message
-                setMessages((prev) =>
-                  prev.map((m) =>
+                // Finalize streaming message + remove any realtime duplicate
+                setMessages((prev) => {
+                  // Remove any realtime-inserted duplicate with the same real ID
+                  const deduped = realMessageId
+                    ? prev.filter((m) => m.id !== realMessageId || m.id === streamingId)
+                    : prev
+                  return deduped.map((m) =>
                     m.id === streamingId
                       ? {
                           ...m,
                           id: realMessageId || streamingId,
                           content: fullAiContent,
                           isStreaming: false,
+                          isAcknowledgment: false,
                         }
                       : m
                   )
-                )
+                })
                 break
               }
 
@@ -521,10 +540,19 @@ export function WidgetChat({
                           {message.content}
                         </ReactMarkdown>
                       ) : null}
-                      {message.isStreaming && message.content && (
+                      {message.isStreaming && message.content && !message.isAcknowledgment && (
                         <span className="inline-block w-1.5 h-4 ml-0.5 bg-purple-500 animate-pulse align-text-bottom rounded-sm" />
                       )}
-                      {message.isStreaming && !message.content && (
+                      {message.isStreaming && message.isAcknowledgment && (
+                        <>
+                          <span className="inline-flex items-center gap-1 ml-1 py-0.5">
+                            <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:0ms]" />
+                            <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:150ms]" />
+                            <span className="w-1 h-1 rounded-full bg-purple-400 animate-bounce [animation-delay:300ms]" />
+                          </span>
+                        </>
+                      )}
+                      {message.isStreaming && !message.content && !message.isAcknowledgment && (
                         <span className="inline-flex items-center gap-1 py-0.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:0ms]" />
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:150ms]" />

@@ -14,6 +14,18 @@ import { getAgentSystemPrompt } from './prompts'
 import { AGENT_TOOLS, executeTool, type ToolContext } from './tools'
 import type { AgentInput, AgentResult, AgentStreamEvent, ToolCallLog } from './types'
 
+function getMaxTokensForChannel(channel: string): number {
+  switch (channel) {
+    case 'widget':
+    case 'portal':
+      return 300
+    case 'sms':
+      return 200
+    default:
+      return 1024
+  }
+}
+
 /**
  * Non-streaming agentic solve.
  * Loops through tool-use rounds until Claude produces a final text response,
@@ -78,7 +90,7 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
     const response = await withFallback(client =>
       client.messages.create({
         model: config.model,
-        max_tokens: 1024,
+        max_tokens: getMaxTokensForChannel(input.channel),
         system: systemPrompt,
         tools: AGENT_TOOLS,
         messages,
@@ -208,7 +220,7 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
   const finalResponse = await withFallback(client =>
     client.messages.create({
       model: config.model,
-      max_tokens: 1024,
+      max_tokens: getMaxTokensForChannel(input.channel),
       system: systemPrompt + '\n\nYou have used all your tool rounds. Provide your best response with the information gathered.',
       messages,
     })
@@ -301,7 +313,7 @@ export async function* agenticSolveStreaming(
     const response = await withFallback(client =>
       client.messages.create({
         model: config.model,
-        max_tokens: 1024,
+        max_tokens: getMaxTokensForChannel(input.channel),
         system: systemPrompt,
         tools: AGENT_TOOLS,
         messages,
@@ -325,13 +337,14 @@ export async function* agenticSolveStreaming(
 
       if (textContent) {
         // Stream the pre-fetched text in small chunks with delays
-        // so the browser receives them progressively
-        const chunkSize = 12
+        // to simulate natural typing speed (~2-3s for a typical response)
+        const chunkSize = 4
         for (let i = 0; i < textContent.length; i += chunkSize) {
           yield { type: 'text_delta', content: textContent.slice(i, i + chunkSize) }
           // Yield to event loop so each chunk flushes to the client
           if (i + chunkSize < textContent.length) {
-            await new Promise(resolve => setTimeout(resolve, 8))
+            const jitter = Math.floor(Math.random() * 11) - 5 // -5 to +5ms
+            await new Promise(resolve => setTimeout(resolve, 18 + jitter))
           }
         }
 
@@ -452,7 +465,7 @@ export async function* agenticSolveStreaming(
   // Try primary key, fall back to secondary on rate limit
   const streamParams = {
     model: config.model,
-    max_tokens: 1024,
+    max_tokens: getMaxTokensForChannel(input.channel),
     system: systemPrompt + '\n\nProvide your best response with the information gathered.',
     messages,
   } as const
