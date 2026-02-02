@@ -24,7 +24,7 @@ export default function TicketsPage() {
 
   const { data, isPending } = useQuery({
     queryKey: ['tickets', filters, currentPage],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const params = new URLSearchParams()
       params.set('limit', String(PAGE_SIZE))
       params.set('offset', String(currentPage * PAGE_SIZE))
@@ -48,13 +48,16 @@ export default function TicketsPage() {
         params.set('aiHandled', filters.aiHandled === 'ai' ? 'true' : 'false')
       }
 
-      const response = await fetch(`/api/tickets?${params.toString()}`)
+      const response = await fetch(`/api/tickets?${params.toString()}`, {
+        signal,
+      })
       if (!response.ok) {
         throw new Error('Failed to fetch tickets')
       }
       return response.json()
     },
     placeholderData: keepPreviousData,
+    retry: 2,
   })
 
   const tickets: TicketWithCustomer[] = data?.tickets || []

@@ -60,7 +60,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
   // Fetch tickets with React Query for caching across navigation
   const { data: tickets = [], isPending: isLoading, error, refetch: fetchTickets } = useQuery({
     queryKey: ['dashboard-tickets'],
-    queryFn: async (): Promise<TicketWithCustomer[]> => {
+    queryFn: async ({ signal }): Promise<TicketWithCustomer[]> => {
       const { data, error: fetchError } = await supabase
         .from('tickets')
         .select(`
@@ -69,6 +69,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
         `)
         .order('created_at', { ascending: false })
         .limit(50)
+        .abortSignal(signal)
 
       if (fetchError) {
         throw new Error('Unable to load tickets. Please try again.')
@@ -81,6 +82,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
       })) as TicketWithCustomer[]
     },
     staleTime: 30 * 1000, // 30 seconds - allow slightly stale data for instant navigation
+    retry: 2,
   })
 
   // Set up real-time subscription (updates React Query cache)
