@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getWidgetSession } from '@/lib/widget/auth'
 import { getAgentConfig } from '@/lib/ai-agent/config'
 import { agenticSolveStreaming } from '@/lib/ai-agent/engine'
+import { withFallback } from '@/lib/claude/client'
 import type { AgentResult } from '@/lib/ai-agent/types'
 
 function getServiceClient() {
@@ -12,6 +13,50 @@ function getServiceClient() {
     throw new Error('Missing Supabase environment variables')
   }
   return createClient(supabaseUrl, serviceKey)
+}
+
+/**
+ * Generate a quick, contextual acknowledgment using Haiku.
+ * Returns null on failure — non-critical, the widget just shows dots.
+ */
+async function generateQuickAck(
+  message: string,
+  history: { role: 'user' | 'assistant'; content: string }[]
+): Promise<string | null> {
+  try {
+    const recentHistory = history.slice(-4).map(m =>
+      `${m.role === 'user' ? 'Customer' : 'Agent'}: ${m.content}`
+    ).join('\n')
+
+    const prompt = recentHistory
+      ? `Conversation so far:\n${recentHistory}\n\nCustomer's new message: ${message}`
+      : `Customer's message: ${message}`
+
+    const response = await withFallback(client =>
+      client.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 35,
+        system: `You are a live chat support agent. Write a brief acknowledgment (1 short sentence, max 12 words) for the customer's latest message.
+Rules:
+- Show you understood what they said
+- Don't answer their question or offer solutions
+- No greetings (Hi, Hey, Hello)
+- For follow-ups, acknowledge what they confirmed or clarified
+- Be warm, natural, conversational`,
+        messages: [{ role: 'user', content: prompt }],
+      })
+    )
+
+    const text = response.content
+      .filter(b => b.type === 'text')
+      .map(b => ('text' in b ? b.text : ''))
+      .join('')
+      .trim()
+
+    return text || null
+  } catch {
+    return null
+  }
 }
 
 // Handle preflight requests
@@ -143,6 +188,22 @@ export async function POST(request: NextRequest) {
           )
 
           if (agentConfig.enabled && ticket) {
+            // Generate contextual acknowledgment (fast Haiku call, ~300ms)
+            // Runs before the main agent so the user sees it quickly
+            try {
+              const ackText = await Promise.race([
+                generateQuickAck(content.trim(), conversationHistory),
+                new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
+              ])
+              if (ackText) {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ type: 'acknowledgment', content: ackText })}\n\n`)
+                )
+              }
+            } catch {
+              // Non-critical — widget just shows dots
+            }
+
             // Agentic streaming mode
             const agentStream = agenticSolveStreaming({
               message: content.trim(),

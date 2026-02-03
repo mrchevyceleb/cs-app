@@ -7,54 +7,6 @@ import { cn } from '@/lib/utils'
 import type { WidgetSession, WidgetConfig, StreamingMessage } from '@/types/widget'
 import { getWidgetSupabase } from '@/lib/widget/supabase'
 
-// Generate a varied, context-aware acknowledgment so the user feels heard immediately
-function generateAcknowledgment(userMessage: string): string {
-  const msg = userMessage.toLowerCase()
-
-  const isIssue = /not working|broken|error|issue|problem|bug|crash|fail|can't|cannot|won't|doesn't|isn't|stuck|down|wrong/.test(msg)
-  const isQuestion = /\?$|how do|what is|where|when|why|can i|could you|is there|tell me/.test(msg)
-  const isUrgent = /urgent|asap|emergency|critical|immediately|right away/.test(msg)
-
-  const issueAcks = [
-    "Sorry you're running into that — let me look into it.",
-    "Sorry about that! Let me check what's going on.",
-    "That sounds frustrating. I'm looking into it now.",
-    "I hear you. Let me investigate this.",
-    "Thanks for letting me know — I'm on it.",
-    "Let me dig into that for you right away.",
-  ]
-
-  const questionAcks = [
-    "Great question! Let me find that out for you.",
-    "Let me look that up for you.",
-    "Good question — give me just a moment.",
-    "Sure thing, let me check on that.",
-    "Let me find the answer for you.",
-  ]
-
-  const urgentAcks = [
-    "I understand the urgency — looking into this right now.",
-    "On it. Let me find a solution for you immediately.",
-    "I hear you — prioritizing this now.",
-  ]
-
-  const generalAcks = [
-    "Got it! Let me look into that for you.",
-    "Thanks for reaching out! Working on this now.",
-    "I'm on it — just a moment.",
-    "Let me help you with that.",
-    "Sure thing! Looking into this now.",
-    "On it — one moment please.",
-  ]
-
-  let pool = generalAcks
-  if (isUrgent) pool = urgentAcks
-  else if (isIssue) pool = issueAcks
-  else if (isQuestion) pool = questionAcks
-
-  return pool[Math.floor(Math.random() * pool.length)]
-}
-
 interface WidgetChatProps {
   session: WidgetSession | null
   ticketId: string | null
@@ -265,10 +217,9 @@ export function WidgetChat({
     }
     setMessages((prev) => [...prev, optimisticMessage])
 
-    // Create streaming AI placeholder — starts with dots, then reveals acknowledgment
+    // Create streaming AI placeholder — starts with dots, server sends acknowledgment
     const streamingId = `streaming-${Date.now()}`
     streamingMsgIdRef.current = streamingId
-    const ackText = generateAcknowledgment(messageContent)
     const streamingMessage: StreamingMessage = {
       id: streamingId,
       sender_type: 'ai',
@@ -277,20 +228,7 @@ export function WidgetChat({
       isStreaming: true,
       isAcknowledgment: true,
     }
-    // Show thinking dots immediately
     setMessages((prev) => [...prev, streamingMessage])
-
-    // Reveal acknowledgment text after a natural delay
-    const ackDelay = 700 + Math.floor(Math.random() * 600) // 700-1300ms
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === streamingId && m.isAcknowledgment
-            ? { ...m, content: ackText }
-            : m
-        )
-      )
-    }, ackDelay)
 
     try {
       const response = await fetch('/api/widget/chat', {
@@ -362,6 +300,19 @@ export function WidgetChat({
                 }
                 break
               }
+
+              case 'acknowledgment':
+                // AI-generated contextual acknowledgment from server
+                if (event.content) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === streamingId && m.isAcknowledgment
+                        ? { ...m, content: event.content }
+                        : m
+                    )
+                  )
+                }
+                break
 
               case 'thinking':
                 // Keep showing acknowledgment — content chunks will replace it
