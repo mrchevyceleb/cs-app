@@ -17,7 +17,15 @@ export function getWidgetSupabase(): SupabaseClient | null {
 
   if (!url || !anonKey) return null
 
-  const client = createClient(url, anonKey)
+  // Widget uses its own token auth — disable GoTrueClient session/lock management
+  // to prevent "Multiple GoTrueClient" warnings and "AbortError: signal is aborted" errors
+  const client = createClient(url, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  })
   ;(globalThis as Record<string, unknown>)[GLOBAL_KEY] = client
   return client
 }

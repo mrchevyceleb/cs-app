@@ -265,20 +265,32 @@ export function WidgetChat({
     }
     setMessages((prev) => [...prev, optimisticMessage])
 
-    // Create streaming AI placeholder with empathetic acknowledgment shown instantly
+    // Create streaming AI placeholder — starts with dots, then reveals acknowledgment
     const streamingId = `streaming-${Date.now()}`
     streamingMsgIdRef.current = streamingId
     const ackText = generateAcknowledgment(messageContent)
     const streamingMessage: StreamingMessage = {
       id: streamingId,
       sender_type: 'ai',
-      content: ackText,
+      content: '',
       created_at: new Date().toISOString(),
       isStreaming: true,
       isAcknowledgment: true,
     }
-    // Show acknowledgment immediately — before the server responds
+    // Show thinking dots immediately
     setMessages((prev) => [...prev, streamingMessage])
+
+    // Reveal acknowledgment text after a natural delay
+    const ackDelay = 700 + Math.floor(Math.random() * 600) // 700-1300ms
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === streamingId && m.isAcknowledgment
+            ? { ...m, content: ackText }
+            : m
+        )
+      )
+    }, ackDelay)
 
     try {
       const response = await fetch('/api/widget/chat', {
@@ -352,14 +364,7 @@ export function WidgetChat({
               }
 
               case 'thinking':
-                // Transition from acknowledgment text to thinking dots
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === streamingId
-                      ? { ...m, content: '', toolStatus: undefined }
-                      : m
-                  )
-                )
+                // Keep showing acknowledgment — content chunks will replace it
                 break
 
               case 'tool_status':
