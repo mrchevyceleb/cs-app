@@ -27,7 +27,7 @@ interface TicketQueueProps {
 export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }: TicketQueueProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [bulkUpdateMessage, setBulkUpdateMessage] = useState<string | null>(null)
-  const supabase = useMemo(() => createClient(), [])
+  const supabase = createClient()
   const queryClient = useQueryClient()
 
   // Use the ticket selection hook
@@ -60,7 +60,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
   // Fetch tickets with React Query for caching across navigation
   const { data: tickets = [], isPending: isLoading, error, refetch: fetchTickets } = useQuery({
     queryKey: ['dashboard-tickets'],
-    queryFn: async ({ signal }): Promise<TicketWithCustomer[]> => {
+    queryFn: async (): Promise<TicketWithCustomer[]> => {
       const { data, error: fetchError } = await supabase
         .from('tickets')
         .select(`
@@ -69,9 +69,9 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
         `)
         .order('created_at', { ascending: false })
         .limit(50)
-        .abortSignal(signal)
 
       if (fetchError) {
+        console.error('Supabase tickets fetch error:', fetchError)
         throw new Error('Unable to load tickets. Please try again.')
       }
 
@@ -365,6 +365,8 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
 }
 
 function ErrorStateComponent({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const isDev = process.env.NODE_ENV === 'development'
+
   return (
     <div className="py-12 text-center">
       <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
@@ -373,7 +375,12 @@ function ErrorStateComponent({ message, onRetry }: { message: string; onRetry: (
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         Failed to load tickets
       </h3>
-              <p className="mb-4" style={{ color: '#475569' }}>{message}</p>
+      <p className="mb-4 text-sm text-muted-foreground">{message}</p>
+      {isDev && (
+        <p className="mb-4 text-xs text-muted-foreground max-w-md mx-auto bg-muted p-2 rounded">
+          Check browser console for details
+        </p>
+      )}
       <Button onClick={onRetry} variant="outline" className="gap-2">
         <RefreshCw className="w-4 h-4" />
         Try again

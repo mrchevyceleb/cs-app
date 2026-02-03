@@ -5,9 +5,17 @@ let _client: ReturnType<typeof createBrowserClient<Database>> | null = null
 
 export function createClient() {
   if (_client) return _client
-  _client = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // Debug logging in development
+  if (process.env.NODE_ENV === 'development') {
+    if (!url) console.error('❌ Missing NEXT_PUBLIC_SUPABASE_URL')
+    if (!key) console.error('❌ Missing NEXT_PUBLIC_SUPABASE_ANON_KEY')
+    if (url && key) console.log('✅ Supabase client configured:', url.substring(0, 40) + '...')
+  }
+
+  _client = createBrowserClient<Database>(url!, key!)
   return _client
 }
