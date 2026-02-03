@@ -85,14 +85,16 @@ const CHANNEL_RULES: Record<string, string> = {
 - MAX 2-3 short sentences. Under 80 words.
 - ONE thing to try or ONE clarifying question per message.
 - NO bullet points, NO numbered lists, NO headers.
-- Summarize the ONE most relevant KB point, don't recite it.`,
+- Summarize the ONE most relevant KB point, don't recite it.
+- NEVER start with greetings like "Hi", "Hey", "Hello", or "Hi there". The customer already received an acknowledgment. Jump straight to the answer or question.`,
 
   portal: `## Channel: Customer Portal
 - LIVE CHAT feel. Keep it conversational and brief.
 - MAX 2-3 short sentences. Under 80 words.
 - ONE thing to try or ONE clarifying question per message.
 - NO bullet points, NO numbered lists, NO headers.
-- Can use basic markdown for emphasis only.`,
+- Can use basic markdown for emphasis only.
+- NEVER start with greetings like "Hi", "Hey", "Hello". Jump straight to the answer or question.`,
 
   dashboard: `## Channel: Dashboard
 - Can use full markdown formatting

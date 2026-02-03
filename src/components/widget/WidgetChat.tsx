@@ -610,7 +610,7 @@ export function WidgetChat({
                       {message.isStreaming && message.content && !message.isAcknowledgment && (
                         <span className="inline-block w-1.5 h-4 ml-0.5 bg-purple-500 animate-pulse align-text-bottom rounded-sm" />
                       )}
-                      {message.isStreaming && message.isAcknowledgment && !message.content && (
+                      {message.isStreaming && message.isAcknowledgment && (
                         <span className="inline-flex items-center gap-0.5 py-0.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:0ms]" />
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:150ms]" />
