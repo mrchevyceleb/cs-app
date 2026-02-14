@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { MetricsBar, CsatMetrics, SlaMetrics, ExportButton } from '@/components/dashboard'
+import { MetricsBar, CsatMetrics, ExportButton } from '@/components/dashboard'
 import { cn } from '@/lib/utils'
 
 interface CsatFeedback {
@@ -24,19 +24,6 @@ interface CsatData {
   recentFeedback: CsatFeedback[]
 }
 
-interface SlaMetricData {
-  met: number
-  breached: number
-  compliance: number | null
-  total: number
-}
-
-interface SlaData {
-  firstResponse: SlaMetricData
-  resolution: SlaMetricData
-  ticketsAtRisk: number
-}
-
 interface AgentPerformance {
   id: string
   name: string
@@ -45,7 +32,6 @@ interface AgentPerformance {
   ticketsResolved: number
   avgRating: number | null
   feedbackCount: number
-  slaComplianceRate: number | null
 }
 
 interface MetricsData {
@@ -69,7 +55,6 @@ interface MetricsData {
   aiHandledCount: number
   humanHandledCount: number
   csat: CsatData
-  sla: SlaData
   agentPerformance: AgentPerformance[]
   period: {
     start: string
@@ -194,23 +179,6 @@ function AgentLeaderboard({ agents }: { agents: AgentPerformance[] }) {
                 <p className="text-xs text-muted-foreground">CSAT</p>
               </div>
             )}
-            {agent.slaComplianceRate !== null && (
-              <div className="text-right">
-                <p
-                  className={cn(
-                    'text-sm font-medium',
-                    agent.slaComplianceRate >= 90
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : agent.slaComplianceRate >= 70
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-red-600 dark:text-red-400'
-                  )}
-                >
-                  {agent.slaComplianceRate}%
-                </p>
-                <p className="text-xs text-muted-foreground">SLA</p>
-              </div>
-            )}
           </div>
         </div>
       ))}
@@ -263,54 +231,30 @@ export default function AnalyticsPage() {
       {/* Key Metrics */}
       <MetricsBar />
 
-      {/* CSAT and SLA Row */}
+      {/* CSAT Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {isLoading ? (
-          <>
-            <Card className="bg-card border-border/70">
-              <CardHeader>
-                <CardTitle className="text-base">Customer Satisfaction</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Skeleton className="h-12 w-24" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-card border-border/70">
-              <CardHeader>
-                <CardTitle className="text-base">SLA Compliance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                </div>
-              </CardContent>
-            </Card>
-          </>
+          <Card className="bg-card border-border/70">
+            <CardHeader>
+              <CardTitle className="text-base">Customer Satisfaction</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Skeleton className="h-12 w-24" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </CardContent>
+          </Card>
         ) : metrics ? (
-          <>
-            <CsatMetrics data={metrics.csat} />
-            <SlaMetrics data={metrics.sla} />
-          </>
+          <CsatMetrics data={metrics.csat} />
         ) : (
-          <>
-            <Card className="bg-card border-border/70">
-              <CardContent className="py-8 text-center">
-                <p className="text-muted-foreground">Failed to load CSAT data</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card border-border/70">
-              <CardContent className="py-8 text-center">
-                <p className="text-muted-foreground">Failed to load SLA data</p>
-              </CardContent>
-            </Card>
-          </>
+          <Card className="bg-card border-border/70">
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground">Failed to load CSAT data</p>
+            </CardContent>
+          </Card>
         )}
       </div>
 
@@ -518,12 +462,6 @@ export default function AnalyticsPage() {
                   {metrics.csat.average?.toFixed(1) || '--'}
                 </p>
                 <p className="text-sm text-muted-foreground">Avg CSAT</p>
-              </div>
-              <div className="text-center p-4 bg-muted/60 border border-border/60 rounded-lg">
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {metrics.sla.firstResponse.compliance ?? '--'}%
-                </p>
-                <p className="text-sm text-muted-foreground">First Response SLA</p>
               </div>
               <div className="text-center p-4 bg-muted/60 border border-border/60 rounded-lg">
                 <p className="text-2xl font-bold text-red-600 dark:text-red-400">

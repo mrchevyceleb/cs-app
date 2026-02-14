@@ -37,12 +37,7 @@ import { TypingIndicator } from './TypingIndicator'
 import { ConfidenceScore } from './ConfidenceScore'
 import { TagManager } from './TagManager'
 import { TicketTimeline } from './TicketTimeline'
-import { SlaBadge, SlaProgressBar, SlaAlertBanner } from './SlaBadge'
-import {
-  getFirstResponseSlaInfo,
-  getResolutionSlaInfo,
-  getActiveSlaInfo,
-} from '@/lib/sla'
+import { LifecycleBadge } from './LifecycleBadge'
 import {
   CheckCircle,
   AlertTriangle,
@@ -59,7 +54,6 @@ import {
   Archive,
   MessageSquare,
   History,
-  Timer,
 } from 'lucide-react'
 import type { TicketWithCustomer } from './TicketCard'
 import type { Message } from '@/types/database'
@@ -161,12 +155,6 @@ export function TicketDetail({
 
   const isAssignedToMe = ticket.assigned_agent_id === currentAgentId
   const isAssigned = !!ticket.assigned_agent_id
-
-  // SLA information
-  const firstResponseSla = getFirstResponseSlaInfo(ticket)
-  const resolutionSla = getResolutionSlaInfo(ticket)
-  const activeSla = getActiveSlaInfo(ticket)
-  const hasSlaInfo = firstResponseSla || resolutionSla
 
   return (
     <div className="h-full flex flex-col bg-card border border-border/60 rounded-2xl overflow-hidden shadow-[var(--shadow-lg)]">
@@ -370,39 +358,10 @@ export function TicketDetail({
         </div>
       </div>
 
-      {/* SLA Alert Banner - shown when SLA is breached */}
-      <SlaAlertBanner ticket={ticket} className="mx-4 mt-3" />
-
-      {/* SLA Status Section - shown when SLA info is available */}
-      {hasSlaInfo && (
-        <div className="px-4 py-3 border-b border-border/60 bg-card">
-          <div className="flex items-center gap-2 mb-3">
-            <Timer className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-foreground">
-              SLA Status
-            </h3>
-            {activeSla && (
-              <SlaBadge ticket={ticket} variant="compact" className="ml-auto" />
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {firstResponseSla && (
-              <SlaProgressBar
-                slaInfo={firstResponseSla}
-                label="First Response"
-                showDetails
-              />
-            )}
-            {resolutionSla && (
-              <SlaProgressBar
-                slaInfo={resolutionSla}
-                label="Resolution"
-                showDetails
-              />
-            )}
-          </div>
-        </div>
-      )}
+      {/* Lifecycle Badge */}
+      <div className="px-4 pt-3">
+        <LifecycleBadge ticket={ticket} />
+      </div>
 
       {/* Tabs Container */}
       <Tabs

@@ -44,7 +44,6 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
   handoff: ArrowRightLeft,
   assignment: UserPlus,
   escalation: AlertTriangle,
-  sla_warning: AlertTriangle,
   feedback: Star,
 }
 
@@ -64,10 +63,6 @@ const notificationColors: Record<NotificationType, { icon: string; bg: string }>
   escalation: {
     icon: 'text-red-600 dark:text-red-400',
     bg: 'bg-red-100 dark:bg-red-900/30',
-  },
-  sla_warning: {
-    icon: 'text-orange-600 dark:text-orange-400',
-    bg: 'bg-orange-100 dark:bg-orange-900/30',
   },
   feedback: {
     icon: 'text-purple-600 dark:text-purple-400',
@@ -248,7 +243,7 @@ export function NotificationBell({
   const hasImportant = notifications.some(
     (n) =>
       !n.read_at &&
-      (n.type === 'escalation' || n.type === 'sla_warning' || n.type === 'handoff')
+      (n.type === 'escalation' || n.type === 'handoff')
   )
 
   return (

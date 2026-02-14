@@ -24,7 +24,7 @@ function getServiceClient() {
 
 // Scoring weights
 const WEIGHTS = {
-  SLA_URGENCY: 0.35, // 35% weight for SLA urgency
+  LIFECYCLE_URGENCY: 0.35, // 35% weight for lifecycle urgency
   CUSTOMER_VALUE: 0.20, // 20% weight for customer health/value
   COMPLEXITY: 0.15, // 15% weight for ticket complexity
   WAIT_TIME: 0.20, // 20% weight for how long customer has been waiting
@@ -44,20 +44,20 @@ interface SmartQueueItem {
 }
 
 /**
- * Calculate SLA urgency score (0-100)
+ * Calculate lifecycle urgency score (0-100)
  * Higher = more urgent
  */
-function calculateSlaUrgencyScore(ticket: Ticket): number {
+function calculateLifecycleUrgencyScore(ticket: Ticket): number {
   const now = new Date()
   let urgency = 0
 
-  // Check first response SLA
-  if (ticket.first_response_due_at && !ticket.first_response_at) {
-    const dueDate = new Date(ticket.first_response_due_at)
-    const hoursUntilDue = (dueDate.getTime() - now.getTime()) / (60 * 60 * 1000)
+  // Check follow_up_at proximity
+  if (ticket.follow_up_at) {
+    const followUpDate = new Date(ticket.follow_up_at)
+    const hoursUntilDue = (followUpDate.getTime() - now.getTime()) / (60 * 60 * 1000)
 
     if (hoursUntilDue <= 0) {
-      urgency = 100 // Already breached
+      urgency = 100 // Overdue
     } else if (hoursUntilDue <= 1) {
       urgency = 90
     } else if (hoursUntilDue <= 2) {
@@ -69,22 +69,16 @@ function calculateSlaUrgencyScore(ticket: Ticket): number {
     } else {
       urgency = 20
     }
-  }
+  } else {
+    // No follow_up_at: base score on wait time
+    const createdAt = new Date(ticket.created_at)
+    const hoursWaiting = (now.getTime() - createdAt.getTime()) / (60 * 60 * 1000)
 
-  // Check resolution SLA (lower priority than first response)
-  if (ticket.resolution_due_at && ticket.first_response_at) {
-    const dueDate = new Date(ticket.resolution_due_at)
-    const hoursUntilDue = (dueDate.getTime() - now.getTime()) / (60 * 60 * 1000)
-
-    if (hoursUntilDue <= 0) {
-      urgency = Math.max(urgency, 95)
-    } else if (hoursUntilDue <= 2) {
-      urgency = Math.max(urgency, 80)
-    } else if (hoursUntilDue <= 4) {
-      urgency = Math.max(urgency, 65)
-    } else if (hoursUntilDue <= 8) {
-      urgency = Math.max(urgency, 50)
-    }
+    if (hoursWaiting >= 48) urgency = 70
+    else if (hoursWaiting >= 24) urgency = 50
+    else if (hoursWaiting >= 12) urgency = 35
+    else if (hoursWaiting >= 6) urgency = 20
+    else urgency = 10
   }
 
   // Boost based on priority
@@ -218,14 +212,14 @@ function calculateSentimentScore(ticket: TicketWithCustomer): number {
  * Calculate composite score
  */
 function calculateCompositeScore(
-  slaUrgency: number,
+  lifecycleUrgency: number,
   customerValue: number,
   complexity: number,
   waitTime: number,
   sentiment: number
 ): number {
   return Math.round(
-    slaUrgency * WEIGHTS.SLA_URGENCY +
+    lifecycleUrgency * WEIGHTS.LIFECYCLE_URGENCY +
     customerValue * WEIGHTS.CUSTOMER_VALUE +
     complexity * WEIGHTS.COMPLEXITY +
     waitTime * WEIGHTS.WAIT_TIME +
@@ -303,14 +297,14 @@ export async function GET(request: NextRequest) {
     for (const ticket of tickets as TicketWithCustomer[]) {
       const healthScore = healthScoreMap.get(ticket.customer_id) || null
 
-      const slaUrgency = calculateSlaUrgencyScore(ticket)
+      const lifecycleUrgency = calculateLifecycleUrgencyScore(ticket)
       const customerValue = calculateCustomerValueScore(healthScore)
       const complexity = calculateComplexityScore(ticket)
       const waitTime = calculateWaitTimeScore(ticket)
       const sentiment = calculateSentimentScore(ticket)
 
       const compositeScore = calculateCompositeScore(
-        slaUrgency,
+        lifecycleUrgency,
         customerValue,
         complexity,
         waitTime,
@@ -318,15 +312,15 @@ export async function GET(request: NextRequest) {
       )
 
       const factors: QueueScoringFactors = {
-        sla_hours_remaining: ticket.first_response_due_at
-          ? (new Date(ticket.first_response_due_at).getTime() - Date.now()) / (60 * 60 * 1000)
+        lifecycle_hours_remaining: ticket.follow_up_at
+          ? (new Date(ticket.follow_up_at).getTime() - Date.now()) / (60 * 60 * 1000)
           : undefined,
       }
 
       const queueScore: TicketQueueScore = {
         ticket_id: ticket.id,
         composite_score: compositeScore,
-        sla_urgency_score: slaUrgency,
+        lifecycle_urgency_score: lifecycleUrgency,
         customer_value_score: customerValue,
         complexity_score: complexity,
         wait_time_score: waitTime,
@@ -342,7 +336,7 @@ export async function GET(request: NextRequest) {
         const scoreInsert: TicketQueueScoreInsert = {
           ticket_id: ticket.id,
           composite_score: compositeScore,
-          sla_urgency_score: slaUrgency,
+          lifecycle_urgency_score: lifecycleUrgency,
           customer_value_score: customerValue,
           complexity_score: complexity,
           wait_time_score: waitTime,
@@ -450,14 +444,14 @@ export async function POST(request: NextRequest) {
       try {
         const healthScore = healthScoreMap.get(ticket.customer_id) || null
 
-        const slaUrgency = calculateSlaUrgencyScore(ticket)
+        const lifecycleUrgency = calculateLifecycleUrgencyScore(ticket)
         const customerValue = calculateCustomerValueScore(healthScore)
         const complexity = calculateComplexityScore(ticket)
         const waitTime = calculateWaitTimeScore(ticket)
         const sentiment = calculateSentimentScore(ticket)
 
         const compositeScore = calculateCompositeScore(
-          slaUrgency,
+          lifecycleUrgency,
           customerValue,
           complexity,
           waitTime,
@@ -467,7 +461,7 @@ export async function POST(request: NextRequest) {
         const scoreInsert: TicketQueueScoreInsert = {
           ticket_id: ticket.id,
           composite_score: compositeScore,
-          sla_urgency_score: slaUrgency,
+          lifecycle_urgency_score: lifecycleUrgency,
           customer_value_score: customerValue,
           complexity_score: complexity,
           wait_time_score: waitTime,

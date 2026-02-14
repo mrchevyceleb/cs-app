@@ -75,11 +75,6 @@ export async function GET(request: NextRequest) {
         created_at,
         updated_at,
         assigned_agent_id,
-        first_response_at,
-        first_response_due_at,
-        resolution_due_at,
-        first_response_breached,
-        resolution_breached,
         customer:customers(id, name, email)
       `)
       .gte('created_at', start.toISOString())
@@ -238,51 +233,6 @@ export async function GET(request: NextRequest) {
       }))
 
     // ========================================
-    // SLA Metrics
-    // ========================================
-    const ticketsWithSla = ticketList.filter((t) => t.first_response_due_at || t.resolution_due_at)
-
-    // First Response SLA
-    const ticketsWithFirstResponseDue = ticketList.filter((t) => t.first_response_due_at !== null)
-    const firstResponseMet = ticketsWithFirstResponseDue.filter((t) => !t.first_response_breached).length
-    const firstResponseBreached = ticketsWithFirstResponseDue.filter((t) => t.first_response_breached).length
-    const firstResponseCompliance = ticketsWithFirstResponseDue.length > 0
-      ? Math.round((firstResponseMet / ticketsWithFirstResponseDue.length) * 100)
-      : null
-
-    // Resolution SLA (only for resolved tickets)
-    const resolvedWithSla = resolvedTickets.filter((t) => t.resolution_due_at !== null)
-    const resolutionMet = resolvedWithSla.filter((t) => !t.resolution_breached).length
-    const resolutionBreached = resolvedWithSla.filter((t) => t.resolution_breached).length
-    const resolutionCompliance = resolvedWithSla.length > 0
-      ? Math.round((resolutionMet / resolvedWithSla.length) * 100)
-      : null
-
-    // Tickets currently at risk (approaching SLA deadline)
-    const now = new Date()
-    const ticketsAtRisk = ticketList.filter((t) => {
-      if (t.status === 'resolved') return false
-
-      // Check if first response is due soon and not yet responded
-      if (!t.first_response_at && t.first_response_due_at) {
-        const dueDate = new Date(t.first_response_due_at)
-        const timeLeft = dueDate.getTime() - now.getTime()
-        const hoursLeft = timeLeft / (1000 * 60 * 60)
-        if (hoursLeft > 0 && hoursLeft <= 1) return true
-      }
-
-      // Check if resolution is due soon
-      if (t.resolution_due_at) {
-        const dueDate = new Date(t.resolution_due_at)
-        const timeLeft = dueDate.getTime() - now.getTime()
-        const hoursLeft = timeLeft / (1000 * 60 * 60)
-        if (hoursLeft > 0 && hoursLeft <= 2) return true
-      }
-
-      return false
-    }).length
-
-    // ========================================
     // Agent Performance Comparison
     // ========================================
     const { data: agents } = await supabase
@@ -298,7 +248,6 @@ export async function GET(request: NextRequest) {
       ticketsResolved: number
       avgRating: number | null
       feedbackCount: number
-      slaComplianceRate: number | null
     }> = {}
 
     // Initialize agent performance
@@ -311,7 +260,6 @@ export async function GET(request: NextRequest) {
         ticketsResolved: 0,
         avgRating: null,
         feedbackCount: 0,
-        slaComplianceRate: null,
       }
     }
 
@@ -342,17 +290,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Calculate SLA compliance per agent
-    for (const agentId of Object.keys(agentPerformance)) {
-      const agentTickets = ticketList.filter((t) => t.assigned_agent_id === agentId)
-      const agentTicketsWithSla = agentTickets.filter((t) => t.first_response_due_at || t.resolution_due_at)
-      const slaMet = agentTicketsWithSla.filter((t) => !t.first_response_breached && !t.resolution_breached).length
-
-      if (agentTicketsWithSla.length > 0) {
-        agentPerformance[agentId].slaComplianceRate = Math.round((slaMet / agentTicketsWithSla.length) * 100)
-      }
-    }
-
     // Convert agent performance to array and sort by tickets handled
     const agentPerformanceList = Object.values(agentPerformance)
       .filter((a) => a.ticketsHandled > 0)
@@ -378,21 +315,6 @@ export async function GET(request: NextRequest) {
         trend: csatTrend,
         recentFeedback,
       },
-      sla: {
-        firstResponse: {
-          met: firstResponseMet,
-          breached: firstResponseBreached,
-          compliance: firstResponseCompliance,
-          total: ticketsWithFirstResponseDue.length,
-        },
-        resolution: {
-          met: resolutionMet,
-          breached: resolutionBreached,
-          compliance: resolutionCompliance,
-          total: resolvedWithSla.length,
-        },
-        ticketsAtRisk,
-      },
       agentPerformance: agentPerformanceList,
       period: {
         start: start.toISOString(),
@@ -413,8 +335,6 @@ export async function GET(request: NextRequest) {
           ai_resolution_rate: m.aiResolutionRate,
           csat_average: m.csat.average,
           csat_total: m.csat.total,
-          first_response_compliance: m.sla.firstResponse.compliance,
-          resolution_compliance: m.sla.resolution.compliance,
         })),
         [
           'period_start',
@@ -425,8 +345,6 @@ export async function GET(request: NextRequest) {
           'ai_resolution_rate',
           'csat_average',
           'csat_total',
-          'first_response_compliance',
-          'resolution_compliance',
         ]
       )
 

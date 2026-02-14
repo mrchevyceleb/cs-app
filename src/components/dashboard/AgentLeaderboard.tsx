@@ -23,7 +23,6 @@ interface AgentPerformanceSummary {
   total_tickets_handled: number
   tickets_resolved: number
   resolution_rate: number
-  sla_compliance: number
   avg_csat_rating: number | null
   avg_first_response_minutes: number | null
   avg_resolution_hours: number | null
@@ -37,7 +36,6 @@ interface AgentsPerformanceResponse {
     total_tickets: number
     total_resolved: number
     avg_resolution_rate: number
-    avg_sla_compliance: number
     avg_csat: number | null
   }
   pagination: {
@@ -48,7 +46,7 @@ interface AgentsPerformanceResponse {
   }
 }
 
-type SortField = 'tickets' | 'resolved' | 'resolution_rate' | 'sla' | 'csat' | 'response_time' | 'resolution_time'
+type SortField = 'tickets' | 'resolved' | 'resolution_rate' | 'csat' | 'response_time' | 'resolution_time'
 
 interface AgentLeaderboardProps {
   className?: string
@@ -164,7 +162,6 @@ const sortOptions: { value: SortField; label: string }[] = [
   { value: 'resolved', label: 'Tickets Resolved' },
   { value: 'tickets', label: 'Tickets Handled' },
   { value: 'resolution_rate', label: 'Resolution Rate' },
-  { value: 'sla', label: 'SLA Compliance' },
   { value: 'csat', label: 'CSAT Rating' },
   { value: 'response_time', label: 'Response Time' },
   { value: 'resolution_time', label: 'Resolution Time' },
@@ -323,7 +320,7 @@ export function AgentLeaderboard({
       </CardHeader>
       <CardContent>
         {/* Team Summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+        <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
               {data.team_summary.total_agents}
@@ -344,15 +341,6 @@ export function AgentLeaderboard({
               {data.team_summary.avg_resolution_rate}%
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Avg Resolution</p>
-          </div>
-          <div className="text-center">
-            <p className={cn(
-              'text-2xl font-bold',
-              getPerformanceColor(data.team_summary.avg_sla_compliance, { good: 90, warning: 70 })
-            )}>
-              {data.team_summary.avg_sla_compliance}%
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Avg SLA</p>
           </div>
         </div>
 
@@ -375,9 +363,6 @@ export function AgentLeaderboard({
                 </th>
                 <th className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-3 px-2 hidden sm:table-cell">
                   Rate
-                </th>
-                <th className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-3 px-2 hidden md:table-cell">
-                  SLA
                 </th>
                 <th className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-3 px-2 hidden lg:table-cell">
                   CSAT
@@ -443,14 +428,6 @@ export function AgentLeaderboard({
                       getPerformanceColor(agent.resolution_rate, { good: 80, warning: 60 })
                     )}>
                       {agent.resolution_rate}%
-                    </span>
-                  </td>
-                  <td className="py-3 px-2 text-center hidden md:table-cell">
-                    <span className={cn(
-                      'text-sm font-medium',
-                      getPerformanceColor(agent.sla_compliance, { good: 90, warning: 70 })
-                    )}>
-                      {agent.sla_compliance}%
                     </span>
                   </td>
                   <td className="py-3 px-2 text-center hidden lg:table-cell">

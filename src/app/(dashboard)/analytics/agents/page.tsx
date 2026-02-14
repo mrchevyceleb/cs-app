@@ -26,7 +26,6 @@ interface TeamSummary {
   total_tickets: number
   total_resolved: number
   avg_resolution_rate: number
-  avg_sla_compliance: number
   avg_csat: number | null
   online_agents: number
   away_agents: number
@@ -272,13 +271,6 @@ export default function AgentsAnalyticsPage() {
               value={`${teamSummary.avg_resolution_rate}%`}
               iconColor="text-emerald-600 dark:text-emerald-400"
               iconBg="bg-emerald-100 dark:bg-emerald-900/50"
-            />
-            <SummaryCard
-              icon={Icons.shield}
-              label="Avg SLA Compliance"
-              value={`${teamSummary.avg_sla_compliance}%`}
-              iconColor="text-amber-600 dark:text-amber-400"
-              iconBg="bg-amber-100 dark:bg-amber-900/50"
             />
           </div>
 

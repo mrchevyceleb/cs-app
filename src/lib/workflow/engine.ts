@@ -287,7 +287,6 @@ export const TRIGGER_EVENT_DISPLAY_NAMES: Record<WorkflowTriggerEvent, string> =
   status_changed: 'Status Changed',
   priority_changed: 'Priority Changed',
   ticket_assigned: 'Ticket Assigned',
-  sla_breach: 'SLA Breach',
   message_received: 'Message Received',
 }
 
@@ -299,7 +298,6 @@ export const TRIGGER_EVENT_DESCRIPTIONS: Record<WorkflowTriggerEvent, string> = 
   status_changed: 'Triggered when a ticket status changes',
   priority_changed: 'Triggered when ticket priority is updated',
   ticket_assigned: 'Triggered when a ticket is assigned to an agent',
-  sla_breach: 'Triggered when an SLA deadline is breached',
   message_received: 'Triggered when a new message is added to a ticket',
 }
 
@@ -311,7 +309,6 @@ export const TRIGGER_EVENTS: WorkflowTriggerEvent[] = [
   'status_changed',
   'priority_changed',
   'ticket_assigned',
-  'sla_breach',
   'message_received',
 ]
 
@@ -339,11 +336,6 @@ export function createEventData(
       return {
         old_agent_id: data.old_agent_id as string | null,
         new_agent_id: data.new_agent_id as string,
-        ...data,
-      }
-    case 'sla_breach':
-      return {
-        breach_type: data.breach_type as 'first_response' | 'resolution',
         ...data,
       }
     case 'message_received':

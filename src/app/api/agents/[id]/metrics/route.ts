@@ -9,11 +9,8 @@ export interface AgentMetrics {
   status: 'online' | 'away' | 'offline'
   total_tickets_handled: number
   tickets_resolved: number
-  sla_first_response_met: number
-  sla_resolution_met: number
   avg_csat_rating: number | null
   feedback_count: number
-  avg_first_response_minutes: number | null
   avg_resolution_hours: number | null
   ticket_breakdown: {
     open: number
@@ -64,7 +61,7 @@ export async function GET(
     // Fetch tickets assigned to this agent
     let ticketsQuery = supabase
       .from('tickets')
-      .select('id, status, priority, created_at, first_response_at, first_response_due_at, resolution_due_at, first_response_breached, resolution_breached, updated_at')
+      .select('id, status, priority, created_at, updated_at')
       .eq('assigned_agent_id', id)
 
     if (dateFilter) {
@@ -94,35 +91,6 @@ export async function GET(
 
     // Count resolved tickets
     const ticketsResolved = ticketBreakdown.resolved
-
-    // Calculate SLA metrics
-    const ticketsWithSla = ticketList.filter(
-      (t) => t.first_response_due_at || t.resolution_due_at
-    )
-
-    const slaFirstResponseMet = ticketList.filter(
-      (t) => t.first_response_at && !t.first_response_breached
-    ).length
-
-    const slaResolutionMet = ticketList.filter(
-      (t) => t.status === 'resolved' && !t.resolution_breached
-    ).length
-
-    // Calculate average first response time
-    let avgFirstResponseMinutes: number | null = null
-    const ticketsWithFirstResponse = ticketList.filter(
-      (t) => t.first_response_at && t.created_at
-    )
-
-    if (ticketsWithFirstResponse.length > 0) {
-      const totalMinutes = ticketsWithFirstResponse.reduce((sum, t) => {
-        const created = new Date(t.created_at)
-        const firstResponse = new Date(t.first_response_at!)
-        const diffMs = firstResponse.getTime() - created.getTime()
-        return sum + diffMs / 60000 // Convert to minutes
-      }, 0)
-      avgFirstResponseMinutes = Math.round(totalMinutes / ticketsWithFirstResponse.length)
-    }
 
     // Calculate average resolution time (for resolved tickets)
     let avgResolutionHours: number | null = null
@@ -170,11 +138,8 @@ export async function GET(
       status: agent.status,
       total_tickets_handled: totalTickets,
       tickets_resolved: ticketsResolved,
-      sla_first_response_met: slaFirstResponseMet,
-      sla_resolution_met: slaResolutionMet,
       avg_csat_rating: avgCsatRating,
       feedback_count: feedbackCount,
-      avg_first_response_minutes: avgFirstResponseMinutes,
       avg_resolution_hours: avgResolutionHours,
       ticket_breakdown: ticketBreakdown,
       period: period === 'all' ? 'all' : `${period}d`,

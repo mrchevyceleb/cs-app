@@ -5,8 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ConfidenceScore } from './ConfidenceScore'
-import { SlaBadge, SlaIndicator } from './SlaBadge'
-import { hasSlaConcerns, getActiveSlaInfo } from '@/lib/sla'
+import { LifecycleBadge, LifecycleIndicator } from './LifecycleBadge'
 import type { Ticket, Customer, Agent } from '@/types/database'
 
 export interface TicketWithCustomer extends Ticket {
@@ -87,8 +86,6 @@ export function TicketCard({
 }: TicketCardProps) {
   const priority = priorityIndicators[ticket.priority] || priorityIndicators.normal
   const customerLang = ticket.customer?.preferred_language || 'en'
-  const slaBreached = hasSlaConcerns(ticket)
-  const activeSla = getActiveSlaInfo(ticket)
 
   const handleCheckboxClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -142,7 +139,7 @@ export function TicketCard({
               {getInitials(ticket.customer?.name ?? null)}
             </AvatarFallback>
           </Avatar>
-          {(ticket.priority === 'urgent' || (activeSla?.status === 'breached')) && (
+          {ticket.priority === 'urgent' && (
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
           )}
         </div>
@@ -161,8 +158,8 @@ export function TicketCard({
                 {languageFlags[customerLang]}
               </span>
             )}
-            {/* SLA Indicator - compact icon for ticket list */}
-            <SlaIndicator ticket={ticket} className="flex-shrink-0" />
+            {/* Lifecycle Indicator - compact icon for ticket list */}
+            <LifecycleIndicator ticket={ticket} className="flex-shrink-0" />
           </div>
           <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground">
             <span className="truncate">{ticket.customer?.name || ticket.customer?.email || 'Unknown'}</span>
@@ -182,10 +179,9 @@ export function TicketCard({
           <div
             className={cn(
               'w-2 h-2 rounded-full flex-shrink-0',
-              priority.color,
-              activeSla?.status === 'breached' && 'animate-pulse bg-red-500'
+              priority.color
             )}
-            title={activeSla?.status === 'breached' ? 'SLA Breached!' : priority.label}
+            title={priority.label}
           />
         </div>
       </div>
@@ -213,11 +209,9 @@ export function TicketCard({
         <ConfidenceScore value={ticket.ai_confidence || 0} size="sm" />
       </div>
 
-      {/* SLA Badge - hidden on mobile, shown on larger screens */}
+      {/* Lifecycle Badge - hidden on mobile, shown on larger screens */}
       <div className="hidden md:block min-w-[80px]">
-        {activeSla && (
-          <SlaBadge ticket={ticket} variant="compact" />
-        )}
+        <LifecycleBadge ticket={ticket} />
       </div>
 
       {/* Status & Priority - hidden on mobile */}
@@ -231,10 +225,9 @@ export function TicketCard({
         <div
           className={cn(
             'w-2 h-2 rounded-full flex-shrink-0',
-            priority.color,
-            activeSla?.status === 'breached' && 'animate-pulse bg-red-500'
+            priority.color
           )}
-          title={activeSla?.status === 'breached' ? 'SLA Breached!' : priority.label}
+          title={priority.label}
         />
       </div>
 

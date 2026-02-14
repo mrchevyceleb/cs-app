@@ -24,7 +24,7 @@ export { MessageAttachment, MessageAttachments } from './MessageAttachment'
 
 // Analytics Components
 export { CsatMetrics } from './CsatMetrics'
-export { SlaMetrics } from './SlaMetrics'
+export { LifecycleBadge, LifecycleIndicator } from './LifecycleBadge'
 export { ExportButton } from './ExportButton'
 
 // Agent Performance Components

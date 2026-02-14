@@ -77,9 +77,8 @@ export async function GET(request: NextRequest) {
             ai_handled,
             created_at,
             updated_at,
-            first_response_at,
-            first_response_breached,
-            resolution_breached,
+            follow_up_at,
+            auto_close_at,
             customer:customers(name, email),
             agent:agents!tickets_assigned_agent_id_fkey(name, email)
           `)
@@ -102,10 +101,9 @@ export async function GET(request: NextRequest) {
           ai_handled: t.ai_handled ? 'Yes' : 'No',
           assigned_agent: (t.agent as { name: string } | null)?.name || 'Unassigned',
           created_at: t.created_at,
-          first_response_at: t.first_response_at || '',
+          follow_up_at: t.follow_up_at || '',
+          auto_close_at: t.auto_close_at || '',
           updated_at: t.updated_at,
-          first_response_breached: t.first_response_breached ? 'Yes' : 'No',
-          resolution_breached: t.resolution_breached ? 'Yes' : 'No',
         }))
 
         csvData = toCSV(ticketRows, [
@@ -118,10 +116,9 @@ export async function GET(request: NextRequest) {
           'ai_handled',
           'assigned_agent',
           'created_at',
-          'first_response_at',
+          'follow_up_at',
+          'auto_close_at',
           'updated_at',
-          'first_response_breached',
-          'resolution_breached',
         ])
         filename = `tickets-export-${period}.csv`
         break
@@ -227,9 +224,7 @@ export async function GET(request: NextRequest) {
           .select(`
             id,
             status,
-            assigned_agent_id,
-            first_response_breached,
-            resolution_breached
+            assigned_agent_id
           `)
           .gte('created_at', start.toISOString())
           .lte('created_at', end.toISOString())
@@ -261,13 +256,6 @@ export async function GET(request: NextRequest) {
           const agentTickets = ticketList.filter((t) => t.assigned_agent_id === agent.id)
           const totalTickets = agentTickets.length
           const resolvedTickets = agentTickets.filter((t) => t.status === 'resolved').length
-          const ticketsWithSla = agentTickets.filter(
-            (t) => t.first_response_breached !== null || t.resolution_breached !== null
-          )
-          const slaMet = ticketsWithSla.filter((t) => !t.first_response_breached && !t.resolution_breached).length
-          const slaComplianceRate = ticketsWithSla.length > 0
-            ? Math.round((slaMet / ticketsWithSla.length) * 100)
-            : null
 
           // Calculate avg rating
           const agentFeedback = agentTickets
@@ -283,7 +271,6 @@ export async function GET(request: NextRequest) {
             total_tickets: totalTickets,
             resolved_tickets: resolvedTickets,
             resolution_rate: totalTickets > 0 ? Math.round((resolvedTickets / totalTickets) * 100) : 0,
-            sla_compliance_rate: slaComplianceRate ?? '',
             avg_csat_rating: avgRating ?? '',
             feedback_count: agentFeedback.length,
           }
@@ -295,7 +282,6 @@ export async function GET(request: NextRequest) {
           'total_tickets',
           'resolved_tickets',
           'resolution_rate',
-          'sla_compliance_rate',
           'avg_csat_rating',
           'feedback_count',
         ])

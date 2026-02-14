@@ -580,7 +580,6 @@ export type Database = {
           avg_first_response_time_hours?: number | null
           avg_csat_score?: number | null
           csat_response_count?: number
-          sla_compliance_rate?: number | null
           ai_resolution_rate?: number | null
           escalation_rate?: number | null
           tickets_by_priority?: Json | null
@@ -598,7 +597,6 @@ export type Database = {
           avg_first_response_time_hours?: number | null
           avg_csat_score?: number | null
           csat_response_count?: number
-          sla_compliance_rate?: number | null
           ai_resolution_rate?: number | null
           escalation_rate?: number | null
           tickets_by_priority?: Json | null
@@ -2252,7 +2250,7 @@ export interface TicketQueueScore {
 export interface TicketQueueScoreInsert {
   ticket_id: string
   composite_score: number
-  sla_urgency_score?: number
+  lifecycle_urgency_score?: number
   customer_value_score?: number
   complexity_score?: number
   wait_time_score?: number

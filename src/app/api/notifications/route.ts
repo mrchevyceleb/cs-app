@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate notification type
-    const validTypes: NotificationType[] = ['mention', 'handoff', 'assignment', 'escalation', 'sla_warning', 'feedback']
+    const validTypes: NotificationType[] = ['mention', 'handoff', 'assignment', 'escalation', 'feedback']
     if (!validTypes.includes(type)) {
       return NextResponse.json(
         { error: 'Invalid notification type' },

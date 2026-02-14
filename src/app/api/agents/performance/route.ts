@@ -10,7 +10,6 @@ export interface AgentPerformanceSummary {
   total_tickets_handled: number
   tickets_resolved: number
   resolution_rate: number
-  sla_compliance: number
   avg_csat_rating: number | null
   avg_first_response_minutes: number | null
   avg_resolution_hours: number | null
@@ -24,7 +23,6 @@ export interface AgentsPerformanceResponse {
     total_tickets: number
     total_resolved: number
     avg_resolution_rate: number
-    avg_sla_compliance: number
     avg_csat: number | null
   }
   pagination: {
@@ -35,7 +33,7 @@ export interface AgentsPerformanceResponse {
   }
 }
 
-type SortField = 'tickets' | 'resolved' | 'resolution_rate' | 'sla' | 'csat' | 'response_time' | 'resolution_time'
+type SortField = 'tickets' | 'resolved' | 'resolution_rate' | 'csat' | 'response_time' | 'resolution_time'
 type SortOrder = 'asc' | 'desc'
 
 // GET /api/agents/performance - Get all agents' performance for leaderboard
@@ -82,7 +80,6 @@ export async function GET(request: NextRequest) {
           total_tickets: 0,
           total_resolved: 0,
           avg_resolution_rate: 0,
-          avg_sla_compliance: 0,
           avg_csat: null,
         },
         pagination: {
@@ -97,7 +94,7 @@ export async function GET(request: NextRequest) {
     // Fetch all tickets with agent assignments
     let ticketsQuery = supabase
       .from('tickets')
-      .select('id, status, assigned_agent_id, created_at, first_response_at, first_response_breached, resolution_breached, updated_at')
+      .select('id, status, assigned_agent_id, created_at, updated_at')
       .not('assigned_agent_id', 'is', null)
 
     if (dateFilter) {
@@ -162,32 +159,8 @@ export async function GET(request: NextRequest) {
         ? Math.round((ticketsResolved / totalTickets) * 100)
         : 0
 
-      // Calculate SLA compliance
-      const ticketsWithSla = agentTickets.filter(
-        (t) => t.first_response_at || t.status === 'resolved'
-      )
-      const slaMet = agentTickets.filter(
-        (t) => (!t.first_response_breached && t.first_response_at) ||
-               (t.status === 'resolved' && !t.resolution_breached)
-      ).length
-      const slaCompliance = ticketsWithSla.length > 0
-        ? Math.round((slaMet / ticketsWithSla.length) * 100)
-        : 100
-
       // Calculate average first response time
       let avgFirstResponseMinutes: number | null = null
-      const ticketsWithFirstResponse = agentTickets.filter(
-        (t) => t.first_response_at && t.created_at
-      )
-      if (ticketsWithFirstResponse.length > 0) {
-        const totalMinutes = ticketsWithFirstResponse.reduce((sum, t) => {
-          const created = new Date(t.created_at)
-          const firstResponse = new Date(t.first_response_at!)
-          const diffMs = firstResponse.getTime() - created.getTime()
-          return sum + diffMs / 60000
-        }, 0)
-        avgFirstResponseMinutes = Math.round(totalMinutes / ticketsWithFirstResponse.length)
-      }
 
       // Calculate average resolution time
       let avgResolutionHours: number | null = null
@@ -216,7 +189,6 @@ export async function GET(request: NextRequest) {
         total_tickets_handled: totalTickets,
         tickets_resolved: ticketsResolved,
         resolution_rate: resolutionRate,
-        sla_compliance: slaCompliance,
         avg_csat_rating: avgCsatRating,
         avg_first_response_minutes: avgFirstResponseMinutes,
         avg_resolution_hours: avgResolutionHours,
@@ -240,10 +212,6 @@ export async function GET(request: NextRequest) {
         case 'resolution_rate':
           aVal = a.resolution_rate
           bVal = b.resolution_rate
-          break
-        case 'sla':
-          aVal = a.sla_compliance
-          bVal = b.sla_compliance
           break
         case 'csat':
           aVal = a.avg_csat_rating ?? -1
@@ -285,11 +253,6 @@ export async function GET(request: NextRequest) {
       ? Math.round((totalTeamResolved / totalTeamTickets) * 100)
       : 0
 
-    const agentsWithSla = agentMetrics.filter((a) => a.total_tickets_handled > 0)
-    const avgSlaCompliance = agentsWithSla.length > 0
-      ? Math.round(agentsWithSla.reduce((sum, a) => sum + a.sla_compliance, 0) / agentsWithSla.length)
-      : 100
-
     const agentsWithCsat = agentMetrics.filter((a) => a.avg_csat_rating !== null)
     const avgCsat = agentsWithCsat.length > 0
       ? Math.round((agentsWithCsat.reduce((sum, a) => sum + (a.avg_csat_rating || 0), 0) / agentsWithCsat.length) * 10) / 10
@@ -308,7 +271,6 @@ export async function GET(request: NextRequest) {
         total_tickets: totalTeamTickets,
         total_resolved: totalTeamResolved,
         avg_resolution_rate: avgResolutionRate,
-        avg_sla_compliance: avgSlaCompliance,
         avg_csat: avgCsat,
       },
       pagination: {

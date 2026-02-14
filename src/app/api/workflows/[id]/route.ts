@@ -122,7 +122,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         'status_changed',
         'priority_changed',
         'ticket_assigned',
-        'sla_breach',
         'message_received',
       ]
 

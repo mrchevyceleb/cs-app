@@ -114,7 +114,6 @@ export async function POST(request: NextRequest) {
       'status_changed',
       'priority_changed',
       'ticket_assigned',
-      'sla_breach',
       'message_received',
     ]
 
