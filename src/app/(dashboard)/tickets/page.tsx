@@ -30,8 +30,8 @@ export default function TicketsPage() {
     queryKey: ['queue-counts'],
     queryFn: async () => {
       const [humanRes, aiRes] = await Promise.all([
-        fetch('/api/tickets?queue=human&limit=0'),
-        fetch('/api/tickets?queue=ai&limit=0'),
+        fetch('/api/tickets?queue=human&limit=1'),
+        fetch('/api/tickets?queue=ai&limit=1'),
       ])
       const [humanData, aiData] = await Promise.all([humanRes.json(), aiRes.json()])
       return {

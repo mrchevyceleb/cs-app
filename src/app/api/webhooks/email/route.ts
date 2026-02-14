@@ -154,7 +154,16 @@ export async function POST(request: NextRequest) {
       const match = from.match(/^"?([^"<]+)"?\s*</);
       return match ? match[1].trim() : null;
     })();
-    const emailContent = (text || '').trim();
+    // Use plain text body, or strip HTML if only HTML is available
+    const emailContent = (text || '').trim() || (() => {
+      if (!html) return '';
+      return html
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    })();
 
     // Trigger AI processing in the background (fire-and-forget)
     // Webhook returns 200 immediately to SendGrid while AI processes

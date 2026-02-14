@@ -88,16 +88,22 @@ export async function processEmailWithAI(
       return { action: 'escalated' }
     }
 
-    // Fetch previous messages for conversation context
+    // Fetch previous messages for conversation context (exclude internal notes)
     const { data: previousMessages } = await supabase
       .from('messages')
-      .select('sender_type, content')
+      .select('sender_type, content, metadata')
       .eq('ticket_id', ticketId)
       .order('created_at', { ascending: true })
       .limit(20)
 
     const conversationHistory = (previousMessages || [])
       .slice(0, -1) // Exclude the latest message (it's the one being processed)
+      .filter(m => {
+        // Exclude internal notes from AI context
+        const meta = m.metadata as Record<string, unknown> | null
+        return !meta?.is_internal
+      })
+      .filter(m => m.sender_type === 'customer' || m.sender_type === 'ai')
       .map(m => ({
         role: m.sender_type === 'customer' ? 'user' as const : 'assistant' as const,
         content: m.content,
