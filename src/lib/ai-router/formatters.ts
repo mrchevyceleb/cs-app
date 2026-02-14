@@ -13,12 +13,8 @@ export function formatResponseForChannel(
   channel: ChannelType
 ): string {
   switch (channel) {
-    case 'sms':
-      return formatForSms(content);
     case 'email':
       return formatForEmail(content);
-    case 'slack':
-      return formatForSlack(content);
     case 'widget':
     case 'portal':
     case 'dashboard':
@@ -26,37 +22,6 @@ export function formatResponseForChannel(
     default:
       return content;
   }
-}
-
-/**
- * Format response for SMS
- * - Strip markdown
- * - Truncate to 1500 chars
- * - Remove URLs if possible
- */
-function formatForSms(content: string): string {
-  let formatted = content;
-
-  // Remove markdown formatting
-  formatted = formatted
-    .replace(/\*\*(.+?)\*\*/g, '$1')  // Bold
-    .replace(/\*(.+?)\*/g, '$1')       // Italic
-    .replace(/__(.+?)__/g, '$1')       // Bold underscore
-    .replace(/_(.+?)_/g, '$1')         // Italic underscore
-    .replace(/`(.+?)`/g, '$1')         // Inline code
-    .replace(/```[\s\S]*?```/g, '')    // Code blocks
-    .replace(/\[(.+?)\]\(.+?\)/g, '$1') // Links - keep text only
-    .replace(/#{1,6}\s+/g, '')         // Headers
-    .replace(/>\s+/g, '')              // Blockquotes
-    .replace(/[-*+]\s+/g, '- ')        // Normalize list markers
-    .replace(/\n{3,}/g, '\n\n');       // Multiple newlines
-
-  // Truncate
-  if (formatted.length > 1500) {
-    formatted = formatted.slice(0, 1497) + '...';
-  }
-
-  return formatted.trim();
 }
 
 /**
@@ -81,33 +46,6 @@ function formatForEmail(content: string): string {
   }
 
   return formatted;
-}
-
-/**
- * Format response for Slack
- * - Convert markdown to Slack mrkdwn
- * - Can use emojis
- */
-function formatForSlack(content: string): string {
-  let formatted = content;
-
-  // Convert markdown to Slack mrkdwn
-  // Bold: **text** -> *text*
-  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '*$1*');
-
-  // Italic: *text* or _text_ -> _text_
-  formatted = formatted.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '_$1_');
-
-  // Strikethrough: ~~text~~ -> ~text~
-  formatted = formatted.replace(/~~(.+?)~~/g, '~$1~');
-
-  // Links: [text](url) -> <url|text>
-  formatted = formatted.replace(/\[(.+?)\]\((.+?)\)/g, '<$2|$1>');
-
-  // Code blocks remain the same
-  // Inline code remains the same
-
-  return formatted.trim();
 }
 
 /**

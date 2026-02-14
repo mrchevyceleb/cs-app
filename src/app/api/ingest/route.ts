@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate channel
-    const validChannels = ['dashboard', 'portal', 'widget', 'sms', 'email', 'slack', 'api'];
+    const validChannels = ['dashboard', 'portal', 'widget', 'email', 'api'];
     if (!validChannels.includes(body.channel)) {
       return NextResponse.json(
         { error: `Invalid channel. Must be one of: ${validChannels.join(', ')}` },
@@ -63,6 +63,6 @@ export async function GET() {
     status: 'ok',
     endpoint: '/api/ingest',
     description: 'Unified ingest endpoint for all channels',
-    supported_channels: ['dashboard', 'portal', 'widget', 'sms', 'email', 'slack', 'api'],
+    supported_channels: ['dashboard', 'portal', 'widget', 'email', 'api'],
   });
 }

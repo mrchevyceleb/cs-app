@@ -11,7 +11,6 @@ import { triageMessage, generateResponse } from './triage';
 import { formatResponseForChannel } from './formatters';
 import { findOrCreateCustomer } from '@/lib/channels/customer';
 import { dispatchWebhook } from '@/lib/webhooks/service';
-import { sendSupportSms } from '@/lib/twilio/client';
 import { searchKnowledgeHybrid } from '@/lib/knowledge/search';
 import { getAgentConfig } from '@/lib/ai-agent/config';
 import { agenticSolve } from '@/lib/ai-agent/engine';
@@ -492,18 +491,10 @@ export async function sendChannelResponse(
   ticketId: string
 ): Promise<{ success: boolean; external_id?: string; error?: string }> {
   switch (channel) {
-    case 'sms':
-      return sendSupportSms(recipient, content, ticketId);
-
     case 'email':
-      // Email sending is handled separately via Resend
+      // Email sending is handled separately via the email service
       // This is a placeholder for the response tracking
       return { success: true };
-
-    case 'slack':
-      // Slack integration would go here
-      console.log('Slack response not implemented yet');
-      return { success: false, error: 'Slack not implemented' };
 
     case 'widget':
     case 'portal':

@@ -42,9 +42,16 @@
     return;
   }
 
-  // Get base URL from script src
-  var scriptSrc = script.src;
-  var baseUrl = scriptSrc.substring(0, scriptSrc.lastIndexOf('/widget/loader.js'));
+  // Get base URL: prefer data-base-url attribute (for CDN hosting), else derive from script src
+  var baseUrl = script.getAttribute('data-base-url');
+  if (!baseUrl) {
+    var scriptSrc = script.src;
+    baseUrl = scriptSrc.substring(0, scriptSrc.lastIndexOf('/widget/loader.js'));
+  }
+  // Strip trailing slash
+  if (baseUrl.charAt(baseUrl.length - 1) === '/') {
+    baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+  }
 
   // Extract configuration from data attributes
   var config = {
@@ -100,12 +107,14 @@
     iframe.id = WIDGET_ID;
     iframe.title = 'Customer Support Widget';
     iframe.allow = 'clipboard-read; clipboard-write';
+    iframe.setAttribute('loading', 'lazy');
     iframe.style.cssText = [
       'width: 100%',
       'height: 100%',
       'border: none',
       'background: transparent',
-      'pointer-events: auto'
+      'pointer-events: auto',
+      'color-scheme: normal'
     ].join('; ');
 
     // Build iframe URL with config params

@@ -87,37 +87,6 @@ async function sendEmailOutreach(
 }
 
 /**
- * Send outreach via SMS channel
- */
-async function sendSmsOutreach(
-  supabase: ReturnType<typeof getServiceClient>,
-  customerId: string,
-  content: string
-): Promise<{ success: boolean; error?: string }> {
-  // Get customer phone
-  const { data: customer } = await supabase
-    .from('customers')
-    .select('phone_number')
-    .eq('id', customerId)
-    .single()
-
-  if (!customer?.phone_number) {
-    return { success: false, error: 'Customer has no phone number' }
-  }
-
-  // Use the existing SMS infrastructure
-  try {
-    const { sendSms } = await import('@/lib/twilio/client')
-
-    const result = await sendSms(customer.phone_number, content)
-    return { success: result.success, error: result.error }
-  } catch (err) {
-    console.error('[Proactive] SMS send error:', err)
-    return { success: false, error: err instanceof Error ? err.message : 'SMS send failed' }
-  }
-}
-
-/**
  * Add outreach as message to ticket (internal channel)
  */
 async function addInternalOutreach(
@@ -228,10 +197,6 @@ export async function POST(request: NextRequest) {
         )
         break
 
-      case 'sms':
-        sendResult = await sendSmsOutreach(supabase, customerId, content)
-        break
-
       case 'internal':
         if (!ticketId) {
           sendResult = { success: false, error: 'ticketId required for internal channel' }
@@ -246,16 +211,6 @@ export async function POST(request: NextRequest) {
           sendResult = { success: false, error: 'ticketId required for widget channel' }
         } else {
           sendResult = await addInternalOutreach(supabase, ticketId, content, outreachType)
-        }
-        break
-
-      case 'slack':
-        // Slack would need integration with the customer's Slack workspace
-        // For now, fall back to internal
-        if (ticketId) {
-          sendResult = await addInternalOutreach(supabase, ticketId, content, outreachType)
-        } else {
-          sendResult = { success: false, error: 'Slack outreach not yet implemented' }
         }
         break
 

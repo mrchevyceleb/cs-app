@@ -1,16 +1,16 @@
 /**
  * Channel Types
- * Defines types for multi-channel communication support (SMS, Email, Slack, etc.)
+ * Defines types for multi-channel communication support (Email, Widget, etc.)
  */
 
 // Available communication channels
-export type ChannelType = 'dashboard' | 'portal' | 'widget' | 'sms' | 'email' | 'slack' | 'api';
+export type ChannelType = 'dashboard' | 'portal' | 'widget' | 'email' | 'api';
 
 // Message source (where the message originated)
 export type MessageSource = ChannelType;
 
 // Customer's preferred channel for receiving responses
-export type PreferredChannel = 'email' | 'sms' | 'slack' | 'widget';
+export type PreferredChannel = 'email' | 'widget';
 
 // AI routing decision stored with messages
 export interface RoutingDecision {
@@ -87,7 +87,7 @@ export interface EmailThreadInsert {
 // Channel configuration
 export interface ChannelConfig {
   id: string;
-  channel: 'sms' | 'email' | 'slack' | 'widget';
+  channel: 'email' | 'widget';
   enabled: boolean;
   config: Record<string, unknown>;
   ai_auto_respond: boolean;
@@ -100,7 +100,7 @@ export interface ChannelConfig {
 
 export interface ChannelConfigInsert {
   id?: string;
-  channel: 'sms' | 'email' | 'slack' | 'widget';
+  channel: 'email' | 'widget';
   enabled?: boolean;
   config?: Record<string, unknown>;
   ai_auto_respond?: boolean;
@@ -113,7 +113,7 @@ export interface ChannelConfigInsert {
 
 export interface ChannelConfigUpdate {
   id?: string;
-  channel?: 'sms' | 'email' | 'slack' | 'widget';
+  channel?: 'email' | 'widget';
   enabled?: boolean;
   config?: Record<string, unknown>;
   ai_auto_respond?: boolean;
@@ -125,20 +125,9 @@ export interface ChannelConfigUpdate {
 }
 
 // Typed channel configs
-export interface SmsChannelConfig {
-  phone_number: string | null;
-  provider: 'twilio';
-}
-
 export interface EmailChannelConfig {
   inbound_address: string | null;
   send_from: string | null;
-}
-
-export interface SlackChannelConfig {
-  workspace_id: string | null;
-  channel_id: string | null;
-  bot_token?: string;
 }
 
 export interface WidgetChannelConfig {
@@ -200,28 +189,8 @@ export interface ChannelSendResponse {
 // Delivery status for messages
 export type DeliveryStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
 
-// SMS-specific types
-export interface TwilioInboundSms {
-  MessageSid: string;
-  SmsSid: string;
-  AccountSid: string;
-  From: string;
-  To: string;
-  Body: string;
-  NumMedia?: string;
-  MediaUrl0?: string;
-  MediaContentType0?: string;
-}
-
-export interface TwilioOutboundSms {
-  to: string;
-  from: string;
-  body: string;
-  statusCallback?: string;
-}
-
-// Email-specific types (Resend inbound)
-export interface ResendInboundEmail {
+// Email-specific types (inbound)
+export interface InboundEmail {
   from: string;
   to: string[];
   subject: string;
@@ -233,23 +202,4 @@ export interface ResendInboundEmail {
     content_type: string;
     content: string; // Base64
   }[];
-}
-
-// Slack-specific types
-export interface SlackMessage {
-  type: string;
-  channel: string;
-  user: string;
-  text: string;
-  ts: string;
-  thread_ts?: string;
-}
-
-export interface SlackEvent {
-  type: string;
-  event: SlackMessage;
-  team_id: string;
-  api_app_id: string;
-  event_id: string;
-  event_time: number;
 }

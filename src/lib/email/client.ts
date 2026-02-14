@@ -1,13 +1,15 @@
-import { Resend } from 'resend'
+import sgMail from '@sendgrid/mail'
 
-// Initialize Resend client
-const resendApiKey = process.env.RESEND_API_KEY
+// Initialize SendGrid client
+const sendgridApiKey = process.env.SENDGRID_API_KEY
 
-if (!resendApiKey && process.env.NODE_ENV === 'production') {
-  console.warn('RESEND_API_KEY is not set. Email notifications will be disabled.')
+if (!sendgridApiKey && process.env.NODE_ENV === 'production') {
+  console.warn('SENDGRID_API_KEY is not set. Email notifications will be disabled.')
 }
 
-export const resend = resendApiKey ? new Resend(resendApiKey) : null
+if (sendgridApiKey) {
+  sgMail.setApiKey(sendgridApiKey)
+}
 
 // Email configuration
 export const emailConfig = {
@@ -15,6 +17,7 @@ export const emailConfig = {
   portalUrl: process.env.PORTAL_URL || 'http://localhost:3000/portal',
   companyName: 'R-Link',
   supportEmail: 'support@r-link.com',
+  provider: 'sendgrid',
 }
 
 // Types for email sending
@@ -33,12 +36,12 @@ export interface SendEmailResult {
 }
 
 /**
- * Send an email using Resend
+ * Send an email using SendGrid
  * Returns success status and provider ID or error message
  */
 export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
-  if (!resend) {
-    console.log('[Email] Resend not configured. Would have sent:', {
+  if (!sendgridApiKey) {
+    console.log('[Email] SendGrid not configured. Would have sent:', {
       to: options.to,
       subject: options.subject,
     })
@@ -50,22 +53,19 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
   }
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: emailConfig.from,
+    const [response] = await sgMail.send({
       to: options.to,
+      from: emailConfig.from,
       subject: options.subject,
       html: options.html,
       text: options.text,
-      tags: options.tags,
+      categories: options.tags?.map(t => `${t.name}:${t.value}`),
+      headers: {},
     })
 
-    if (error) {
-      console.error('[Email] Send error:', error)
-      return { success: false, error: error.message }
-    }
-
-    console.log('[Email] Sent successfully:', data?.id)
-    return { success: true, id: data?.id }
+    const messageId = response.headers['x-message-id']
+    console.log('[Email] Sent successfully:', messageId)
+    return { success: true, id: messageId }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('[Email] Exception:', message)

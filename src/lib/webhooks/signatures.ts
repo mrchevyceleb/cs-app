@@ -103,41 +103,6 @@ export function generateWebhookSecret(): string {
 }
 
 /**
- * Verify Slack signature
- */
-export function verifySlackSignature(
-  body: string,
-  timestamp: string,
-  signature: string,
-  signingSecret: string,
-  toleranceSeconds: number = DEFAULT_TIMESTAMP_TOLERANCE
-): boolean {
-  // Check timestamp
-  const ts = parseInt(timestamp, 10);
-  const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - ts) > toleranceSeconds) {
-    return false;
-  }
-
-  // Calculate expected signature
-  const sigBasestring = `v0:${timestamp}:${body}`;
-  const expectedSignature = 'v0=' + crypto
-    .createHmac('sha256', signingSecret)
-    .update(sigBasestring)
-    .digest('hex');
-
-  // Compare signatures
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Verify Discord signature (Ed25519)
  * Note: This is a simplified version; full implementation would use tweetnacl
  */

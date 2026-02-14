@@ -5,7 +5,6 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Customer, CustomerInsert, ChannelType, PreferredChannel, Json } from '@/types/database';
-import { normalizePhoneNumber } from '@/lib/twilio/client';
 
 // Lazy initialization to avoid build-time errors when env vars aren't available
 let _supabase: SupabaseClient<Database> | null = null;
@@ -73,55 +72,6 @@ export async function findOrCreateCustomerByEmail(
 }
 
 /**
- * Find or create a customer by phone number
- */
-export async function findOrCreateCustomerByPhone(
-  phone: string,
-  name?: string | null
-): Promise<FindOrCreateResult> {
-  const normalizedPhone = normalizePhoneNumber(phone);
-  if (!normalizedPhone) {
-    throw new Error('Invalid phone number');
-  }
-
-  // Try to find existing customer
-  const { data: existing } = await getSupabase()
-    .from('customers')
-    .select('*')
-    .eq('phone_number', normalizedPhone)
-    .single();
-
-  if (existing) {
-    // Update name if provided and not set
-    if (name && !existing.name) {
-      await getSupabase()
-        .from('customers')
-        .update({ name })
-        .eq('id', existing.id);
-      existing.name = name;
-    }
-    return { customer: existing, created: false };
-  }
-
-  // Create new customer
-  const { data: created, error } = await getSupabase()
-    .from('customers')
-    .insert({
-      phone_number: normalizedPhone,
-      name: name || null,
-      preferred_channel: 'sms',
-    })
-    .select()
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to create customer: ${error.message}`);
-  }
-
-  return { customer: created, created: true };
-}
-
-/**
  * Find or create a customer by any identifier
  */
 export async function findOrCreateCustomer(
@@ -129,19 +79,13 @@ export async function findOrCreateCustomer(
   channel: ChannelType,
   name?: string | null
 ): Promise<FindOrCreateResult> {
-  // Determine identifier type based on format and channel
-  const isPhone = /^\+?\d{10,15}$/.test(identifier.replace(/[\s\-\(\)]/g, ''));
   const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
-
-  if (channel === 'sms' || (isPhone && !isEmail)) {
-    return findOrCreateCustomerByPhone(identifier, name);
-  }
 
   if (isEmail) {
     return findOrCreateCustomerByEmail(identifier, name);
   }
 
-  // For other channels (Slack, etc.), try to find by metadata
+  // For other channels, try to find by metadata
   const { data: existing } = await getSupabase()
     .from('customers')
     .select('*')
@@ -201,10 +145,7 @@ export async function updateCustomerContact(
   }
 
   if (updates.phone_number) {
-    const normalized = normalizePhoneNumber(updates.phone_number);
-    if (normalized) {
-      updateData.phone_number = normalized;
-    }
+    updateData.phone_number = updates.phone_number;
   }
 
   if (updates.name) {
@@ -227,14 +168,10 @@ export function getCustomerChannelContact(
   channel: ChannelType
 ): string | null {
   switch (channel) {
-    case 'sms':
-      return customer.phone_number || null;
     case 'email':
       return customer.email || null;
-    case 'slack':
-      return (customer.metadata as Record<string, unknown>)?.slack_id as string || null;
     default:
-      return customer.email || customer.phone_number || null;
+      return customer.email || null;
   }
 }
 

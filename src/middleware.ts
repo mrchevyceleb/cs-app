@@ -20,7 +20,11 @@ export async function middleware(request: NextRequest) {
       .map(origin => origin.trim())
       .filter(Boolean)
 
-    const frameAncestors = [`'self'`, ...allowedOrigins].join(' ')
+    // When no origins are configured, allow embedding on any domain (frame-ancestors *)
+    // so the widget works out of the box. When origins are specified, restrict to those.
+    const frameAncestors = allowedOrigins.length > 0
+      ? [`'self'`, ...allowedOrigins].join(' ')
+      : '*'
     response.headers.set('Content-Security-Policy', `frame-ancestors ${frameAncestors}`)
   }
 

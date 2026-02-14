@@ -4,7 +4,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { ResendInboundEmail } from '@/types/channels';
+import type { InboundEmail } from '@/types/channels';
 import type { Ticket, Message, EmailThread } from '@/types/database';
 import { findOrCreateCustomerByEmail } from '@/lib/channels/customer';
 
@@ -31,7 +31,7 @@ interface ProcessEmailResult {
  * Process an inbound email
  */
 export async function processInboundEmail(
-  email: ResendInboundEmail
+  email: InboundEmail
 ): Promise<ProcessEmailResult> {
   // Extract sender info
   const fromAddress = parseEmailAddress(email.from);

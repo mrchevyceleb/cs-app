@@ -125,7 +125,7 @@
     <h2>How to Embed the Widget</h2>
     <p>Add this script tag to any website:</p>
     <pre>&lt;script
-  src="http://localhost:3000/widget/loader.js"
+  src="http://localhost:3002/widget/loader.js"
   data-position="bottom-right"
   data-primary-color="#4F46E5"
   data-greeting="Hi! How can we help?"
@@ -202,7 +202,18 @@
     });
   </script>
 
-  <!-- Load the widget -->
+  <!-- Load the widget
+    Available data attributes:
+      data-position       - Widget position: "bottom-right" (default) or "bottom-left"
+      data-primary-color  - Hex brand color, e.g. "#4F46E5" (default: #4F46E5)
+      data-greeting       - Welcome message shown in chat header
+      data-company-name   - Company name displayed in the widget
+      data-theme          - Color theme: "light", "dark", or "auto" (default: auto)
+      data-z-index        - CSS z-index for the widget container (default: 999999)
+      data-agent-name     - Display name for the AI agent (default: "Nova")
+      data-agent-avatar-url - URL to a custom agent avatar image
+      data-base-url       - Override the app base URL (useful when loader.js is served from a CDN)
+  -->
   <script
     src="/widget/loader.js"
     data-position="bottom-right"

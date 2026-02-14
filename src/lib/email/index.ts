@@ -1,5 +1,5 @@
 // Email client and configuration
-export { resend, emailConfig, sendEmail } from './client'
+export { emailConfig, sendEmail } from './client'
 export type { SendEmailOptions, SendEmailResult } from './client'
 
 // Email templates

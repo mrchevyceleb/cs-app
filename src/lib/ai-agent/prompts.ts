@@ -65,22 +65,11 @@ ${channelRules}
 }
 
 const CHANNEL_RULES: Record<string, string> = {
-  sms: `## Channel: SMS
-- Keep responses under 1500 characters
-- No markdown formatting
-- Be extremely concise — short sentences, key facts only
-- Skip pleasantries and get to the answer`,
-
   email: `## Channel: Email
 - Include a brief greeting and sign-off
 - Can use basic formatting (bold for emphasis)
 - Can include links when helpful
 - Structure with paragraphs for readability`,
-
-  slack: `## Channel: Slack
-- Can use Slack mrkdwn formatting (*bold*, _italic_, \`code\`)
-- Keep it conversational
-- Can use bullet points and code blocks for technical content`,
 
   widget: `## Channel: Widget/Chat
 - LIVE CHAT widget. Write like you're texting, not emailing.

@@ -246,13 +246,9 @@ export type Database = {
           subject: string
           tags: string[]
           updated_at: string
-          // SLA fields
-          sla_policy_id: string | null
-          first_response_at: string | null
-          first_response_due_at: string | null
-          resolution_due_at: string | null
-          first_response_breached: boolean
-          resolution_breached: boolean
+          // Lifecycle fields
+          follow_up_at: string | null
+          auto_close_at: string | null
           // Channel field
           source_channel: ChannelType
         }
@@ -268,13 +264,9 @@ export type Database = {
           subject: string
           tags?: string[]
           updated_at?: string
-          // SLA fields
-          sla_policy_id?: string | null
-          first_response_at?: string | null
-          first_response_due_at?: string | null
-          resolution_due_at?: string | null
-          first_response_breached?: boolean
-          resolution_breached?: boolean
+          // Lifecycle fields
+          follow_up_at?: string | null
+          auto_close_at?: string | null
           // Channel field
           source_channel?: ChannelType
         }
@@ -290,13 +282,9 @@ export type Database = {
           subject?: string
           tags?: string[]
           updated_at?: string
-          // SLA fields
-          sla_policy_id?: string | null
-          first_response_at?: string | null
-          first_response_due_at?: string | null
-          resolution_due_at?: string | null
-          first_response_breached?: boolean
-          resolution_breached?: boolean
+          // Lifecycle fields
+          follow_up_at?: string | null
+          auto_close_at?: string | null
           // Channel field
           source_channel?: ChannelType
         }
@@ -315,53 +303,7 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "tickets_sla_policy_id_fkey"
-            columns: ["sla_policy_id"]
-            isOneToOne: false
-            referencedRelation: "sla_policies"
-            referencedColumns: ["id"]
-          }
         ]
-      }
-      sla_policies: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          priority: 'low' | 'normal' | 'high' | 'urgent'
-          first_response_hours: number
-          resolution_hours: number
-          business_hours_only: boolean
-          is_default: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          priority: 'low' | 'normal' | 'high' | 'urgent'
-          first_response_hours: number
-          resolution_hours: number
-          business_hours_only?: boolean
-          is_default?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          priority?: 'low' | 'normal' | 'high' | 'urgent'
-          first_response_hours?: number
-          resolution_hours?: number
-          business_hours_only?: boolean
-          is_default?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       canned_responses: {
         Row: {
@@ -621,7 +563,6 @@ export type Database = {
           avg_first_response_time_hours: number | null
           avg_csat_score: number | null
           csat_response_count: number
-          sla_compliance_rate: number | null
           ai_resolution_rate: number | null
           escalation_rate: number | null
           tickets_by_priority: Json | null
@@ -671,7 +612,7 @@ export type Database = {
         Row: {
           id: string
           agent_id: string
-          type: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'sla_warning' | 'feedback'
+          type: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback'
           title: string
           message: string | null
           ticket_id: string | null
@@ -682,7 +623,7 @@ export type Database = {
         Insert: {
           id?: string
           agent_id: string
-          type: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'sla_warning' | 'feedback'
+          type: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback'
           title: string
           message?: string | null
           ticket_id?: string | null
@@ -693,7 +634,7 @@ export type Database = {
         Update: {
           id?: string
           agent_id?: string
-          type?: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'sla_warning' | 'feedback'
+          type?: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback'
           title?: string
           message?: string | null
           ticket_id?: string | null
@@ -789,7 +730,7 @@ export type Database = {
           name: string
           description: string | null
           is_active: boolean
-          trigger_event: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'sla_breach' | 'message_received'
+          trigger_event: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'message_received'
           conditions: Json
           actions: Json
           priority: number
@@ -802,7 +743,7 @@ export type Database = {
           name: string
           description?: string | null
           is_active?: boolean
-          trigger_event: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'sla_breach' | 'message_received'
+          trigger_event: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'message_received'
           conditions?: Json
           actions?: Json
           priority?: number
@@ -815,7 +756,7 @@ export type Database = {
           name?: string
           description?: string | null
           is_active?: boolean
-          trigger_event?: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'sla_breach' | 'message_received'
+          trigger_event?: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'message_received'
           conditions?: Json
           actions?: Json
           priority?: number
@@ -838,7 +779,7 @@ export type Database = {
           id: string
           workflow_rule_id: string
           ticket_id: string
-          trigger_event: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'sla_breach' | 'message_received'
+          trigger_event: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'message_received'
           event_data: Json
           conditions_matched: boolean
           actions_executed: Json
@@ -852,7 +793,7 @@ export type Database = {
           id?: string
           workflow_rule_id: string
           ticket_id: string
-          trigger_event: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'sla_breach' | 'message_received'
+          trigger_event: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'message_received'
           event_data?: Json
           conditions_matched?: boolean
           actions_executed?: Json
@@ -866,7 +807,7 @@ export type Database = {
           id?: string
           workflow_rule_id?: string
           ticket_id?: string
-          trigger_event?: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'sla_breach' | 'message_received'
+          trigger_event?: 'ticket_created' | 'status_changed' | 'priority_changed' | 'ticket_assigned' | 'message_received'
           event_data?: Json
           conditions_matched?: boolean
           actions_executed?: Json
@@ -1022,7 +963,7 @@ export type Database = {
       channel_config: {
         Row: {
           id: string
-          channel: 'sms' | 'email' | 'slack' | 'widget'
+          channel: 'email' | 'widget'
           enabled: boolean
           config: Json
           ai_auto_respond: boolean
@@ -1034,7 +975,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          channel: 'sms' | 'email' | 'slack' | 'widget'
+          channel: 'email' | 'widget'
           enabled?: boolean
           config?: Json
           ai_auto_respond?: boolean
@@ -1046,7 +987,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          channel?: 'sms' | 'email' | 'slack' | 'widget'
+          channel?: 'email' | 'widget'
           enabled?: boolean
           config?: Json
           ai_auto_respond?: boolean
@@ -1572,26 +1513,6 @@ export interface MessageMetadata {
   is_internal?: boolean
 }
 
-// SLA Types
-export type SlaPolicy = Database['public']['Tables']['sla_policies']['Row']
-export type SlaPolicyInsert = Database['public']['Tables']['sla_policies']['Insert']
-export type SlaPolicyUpdate = Database['public']['Tables']['sla_policies']['Update']
-
-export type SlaStatus = 'ok' | 'warning' | 'breached'
-
-export interface SlaInfo {
-  status: SlaStatus
-  dueAt: Date | null
-  timeRemaining: string | null
-  percentageUsed: number
-  isFirstResponse: boolean
-  breached: boolean
-}
-
-// Extended ticket type with SLA info
-export interface TicketWithSla extends Ticket {
-  sla_policy?: SlaPolicy | null
-}
 
 // Ticket Event Types
 export type TicketEventType =
@@ -1763,7 +1684,6 @@ export type WorkflowTriggerEvent =
   | 'status_changed'
   | 'priority_changed'
   | 'ticket_assigned'
-  | 'sla_breach'
   | 'message_received'
 
 // Condition operators
@@ -1910,7 +1830,7 @@ export interface WorkflowTestResult {
 // ==========================================
 
 // Notification types
-export type NotificationType = 'mention' | 'handoff' | 'assignment' | 'escalation' | 'sla_warning' | 'feedback'
+export type NotificationType = 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback'
 
 // Handoff status
 export type HandoffStatus = 'pending' | 'accepted' | 'declined'
@@ -2179,13 +2099,12 @@ export interface KnowledgeArticleDraftInsert {
 export type ProactiveOutreachType =
   | 'stalled_revival'
   | 'post_resolution_checkin'
-  | 'sla_warning'
   | 'health_score_intervention'
   | 'issue_broadcast'
   | 'milestone_celebration'
   | 'at_risk_alert'
 
-export type OutreachChannel = 'email' | 'sms' | 'widget' | 'slack' | 'internal'
+export type OutreachChannel = 'email' | 'widget' | 'internal'
 export type OutreachDeliveryStatus = 'pending' | 'sent' | 'delivered' | 'failed' | 'opened' | 'clicked'
 
 export interface ProactiveOutreachLog {
@@ -2228,48 +2147,6 @@ export interface ProactiveOutreachLogInsert {
   created_at?: string
 }
 
-// SLA Predictions
-export type SLAPredictionType = 'first_response' | 'resolution'
-export type SLAPredictionOutcome = 'met' | 'breached' | 'cancelled'
-
-export interface SLAPredictionFactors {
-  queue_depth?: number
-  agent_workload?: number
-  ticket_complexity?: number
-  historical_breach_rate?: number
-  time_of_day?: string
-  day_of_week?: string
-}
-
-export interface SLAPrediction {
-  id: string
-  ticket_id: string
-  prediction_type: SLAPredictionType
-  predicted_breach_probability: number
-  predicted_breach_at: string | null
-  hours_until_breach: number | null
-  contributing_factors: SLAPredictionFactors
-  recommendation: string | null
-  notification_sent: boolean
-  notification_sent_at: string | null
-  actual_outcome: SLAPredictionOutcome | null
-  created_at: string
-}
-
-export interface SLAPredictionInsert {
-  id?: string
-  ticket_id: string
-  prediction_type: SLAPredictionType
-  predicted_breach_probability: number
-  predicted_breach_at?: string | null
-  hours_until_breach?: number | null
-  contributing_factors?: SLAPredictionFactors
-  recommendation?: string | null
-  notification_sent?: boolean
-  notification_sent_at?: string | null
-  actual_outcome?: SLAPredictionOutcome | null
-  created_at?: string
-}
 
 // Issue Patterns
 export type IssueSeverity = 'low' | 'medium' | 'high' | 'critical'
@@ -2351,7 +2228,7 @@ export interface VolumeForecastInsert {
 
 // Ticket Queue Scores (Smart Queue)
 export interface QueueScoringFactors {
-  sla_hours_remaining?: number
+  lifecycle_hours_remaining?: number
   customer_lifetime_value?: number
   message_count?: number
   sentiment_analysis?: string
@@ -2361,7 +2238,7 @@ export interface QueueScoringFactors {
 export interface TicketQueueScore {
   ticket_id: string
   composite_score: number
-  sla_urgency_score: number
+  lifecycle_urgency_score: number
   customer_value_score: number
   complexity_score: number
   wait_time_score: number

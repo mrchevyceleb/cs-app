@@ -19,8 +19,6 @@ function getMaxTokensForChannel(channel: string): number {
     case 'widget':
     case 'portal':
       return 300
-    case 'sms':
-      return 200
     default:
       return 1024
   }

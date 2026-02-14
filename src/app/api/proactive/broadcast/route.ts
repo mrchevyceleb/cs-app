@@ -22,7 +22,7 @@ interface BroadcastRequest {
   customerIds?: string[] // Specific customer IDs to notify
   subject: string
   message: string
-  channel?: 'email' | 'sms' | 'internal' // Default: email
+  channel?: 'email' | 'internal' // Default: email
   markPatternResolved?: boolean
 }
 
@@ -226,27 +226,6 @@ export async function POST(request: NextRequest) {
         } catch (err) {
           success = false
           error = err instanceof Error ? err.message : 'Email send failed'
-        }
-      } else if (channel === 'sms') {
-        // Get customer phone
-        const { data: customerData } = await supabase
-          .from('customers')
-          .select('phone_number')
-          .eq('id', customer.id)
-          .single()
-
-        if (customerData?.phone_number) {
-          try {
-            const { sendSms } = await import('@/lib/twilio/client')
-            const result = await sendSms(customerData.phone_number, message)
-            success = result.success
-            error = result.error
-          } catch (err) {
-            success = false
-            error = err instanceof Error ? err.message : 'SMS send failed'
-          }
-        } else {
-          error = 'No phone number'
         }
       } else if (channel === 'internal' && customer.ticketId) {
         // Add message to ticket
