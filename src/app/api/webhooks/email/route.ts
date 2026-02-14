@@ -4,7 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { processInboundEmail } from '@/lib/email/inbound';
+import { processEmailWithAI } from '@/lib/email/ai-loop';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { InboundEmail } from '@/types/channels';
 
@@ -141,6 +143,31 @@ export async function POST(request: NextRequest) {
           processed_at: new Date().toISOString(),
         })
         .eq('id', logEntry.id);
+    }
+
+    // Extract sender info for AI processing
+    const senderAddress = (() => {
+      const match = from.match(/<([^>]+)>/) || from.match(/([^\s<]+@[^\s>]+)/);
+      return match ? match[1] : from;
+    })();
+    const senderName = (() => {
+      const match = from.match(/^"?([^"<]+)"?\s*</);
+      return match ? match[1].trim() : null;
+    })();
+    const emailContent = (text || '').trim();
+
+    // Trigger AI processing in the background (fire-and-forget)
+    // Webhook returns 200 immediately to SendGrid while AI processes
+    if (emailContent) {
+      after(() =>
+        processEmailWithAI(
+          result.ticket_id,
+          emailContent,
+          result.customer_id,
+          senderAddress,
+          senderName
+        ).catch(err => console.error('[Email AI] Background processing error:', err))
+      );
     }
 
     return NextResponse.json({

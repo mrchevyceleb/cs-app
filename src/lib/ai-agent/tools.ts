@@ -112,6 +112,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
 export interface ToolContext {
   ticketId: string
   customerId: string
+  channel?: string
 }
 
 /**
@@ -237,10 +238,19 @@ ${tickets.length > 0
     }
 
     case 'escalate_to_human': {
-      // Validate that the agent has actually tried searching first
-      if (priorToolCallCount < 2) {
+      // Channel-aware escalation gate: widget requires more effort than other channels
+      const minToolCalls = context.channel === 'widget' || context.channel === 'portal' ? 4
+        : context.channel === 'email' ? 3
+        : 2
+
+      if (priorToolCallCount < minToolCalls) {
         result =
-          'You must try searching the knowledge base and web first before escalating. Please use search_knowledge_base or search_web tools to find information for the customer.'
+          `You must try harder before escalating. You've only used ${priorToolCallCount} tools (minimum: ${minToolCalls}). ` +
+          'Try: (1) search_knowledge_base with different phrasings, ' +
+          '(2) search_web for broader information, ' +
+          '(3) get_customer_context for account details, ' +
+          '(4) ask the customer a clarifying question. ' +
+          'Only escalate after exhausting these options.'
         outputSummary = 'Escalation blocked: insufficient tool usage'
         break
       }

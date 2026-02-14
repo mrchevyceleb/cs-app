@@ -7,6 +7,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { InboundEmail } from '@/types/channels';
 import type { Ticket, Message, EmailThread } from '@/types/database';
 import { findOrCreateCustomerByEmail } from '@/lib/channels/customer';
+import { classifyTicketPriority } from '@/lib/ai-agent/classify';
 
 // Lazy initialization to avoid build-time errors when env vars aren't available
 let _supabase: SupabaseClient | null = null;
@@ -90,6 +91,10 @@ export async function processInboundEmail(
   if (ticket) {
     isNewTicket = false;
   } else {
+    // Classify urgency from email content
+    const emailContent = email.text || stripHtml(email.html || '') || '';
+    const priority = await classifyTicketPriority(emailContent, email.subject);
+
     // Create new ticket
     const { data: newTicket, error } = await getSupabase()
       .from('tickets')
@@ -97,7 +102,7 @@ export async function processInboundEmail(
         customer_id: customer.id,
         subject: cleanSubject(email.subject),
         status: 'open',
-        priority: 'normal',
+        priority,
         source_channel: 'email',
       })
       .select()

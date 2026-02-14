@@ -243,7 +243,8 @@ export async function sendAgentReplyEmail(
   ticket: Ticket,
   message: Message,
   customer: Customer,
-  token?: string
+  token?: string,
+  fromOverride?: string
 ): Promise<{ success: boolean; emailLogId?: string; error?: string }> {
   // Skip if customer has no email
   if (!customer.email) {
@@ -283,6 +284,7 @@ export async function sendAgentReplyEmail(
     subject,
     html,
     text,
+    from: fromOverride,
     tags: [
       { name: 'type', value: 'agent_reply' },
       { name: 'ticket_id', value: ticket.id },

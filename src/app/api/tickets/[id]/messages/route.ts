@@ -191,8 +191,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .update(updateData)
       .eq('id', id)
 
-    // Send email notification for agent replies (not internal notes)
-    if (senderType === 'agent' && !isInternal && message && ticket.customer) {
+    // Send email notification for agent replies on email-sourced tickets (not internal notes)
+    // Widget/portal tickets are delivered via Supabase Realtime - no email needed
+    if (senderType === 'agent' && !isInternal && message && ticket.customer && ticket.source_channel === 'email') {
       const customer = ticket.customer as Customer
       if (customer.email) {
         const portalToken = await generatePortalToken(customer.id, ticket.id)
@@ -200,6 +201,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           console.error('[Messages API] Failed to generate portal token for agent reply email')
         } else {
           // Send email asynchronously (don't wait for it)
+          // Human agent replies use the standard from address (not Ava)
           sendAgentReplyEmail(ticket as Ticket, message as Message, customer, portalToken)
             .then((result) => {
               if (result.success) {

@@ -18,7 +18,7 @@ function getMaxTokensForChannel(channel: string): number {
   switch (channel) {
     case 'widget':
     case 'portal':
-      return 300
+      return 500
     default:
       return 1024
   }
@@ -64,6 +64,7 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
   const toolContext: ToolContext = {
     ticketId: input.ticket.id,
     customerId: input.customer.id,
+    channel: input.channel,
   }
 
   // Agentic loop
@@ -284,6 +285,7 @@ export async function* agenticSolveStreaming(
   const toolContext: ToolContext = {
     ticketId: input.ticket.id,
     customerId: input.customer.id,
+    channel: input.channel,
   }
 
   yield { type: 'thinking' }

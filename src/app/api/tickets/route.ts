@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const priority = searchParams.get('priority')
     const aiHandled = searchParams.get('aiHandled')
+    const queue = searchParams.get('queue') // 'ai' | 'human' | null
     const search = searchParams.get('search')
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
@@ -39,6 +40,10 @@ export async function GET(request: NextRequest) {
 
     if (aiHandled !== null && aiHandled !== 'all') {
       query = query.eq('ai_handled', aiHandled === 'true')
+    }
+
+    if (queue && (queue === 'ai' || queue === 'human')) {
+      query = query.eq('queue_type', queue)
     }
 
     if (search) {

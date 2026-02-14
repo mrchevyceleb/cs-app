@@ -236,12 +236,14 @@ export type Database = {
       tickets: {
         Row: {
           ai_confidence: number | null
+          ai_exchange_count: number
           ai_handled: boolean
           assigned_agent_id: string | null
           created_at: string
           customer_id: string
           id: string
           priority: 'low' | 'normal' | 'high' | 'urgent'
+          queue_type: 'ai' | 'human'
           status: 'open' | 'pending' | 'resolved' | 'escalated'
           subject: string
           tags: string[]
@@ -254,12 +256,14 @@ export type Database = {
         }
         Insert: {
           ai_confidence?: number | null
+          ai_exchange_count?: number
           ai_handled?: boolean
           assigned_agent_id?: string | null
           created_at?: string
           customer_id: string
           id?: string
           priority?: 'low' | 'normal' | 'high' | 'urgent'
+          queue_type?: 'ai' | 'human'
           status?: 'open' | 'pending' | 'resolved' | 'escalated'
           subject: string
           tags?: string[]
@@ -272,12 +276,14 @@ export type Database = {
         }
         Update: {
           ai_confidence?: number | null
+          ai_exchange_count?: number
           ai_handled?: boolean
           assigned_agent_id?: string | null
           created_at?: string
           customer_id?: string
           id?: string
           priority?: 'low' | 'normal' | 'high' | 'urgent'
+          queue_type?: 'ai' | 'human'
           status?: 'open' | 'pending' | 'resolved' | 'escalated'
           subject?: string
           tags?: string[]

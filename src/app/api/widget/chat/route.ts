@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getWidgetSession } from '@/lib/widget/auth'
 import { getAgentConfig } from '@/lib/ai-agent/config'
 import { agenticSolveStreaming } from '@/lib/ai-agent/engine'
+import { classifyTicketPriority } from '@/lib/ai-agent/classify'
 import { withFallback } from '@/lib/claude/client'
 import type { AgentResult } from '@/lib/ai-agent/types'
 
@@ -97,12 +98,15 @@ export async function POST(request: NextRequest) {
     if (!ticketId) {
       const subject = content.trim().slice(0, 100)
 
+      // Classify urgency from first message (fast Haiku call, ~200ms)
+      const priority = await classifyTicketPriority(content.trim(), subject)
+
       const { data: newTicket, error: ticketError } = await supabase
         .from('tickets')
         .insert({
           subject,
           status: 'open',
-          priority: 'normal',
+          priority,
           customer_id: session.customerId,
           source_channel: 'widget',
         })
@@ -294,7 +298,7 @@ export async function POST(request: NextRequest) {
               .select('id')
               .single()
 
-            // Log agent session
+            // Log agent session and update ticket queue
             if (agentResult) {
               const inputCost = (agentResult.inputTokens / 1_000_000) * 3
               const outputCost = (agentResult.outputTokens / 1_000_000) * 15
@@ -316,6 +320,19 @@ export async function POST(request: NextRequest) {
                   escalation_reason: agentResult.escalationReason,
                   escalation_summary: agentResult.escalationSummary,
                 } as any)
+
+              // Move to human queue on escalation or timeout
+              if (agentResult.type === 'escalation' || agentResult.type === 'timeout') {
+                await supabase
+                  .from('tickets')
+                  .update({
+                    status: 'escalated',
+                    queue_type: 'human',
+                    ai_handled: false,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', ticketId)
+              }
             }
 
             // Send completion event

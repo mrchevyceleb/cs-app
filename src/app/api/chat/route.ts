@@ -208,6 +208,7 @@ export async function POST(request: NextRequest) {
           ai_confidence: agentResult.confidence,
           status: shouldEscalate ? 'escalated' : ticket.status,
           ai_handled: !shouldEscalate,
+          queue_type: shouldEscalate ? 'human' : undefined,
           updated_at: new Date().toISOString(),
         })
         .eq('id', currentTicketId)
@@ -281,6 +282,7 @@ export async function POST(request: NextRequest) {
       .update({
         ai_confidence: aiResponse.confidence,
         status: aiResponse.shouldEscalate ? 'escalated' : ticket.status,
+        queue_type: aiResponse.shouldEscalate ? 'human' : undefined,
         updated_at: new Date().toISOString(),
       })
       .eq('id', currentTicketId)
@@ -291,6 +293,7 @@ export async function POST(request: NextRequest) {
         .update({
           ai_handled: false,
           status: 'escalated',
+          queue_type: 'human',
         })
         .eq('id', currentTicketId)
     }

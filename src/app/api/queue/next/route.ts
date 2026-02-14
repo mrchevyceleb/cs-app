@@ -83,6 +83,7 @@ export async function POST() {
         *,
         customer:customers(*)
       `)
+      .eq('queue_type', 'human')
       .in('status', ['open', 'escalated'])
       .is('assigned_agent_id', null)
       .order('created_at', { ascending: true })

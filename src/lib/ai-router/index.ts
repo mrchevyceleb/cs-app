@@ -14,6 +14,7 @@ import { dispatchWebhook } from '@/lib/webhooks/service';
 import { searchKnowledgeHybrid } from '@/lib/knowledge/search';
 import { getAgentConfig } from '@/lib/ai-agent/config';
 import { agenticSolve } from '@/lib/ai-agent/engine';
+import { classifyTicketPriority } from '@/lib/ai-agent/classify';
 import type { AgentResult } from '@/lib/ai-agent/types';
 
 // Lazy initialization to avoid build-time errors when env vars aren't available
@@ -90,14 +91,18 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     if (recentTicket) {
       ticket = recentTicket;
     } else {
+      // Classify urgency from message content
+      const subject = request.subject || generateSubject(request.message_content);
+      const priority = await classifyTicketPriority(request.message_content, subject);
+
       // Create new ticket
       const { data: newTicket, error } = await getSupabase()
         .from('tickets')
         .insert({
           customer_id: customer.id,
-          subject: request.subject || generateSubject(request.message_content),
+          subject,
           status: 'open',
-          priority: 'normal',
+          priority,
           source_channel: request.channel,
         })
         .select()
@@ -184,6 +189,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
   if (routingDecision.action === 'escalate') {
     ticketUpdate.status = 'escalated';
     ticketUpdate.priority = 'high';
+    (ticketUpdate as any).queue_type = 'human';
   }
 
   await getSupabase()

@@ -11,23 +11,48 @@ import { fetchTicketById, fetchTicketMessages } from '@/lib/api/tickets'
 
 const PAGE_SIZE = 20
 
+type QueueTab = 'human' | 'ai' | 'all'
+
 export default function TicketsPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [filters, setFilters] = useState<FilterOptions>(defaultFilters)
   const [currentPage, setCurrentPage] = useState(0)
+  const [activeQueue, setActiveQueue] = useState<QueueTab>('human')
 
-  // Reset to first page when filters change
+  // Reset to first page when filters or queue tab change
   useEffect(() => {
     setCurrentPage(0)
-  }, [filters])
+  }, [filters, activeQueue])
+
+  // Fetch queue counts for tab badges
+  const { data: queueCounts } = useQuery({
+    queryKey: ['queue-counts'],
+    queryFn: async () => {
+      const [humanRes, aiRes] = await Promise.all([
+        fetch('/api/tickets?queue=human&limit=0'),
+        fetch('/api/tickets?queue=ai&limit=0'),
+      ])
+      const [humanData, aiData] = await Promise.all([humanRes.json(), aiRes.json()])
+      return {
+        human: humanData.total || 0,
+        ai: aiData.total || 0,
+      }
+    },
+    refetchInterval: 30000,
+  })
 
   const { data, isPending } = useQuery({
-    queryKey: ['tickets', filters, currentPage],
+    queryKey: ['tickets', filters, currentPage, activeQueue],
     queryFn: async ({ signal }) => {
       const params = new URLSearchParams()
       params.set('limit', String(PAGE_SIZE))
       params.set('offset', String(currentPage * PAGE_SIZE))
+
+      // Apply queue filter
+      if (activeQueue !== 'all') {
+        params.set('queue', activeQueue)
+      }
 
       if (filters.search) {
         params.set('search', filters.search)
@@ -93,10 +118,10 @@ export default function TicketsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            All Tickets
+            {activeQueue === 'human' ? 'Human Queue' : activeQueue === 'ai' ? 'AI Queue' : 'All Tickets'}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {isLoading ? 'Loading...' : `${totalCount} total tickets`}
+            {isLoading ? 'Loading...' : activeQueue === 'human' ? `${totalCount} tickets need attention` : `${totalCount} tickets`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -108,6 +133,36 @@ export default function TicketsPage() {
             + New Ticket
           </Button>
         </div>
+      </div>
+
+      {/* Queue Tabs */}
+      <div className="flex gap-1 p-1 bg-muted/50 rounded-lg w-fit">
+        {([
+          { key: 'human' as QueueTab, label: 'Human Queue', count: queueCounts?.human },
+          { key: 'ai' as QueueTab, label: 'AI Queue', count: queueCounts?.ai },
+          { key: 'all' as QueueTab, label: 'All' },
+        ]).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveQueue(tab.key)}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              activeQueue === tab.key
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab.label}
+            {tab.count !== undefined && (
+              <span className={`ml-2 px-1.5 py-0.5 text-xs rounded-full ${
+                activeQueue === tab.key
+                  ? tab.key === 'human' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                  : 'bg-muted text-muted-foreground'
+              }`}>
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Filters */}
