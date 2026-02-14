@@ -2,7 +2,7 @@ import type { ToolContext, ToolResult } from '../types'
 
 // Import individual handlers
 import { lookupCustomer, updateCustomer } from './customer'
-import { searchTickets, updateTicket, escalateTicket, getTicketSummary } from './tickets'
+import { searchTickets, updateTicket, escalateTicket, getTicketSummary, createTicket } from './tickets'
 import { searchKnowledgeBase, browseKBArticle } from './knowledge'
 import { generateResponse } from './response'
 import { analyzeSentiment } from './analysis'
@@ -16,6 +16,7 @@ export {
   updateTicket,
   escalateTicket,
   getTicketSummary,
+  createTicket,
   searchKnowledgeBase,
   browseKBArticle,
   generateResponse,
@@ -35,6 +36,7 @@ export type ToolName =
   | 'browse_kb_article'
   | 'generate_response'
   | 'analyze_sentiment'
+  | 'create_ticket'
   | 'process_refund'
 
 /**
@@ -143,6 +145,19 @@ export async function executeTool(
         return await analyzeSentiment(
           {
             ticket_id: toolInput.ticket_id as string,
+          },
+          context
+        )
+
+      case 'create_ticket':
+        return await createTicket(
+          {
+            customer_email: toolInput.customer_email as string,
+            customer_name: toolInput.customer_name as string | undefined,
+            subject: toolInput.subject as string,
+            description: toolInput.description as string,
+            priority: toolInput.priority as 'low' | 'normal' | 'high' | 'urgent' | undefined,
+            source_channel: toolInput.source_channel as string | undefined,
           },
           context
         )

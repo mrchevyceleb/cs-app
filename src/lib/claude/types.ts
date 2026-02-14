@@ -91,6 +91,16 @@ export interface AnalyzeSentimentInput {
   ticket_id: string
 }
 
+// create_ticket
+export interface CreateTicketInput {
+  customer_email: string
+  customer_name?: string
+  subject: string
+  description: string
+  priority?: 'low' | 'normal' | 'high' | 'urgent'
+  source_channel?: string
+}
+
 // ==========================================
 // Tool Output Types
 // ==========================================

@@ -225,6 +225,42 @@ export const copilotTools: Tool[] = [
     },
   },
   {
+    name: 'create_ticket',
+    description: 'Create a new support ticket for a customer. Finds the customer by email (creates them if new) and opens a ticket with the given issue. Use when an agent asks you to create/open/file a ticket.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        customer_email: {
+          type: 'string',
+          description: 'Customer email address',
+        },
+        customer_name: {
+          type: 'string',
+          description: 'Customer name (optional, used if creating new customer)',
+        },
+        subject: {
+          type: 'string',
+          description: 'Brief subject line for the ticket',
+        },
+        description: {
+          type: 'string',
+          description: 'Full description of the issue',
+        },
+        priority: {
+          type: 'string',
+          enum: ['low', 'normal', 'high', 'urgent'],
+          description: 'Priority level (auto-classified from description if omitted)',
+        },
+        source_channel: {
+          type: 'string',
+          enum: ['dashboard', 'portal', 'widget', 'email', 'api'],
+          description: 'How the customer contacted support (default: dashboard)',
+        },
+      },
+      required: ['customer_email', 'subject', 'description'],
+    },
+  },
+  {
     name: 'analyze_sentiment',
     description: 'Analyze customer sentiment from recent messages. Returns sentiment score and indicators.',
     input_schema: {

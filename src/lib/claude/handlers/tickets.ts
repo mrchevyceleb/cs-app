@@ -5,9 +5,12 @@ import type {
   UpdateTicketInput,
   EscalateTicketInput,
   GetTicketSummaryInput,
+  CreateTicketInput,
   TicketSearchResult,
   TicketSummary,
 } from '../types'
+import type { ChannelType } from '@/types/channels'
+import { classifyTicketPriority } from '@/lib/ai-agent/classify'
 import { withFallback, COPILOT_MODEL } from '../client'
 import { TICKET_SUMMARY_PROMPT } from '../prompts'
 
@@ -404,6 +407,135 @@ export async function getTicketSummary(
     return {
       success: false,
       error: 'Failed to generate ticket summary',
+    }
+  }
+}
+
+/**
+ * Create a new support ticket for a customer
+ * Finds customer by email (creates if not found) and opens a ticket
+ */
+export async function createTicket(
+  input: CreateTicketInput,
+  context: ToolContext
+): Promise<ToolResult> {
+  const { supabase, agentId } = context
+
+  if (!input.customer_email || !input.subject || !input.description) {
+    return {
+      success: false,
+      error: 'customer_email, subject, and description are required',
+    }
+  }
+
+  try {
+    // Look up customer by email (case-insensitive)
+    let customerId: string
+    let customerName: string | null = null
+
+    const { data: existingCustomer } = await supabase
+      .from('customers')
+      .select('id, name')
+      .ilike('email', input.customer_email)
+      .single()
+
+    if (existingCustomer) {
+      customerId = existingCustomer.id
+      customerName = existingCustomer.name
+
+      // Update name if provided and customer doesn't have one
+      if (input.customer_name && !existingCustomer.name) {
+        await supabase
+          .from('customers')
+          .update({ name: input.customer_name })
+          .eq('id', customerId)
+        customerName = input.customer_name
+      }
+    } else {
+      // Create new customer
+      const { data: newCustomer, error: createError } = await supabase
+        .from('customers')
+        .insert({
+          email: input.customer_email.toLowerCase(),
+          name: input.customer_name || null,
+        })
+        .select('id, name')
+        .single()
+
+      if (createError || !newCustomer) {
+        return {
+          success: false,
+          error: `Failed to create customer: ${createError?.message || 'Unknown error'}`,
+        }
+      }
+
+      customerId = newCustomer.id
+      customerName = newCustomer.name
+    }
+
+    // Classify priority if not provided
+    const priority = input.priority || await classifyTicketPriority(input.description, input.subject)
+
+    // Insert the ticket
+    const { data: ticket, error: ticketError } = await supabase
+      .from('tickets')
+      .insert({
+        customer_id: customerId,
+        subject: input.subject,
+        status: 'open',
+        priority,
+        source_channel: (input.source_channel || 'dashboard') as ChannelType,
+        queue_type: 'human',
+      })
+      .select('id, subject, status, priority, source_channel, created_at')
+      .single()
+
+    if (ticketError || !ticket) {
+      return {
+        success: false,
+        error: `Failed to create ticket: ${ticketError?.message || 'Unknown error'}`,
+      }
+    }
+
+    // Insert initial message
+    await supabase.from('messages').insert({
+      ticket_id: ticket.id,
+      sender_type: 'customer',
+      content: input.description,
+    })
+
+    // Log creation event
+    await supabase.from('ticket_events').insert({
+      ticket_id: ticket.id,
+      agent_id: agentId || null,
+      event_type: 'created',
+      old_value: null,
+      new_value: 'open',
+    })
+
+    return {
+      success: true,
+      data: {
+        id: ticket.id,
+        subject: ticket.subject,
+        status: ticket.status,
+        priority: ticket.priority,
+        source_channel: ticket.source_channel,
+        created_at: ticket.created_at,
+        customer: {
+          id: customerId,
+          name: customerName,
+          email: input.customer_email,
+          is_new: !existingCustomer,
+        },
+        message: `Ticket created successfully${!existingCustomer ? ' (new customer added)' : ''}`,
+      },
+    }
+  } catch (error) {
+    console.error('createTicket error:', error)
+    return {
+      success: false,
+      error: 'Failed to create ticket',
     }
   }
 }
