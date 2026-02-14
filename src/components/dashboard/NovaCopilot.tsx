@@ -234,7 +234,7 @@ export function NovaCopilot() {
                       : "dark:prose-invert"
                   )}
                 >
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                  <ReactMarkdown>{message.content.replace(/\n(?!\n)/g, '\n\n')}</ReactMarkdown>
                 </div>
                 {message.role === 'assistant' && message.content === '' && (
                    <span className="flex gap-1 items-center mt-1 h-4">
