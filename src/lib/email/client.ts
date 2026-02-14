@@ -13,7 +13,7 @@ if (sendgridApiKey) {
 
 // Email configuration
 export const emailConfig = {
-  from: process.env.EMAIL_FROM || 'R-Link Support <noreply@r-link.com>',
+  from: process.env.EMAIL_FROM || 'R-Link Support <support@r-link.com>',
   aiFrom: process.env.EMAIL_AI_FROM || 'Ava from R-Link Support <support@r-link.com>',
   portalUrl: process.env.PORTAL_URL || 'http://localhost:3000/portal',
   companyName: 'R-Link',
