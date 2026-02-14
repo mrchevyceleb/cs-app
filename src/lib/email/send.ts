@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { sendEmail } from './client'
+import { sendEmail, emailConfig } from './client'
 import {
   ticketCreatedTemplate,
   ticketResolvedTemplate,
@@ -10,6 +10,7 @@ import {
 } from './templates'
 import type { Ticket, Customer, Message } from '@/types/database'
 import { generatePortalToken as generatePortalAccessToken } from '@/lib/portal/auth'
+import { generateMessageId, getEmailReferences } from './inbound'
 
 // Get admin Supabase client for email operations
 function getAdminClient() {
@@ -278,6 +279,19 @@ export async function sendAgentReplyEmail(
   const { html, text } = agentReplyTemplate(emailData)
   const subject = `New reply on your support request - #${ticket.id.slice(0, 8).toUpperCase()}`
 
+  // Build email threading headers so replies thread correctly in customer's inbox
+  const outboundMessageId = generateMessageId(ticket.id, message.id)
+  const existingReferences = await getEmailReferences(ticket.id)
+  const threadingHeaders: Record<string, string> = {
+    'Message-ID': outboundMessageId,
+  }
+  if (existingReferences) {
+    // In-Reply-To is the most recent message in the thread
+    const refList = existingReferences.split(' ')
+    threadingHeaders['In-Reply-To'] = refList[refList.length - 1]
+    threadingHeaders['References'] = existingReferences
+  }
+
   // Send email
   const result = await sendEmail({
     to: customer.email,
@@ -285,12 +299,30 @@ export async function sendAgentReplyEmail(
     html,
     text,
     from: fromOverride,
+    headers: threadingHeaders,
     tags: [
       { name: 'type', value: 'agent_reply' },
       { name: 'ticket_id', value: ticket.id },
       { name: 'message_id', value: message.id },
     ],
   })
+
+  // Save outbound Message-ID to email_threads for future threading
+  if (result.success) {
+    const supabase = getAdminClient()
+    await supabase
+      .from('email_threads')
+      .upsert({
+        ticket_id: ticket.id,
+        message_id_header: outboundMessageId,
+        subject,
+        from_address: fromOverride || emailConfig.from,
+        to_address: customer.email,
+      }, { onConflict: 'message_id_header' })
+      .then(({ error }) => {
+        if (error) console.error('[Email] Failed to save outbound thread header:', error)
+      })
+  }
 
   // Log email
   const emailLog = await logEmail({

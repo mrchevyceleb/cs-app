@@ -28,6 +28,7 @@ export interface SendEmailOptions {
   html: string
   text: string
   from?: string
+  headers?: Record<string, string>
   tags?: { name: string; value: string }[]
 }
 
@@ -62,7 +63,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       html: options.html,
       text: options.text,
       categories: options.tags?.map(t => `${t.name}:${t.value}`),
-      headers: {},
+      headers: options.headers || {},
     })
 
     const messageId = response.headers['x-message-id']
