@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         // Insert follow-up message
         await supabase.from('messages').insert({
           ticket_id: ticket.id,
-          sender_type: 'system',
+          sender_type: 'ai',
           content:
             "Hi! Just checking in - is there anything else we can help with? If not, we'll close this ticket automatically in a few days.",
         })
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
         // Insert closing message
         await supabase.from('messages').insert({
           ticket_id: ticket.id,
-          sender_type: 'system',
+          sender_type: 'ai',
           content: closingMessage,
         })
 

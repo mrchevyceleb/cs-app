@@ -21,11 +21,8 @@ interface AgentMetrics {
   status: 'online' | 'away' | 'offline'
   total_tickets_handled: number
   tickets_resolved: number
-  sla_first_response_met: number
-  sla_resolution_met: number
   avg_csat_rating: number | null
   feedback_count: number
-  avg_first_response_minutes: number | null
   avg_resolution_hours: number | null
   ticket_breakdown: {
     open: number
@@ -258,15 +255,6 @@ export function AgentPerformanceCard({
       ? Math.round((metrics.tickets_resolved / metrics.total_tickets_handled) * 100)
       : 0
 
-  const slaCompliance =
-    metrics.sla_first_response_met + metrics.sla_resolution_met > 0
-      ? Math.round(
-          ((metrics.sla_first_response_met + metrics.sla_resolution_met) /
-            (metrics.total_tickets_handled * 2)) *
-            100
-        )
-      : 100
-
   return (
     <Card className={cn('bg-card border-border/70', className)}>
       <CardHeader className="pb-4">
@@ -353,30 +341,6 @@ export function AgentPerformanceCard({
               )}
             </div>
           </div>
-
-          {/* SLA Compliance */}
-          <MetricItem
-            icon={Icons.shield}
-            label="SLA Compliance"
-            value={`${slaCompliance}%`}
-            colorClass={getPerformanceColor(slaCompliance, { good: 90, warning: 70 })}
-          />
-
-          {/* Avg Response Time */}
-          <MetricItem
-            icon={Icons.clock}
-            label="Avg Response Time"
-            value={formatResponseTime(metrics.avg_first_response_minutes)}
-            colorClass={
-              metrics.avg_first_response_minutes !== null
-                ? metrics.avg_first_response_minutes <= 30
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : metrics.avg_first_response_minutes <= 60
-                  ? 'text-amber-600 dark:text-amber-400'
-                  : 'text-red-600 dark:text-red-400'
-                : 'text-gray-400 dark:text-gray-500'
-            }
-          />
 
           {/* Avg Resolution Time */}
           <MetricItem

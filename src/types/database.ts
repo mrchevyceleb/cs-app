@@ -2236,7 +2236,7 @@ export interface QueueScoringFactors {
 export interface TicketQueueScore {
   ticket_id: string
   composite_score: number
-  lifecycle_urgency_score: number
+  sla_urgency_score: number
   customer_value_score: number
   complexity_score: number
   wait_time_score: number
@@ -2250,7 +2250,7 @@ export interface TicketQueueScore {
 export interface TicketQueueScoreInsert {
   ticket_id: string
   composite_score: number
-  lifecycle_urgency_score?: number
+  sla_urgency_score?: number
   customer_value_score?: number
   complexity_score?: number
   wait_time_score?: number

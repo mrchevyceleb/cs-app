@@ -320,7 +320,7 @@ export async function GET(request: NextRequest) {
       const queueScore: TicketQueueScore = {
         ticket_id: ticket.id,
         composite_score: compositeScore,
-        lifecycle_urgency_score: lifecycleUrgency,
+        sla_urgency_score: lifecycleUrgency,
         customer_value_score: customerValue,
         complexity_score: complexity,
         wait_time_score: waitTime,
@@ -336,7 +336,7 @@ export async function GET(request: NextRequest) {
         const scoreInsert: TicketQueueScoreInsert = {
           ticket_id: ticket.id,
           composite_score: compositeScore,
-          lifecycle_urgency_score: lifecycleUrgency,
+          sla_urgency_score: lifecycleUrgency,
           customer_value_score: customerValue,
           complexity_score: complexity,
           wait_time_score: waitTime,
@@ -461,7 +461,7 @@ export async function POST(request: NextRequest) {
         const scoreInsert: TicketQueueScoreInsert = {
           ticket_id: ticket.id,
           composite_score: compositeScore,
-          lifecycle_urgency_score: lifecycleUrgency,
+          sla_urgency_score: lifecycleUrgency,
           customer_value_score: customerValue,
           complexity_score: complexity,
           wait_time_score: waitTime,
