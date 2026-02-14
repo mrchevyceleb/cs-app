@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, PATCH, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+}
+
 // Handle preflight requests
 export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  })
+  return new NextResponse(null, { status: 200, headers: corsHeaders })
 }
 
 // GET /api/widget/settings - Fetch current widget settings
@@ -32,7 +31,7 @@ export async function GET() {
       )
     }
 
-    return NextResponse.json({ settings })
+    return NextResponse.json({ settings }, { headers: corsHeaders })
   } catch (error) {
     console.error('Widget settings GET error:', error)
     return NextResponse.json(
@@ -138,7 +137,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ settings })
+    return NextResponse.json({ settings }, { headers: corsHeaders })
   } catch (error) {
     console.error('Widget settings PATCH error:', error)
     return NextResponse.json(
