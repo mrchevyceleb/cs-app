@@ -13,6 +13,10 @@ interface BulkUpdateRequest {
   }
 }
 
+interface BulkDeleteRequest {
+  ticketIds: string[]
+}
+
 // Helper to get appropriate client based on auth mode
 async function getSupabaseClient() {
   const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
@@ -132,6 +136,100 @@ export async function PATCH(request: NextRequest) {
     })
   } catch (error) {
     console.error('Bulk update API error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE /api/tickets/bulk - Bulk delete tickets
+export async function DELETE(request: NextRequest) {
+  try {
+    const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
+    const supabase = await getSupabaseClient()
+
+    // Check auth status (skip in dev bypass mode)
+    if (!isDevBypass) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        console.error('Auth error:', authError || 'No user session')
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        )
+      }
+    }
+
+    const body: BulkDeleteRequest = await request.json()
+    const { ticketIds } = body
+
+    if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return NextResponse.json(
+        { error: 'ticketIds must be a non-empty array' },
+        { status: 400 }
+      )
+    }
+
+    // Validate all tickets exist
+    const { data: existingTickets, error: fetchError } = await supabase
+      .from('tickets')
+      .select('id')
+      .in('id', ticketIds)
+
+    if (fetchError) {
+      console.error('Error fetching tickets for bulk delete:', fetchError)
+      return NextResponse.json(
+        { error: 'Failed to validate tickets' },
+        { status: 500 }
+      )
+    }
+
+    const existingIds = new Set(existingTickets?.map((ticket) => ticket.id) || [])
+    const missingIds = ticketIds.filter((id) => !existingIds.has(id))
+
+    if (missingIds.length > 0) {
+      return NextResponse.json(
+        { error: `Some tickets not found: ${missingIds.join(', ')}` },
+        { status: 404 }
+      )
+    }
+
+    // Delete related messages first for compatibility with current schema constraints.
+    const { error: messagesError } = await supabase
+      .from('messages')
+      .delete()
+      .in('ticket_id', ticketIds)
+
+    if (messagesError) {
+      console.error('Error deleting messages in bulk delete:', messagesError)
+      return NextResponse.json(
+        { error: 'Failed to delete ticket messages' },
+        { status: 500 }
+      )
+    }
+
+    const { data: deletedTickets, error: deleteError } = await supabase
+      .from('tickets')
+      .delete()
+      .in('id', ticketIds)
+      .select('id')
+
+    if (deleteError) {
+      console.error('Error deleting tickets in bulk delete:', deleteError)
+      return NextResponse.json(
+        { error: 'Failed to delete tickets' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      deletedCount: deletedTickets?.length || 0,
+      deletedIds: deletedTickets?.map((ticket) => ticket.id) || [],
+    })
+  } catch (error) {
+    console.error('Bulk delete API error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

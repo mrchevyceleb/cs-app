@@ -220,6 +220,36 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
     }
   }
 
+  const handleBulkDelete = async (ticketIds: string[]) => {
+    try {
+      const response = await fetch('/api/tickets/bulk', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ticketIds }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete tickets')
+      }
+
+      setBulkUpdateMessage(`Successfully deleted ${data.deletedCount} ticket${data.deletedCount !== 1 ? 's' : ''}`)
+      setTimeout(() => setBulkUpdateMessage(null), 3000)
+
+      clearSelection()
+      await queryClient.invalidateQueries({ queryKey: ['dashboard-tickets'] })
+      await queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      await queryClient.invalidateQueries({ queryKey: ['queue-counts'] })
+    } catch (err) {
+      console.error('Bulk delete error:', err)
+      setBulkUpdateMessage(`Error: ${err instanceof Error ? err.message : 'Failed to delete tickets'}`)
+      setTimeout(() => setBulkUpdateMessage(null), 5000)
+    }
+  }
+
   // Count badges
   const counts = {
     all: tickets.length,
@@ -355,6 +385,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
         selectedIds={selectedIds}
         onClearSelection={clearSelection}
         onBulkUpdate={handleBulkUpdate}
+        onBulkDelete={handleBulkDelete}
         currentAgentId={currentAgentId}
       />
 

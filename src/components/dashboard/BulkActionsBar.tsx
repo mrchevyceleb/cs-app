@@ -33,6 +33,7 @@ import {
   UserMinus,
   Tag,
   Loader2,
+  Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TicketStatus, TicketPriority } from '@/types/database'
@@ -42,6 +43,7 @@ interface BulkActionsBarProps {
   selectedIds: Set<string>
   onClearSelection: () => void
   onBulkUpdate: (updates: BulkUpdates) => Promise<void>
+  onBulkDelete: (ticketIds: string[]) => Promise<void>
   currentAgentId?: string
 }
 
@@ -71,11 +73,12 @@ export function BulkActionsBar({
   selectedIds,
   onClearSelection,
   onBulkUpdate,
+  onBulkDelete,
   currentAgentId,
 }: BulkActionsBarProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [pendingAction, setPendingAction] = useState<{
-    type: 'status' | 'priority' | 'assign' | 'unassign'
+    type: 'status' | 'priority' | 'assign' | 'unassign' | 'delete'
     value?: string
     label: string
   } | null>(null)
@@ -105,6 +108,18 @@ export function BulkActionsBar({
 
   const confirmPendingAction = async () => {
     if (!pendingAction) return
+
+    if (pendingAction.type === 'delete') {
+      setIsLoading(true)
+      try {
+        await onBulkDelete(Array.from(selectedIds))
+      } finally {
+        setIsLoading(false)
+        setShowConfirmDialog(false)
+        setPendingAction(null)
+      }
+      return
+    }
 
     const updates: BulkUpdates = {}
     if (pendingAction.type === 'status' && pendingAction.value) {
@@ -264,6 +279,24 @@ export function BulkActionsBar({
                   <span className="hidden sm:inline">Add Tags</span>
                 </Button>
 
+                {/* Delete selected */}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isLoading}
+                  className="h-8 gap-1.5"
+                  onClick={() => {
+                    setPendingAction({
+                      type: 'delete',
+                      label: `Delete ${selectedCount} ticket${selectedCount !== 1 ? 's' : ''}`,
+                    })
+                    setShowConfirmDialog(true)
+                  }}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Delete</span>
+                </Button>
+
                 {/* Clear Selection (visible on mobile) */}
                 <Button
                   variant="ghost"
@@ -305,6 +338,15 @@ export function BulkActionsBar({
                   </span>
                 </>
               )}
+              {pendingAction?.type === 'delete' && (
+                <>
+                  <br />
+                  <br />
+                  <span className="text-red-600 dark:text-red-400">
+                    This action permanently deletes the selected tickets and cannot be undone.
+                  </span>
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -313,6 +355,8 @@ export function BulkActionsBar({
               onClick={confirmPendingAction}
               disabled={isLoading}
               className={cn(
+                pendingAction?.type === 'delete' &&
+                  'bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700',
                 pendingAction?.value === 'resolved' &&
                   'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700'
               )}

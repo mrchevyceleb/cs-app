@@ -242,6 +242,43 @@ export default function TicketDetailPage() {
     },
   })
 
+  const deleteTicketMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete ticket')
+      }
+      return data as { success: boolean }
+    },
+    onSuccess: async () => {
+      queryClient.setQueryData<TicketWithCustomer[] | undefined>(['dashboard-tickets'], (old) =>
+        (old || []).filter((ticket) => ticket.id !== ticketId)
+      )
+      queryClient.setQueriesData<{ tickets: TicketWithCustomer[]; total: number } | undefined>(
+        { queryKey: ['tickets'] },
+        (old) => {
+          if (!old?.tickets) return old
+          return {
+            ...old,
+            tickets: old.tickets.filter((ticket) => ticket.id !== ticketId),
+            total: Math.max(0, old.total - 1),
+          }
+        }
+      )
+      queryClient.removeQueries({ queryKey: ['ticket', ticketId] })
+      queryClient.removeQueries({ queryKey: ['ticket-messages', ticketId] })
+      queryClient.removeQueries({ queryKey: ['ticket-events', ticketId] })
+      await queryClient.invalidateQueries({ queryKey: ['queue-counts'] })
+      router.push('/')
+    },
+    onError: (error) => {
+      setSendError(error instanceof Error ? error.message : 'Failed to delete ticket')
+    },
+  })
+
   const handleSendMessage = useCallback((content: string, senderType: 'agent' | 'ai' = 'agent', isInternal: boolean = false, attachmentIds?: string[]) => {
     sendMessageMutation.mutate({ content, senderType, isInternal, attachmentIds })
   }, [sendMessageMutation])
@@ -260,6 +297,11 @@ export default function TicketDetailPage() {
   const handleUpdateTicket = useCallback((updates: Partial<TicketWithCustomer>) => {
     updateTicketMutation.mutate(updates)
   }, [updateTicketMutation])
+
+  const handleDeleteTicket = useCallback(() => {
+    if (deleteTicketMutation.isPending) return
+    deleteTicketMutation.mutate()
+  }, [deleteTicketMutation])
 
   // Keyboard shortcut handlers
   const handleResolve = useCallback(() => {
@@ -474,6 +516,7 @@ export default function TicketDetailPage() {
             messages={messages}
             onSendMessage={handleSendMessage}
             onUpdateTicket={handleUpdateTicket}
+            onDeleteTicket={handleDeleteTicket}
             currentAgentId={currentAgentQuery.data}
             isSending={sendMessageMutation.isPending}
             sendError={sendError}

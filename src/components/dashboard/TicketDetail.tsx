@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -46,7 +45,6 @@ import {
   MoreHorizontal,
   UserPlus,
   UserMinus,
-  User,
   Copy,
   ExternalLink,
   Tag,
@@ -69,6 +67,7 @@ interface TicketDetailProps {
   onRetry?: () => void
   onClearError?: () => void
   isMessagesLoading?: boolean
+  onDeleteTicket?: () => void
 }
 
 const statusOptions = [
@@ -105,10 +104,12 @@ export function TicketDetail({
   onRetry,
   onClearError,
   isMessagesLoading = false,
+  onDeleteTicket,
 }: TicketDetailProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [isAiTyping, setIsAiTyping] = useState(false)
+  const [isAiTyping] = useState(false)
   const [activeTab, setActiveTab] = useState<'messages' | 'timeline'>('messages')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -349,7 +350,13 @@ export function TicketDetail({
                 Archive Ticket
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem disabled className="text-red-600 dark:text-red-400">
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault()
+                  setShowDeleteConfirm(true)
+                }}
+                className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+              >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Ticket
               </DropdownMenuItem>
@@ -445,6 +452,26 @@ export function TicketDetail({
           <TicketTimeline ticketId={ticket.id} />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Ticket?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this ticket and its messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onDeleteTicket?.()}
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+            >
+              Delete Ticket
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
