@@ -253,8 +253,8 @@ export const copilotTools: Tool[] = [
         },
         source_channel: {
           type: 'string',
-          enum: ['dashboard', 'portal', 'widget', 'email', 'api'],
-          description: 'How the customer contacted support (default: dashboard)',
+          enum: ['email', 'portal', 'widget', 'dashboard', 'api'],
+          description: 'How the customer contacted support (default: email)',
         },
       },
       required: ['customer_email', 'subject', 'description'],

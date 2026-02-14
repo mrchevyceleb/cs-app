@@ -484,8 +484,9 @@ export async function createTicket(
         subject: input.subject,
         status: 'open',
         priority,
-        source_channel: (input.source_channel || 'dashboard') as ChannelType,
+        source_channel: (input.source_channel || 'email') as ChannelType,
         queue_type: 'human',
+        ai_handled: false,
       })
       .select('id, subject, status, priority, source_channel, created_at')
       .single()
