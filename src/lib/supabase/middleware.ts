@@ -38,9 +38,10 @@ export async function updateSession(request: NextRequest) {
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
   const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback')
   const isPortalPage = request.nextUrl.pathname.startsWith('/portal')
+  const isWidgetPage = request.nextUrl.pathname.startsWith('/widget')
 
-  // Portal pages use their own token-based auth, not Supabase auth
-  if (!user && !isAuthPage && !isEmbedPage && !isApiRoute && !isAuthCallback && !isPortalPage) {
+  // Portal and widget pages use their own token-based auth, not Supabase auth
+  if (!user && !isAuthPage && !isEmbedPage && !isApiRoute && !isAuthCallback && !isPortalPage && !isWidgetPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
