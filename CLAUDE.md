@@ -94,7 +94,7 @@ npm run dev
 ## Widget Integration
 
 ```html
-<script src="https://your-domain.com/widget/loader.js"
+<script src="https://nova.r-link.com/widget/loader.js"
   data-position="bottom-right" data-company-name="Acme"></script>
 ```
 **API:** `window.csWidget.open()`, `.close()`, `.identify({email, name})`

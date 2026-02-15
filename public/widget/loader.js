@@ -3,7 +3,7 @@
  *
  * Usage:
  * <script
- *   src="https://your-domain.com/widget/loader.js"
+ *   src="https://nova.r-link.com/widget/loader.js"
  *   data-position="bottom-right"
  *   data-primary-color="#9333EA"
  *   data-greeting="Hi! How can we help?"

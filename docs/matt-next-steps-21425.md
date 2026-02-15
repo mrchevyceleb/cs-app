@@ -3,8 +3,8 @@
 ## Status: What's Done
 
 - SendGrid API key, webhook secret, email from addresses — all set in Doppler (dev + stg + prd)
-- `PORTAL_URL` set to `https://support.r-link.com/portal` (all environments)
-- `NEXT_PUBLIC_APP_URL` set to `https://support.r-link.com` (all environments)
+- `PORTAL_URL` set to `https://nova.r-link.com/portal` (all environments)
+- `NEXT_PUBLIC_APP_URL` set to `https://nova.r-link.com` (all environments)
 - Outbound email code fully wired (agent replies, AI/Ava replies, ticket notifications)
 - Inbound email webhook code ready at `/api/webhooks/email`
 - Email threading headers (Message-ID, In-Reply-To, References) implemented
@@ -35,7 +35,7 @@ DNS propagation can take up to 48 hours but usually happens in minutes.
    - **Receiving Domain:** `inbound.r-link.com` (whatever subdomain you chose in step 1)
    - **Destination URL:**
      ```
-     https://support.r-link.com/api/webhooks/email?secret=260b36de737df23f6bb7c841a71d58b22baa92ee02410a2a9a9d2b95787183fb
+     https://nova.r-link.com/api/webhooks/email?secret=260b36de737df23f6bb7c841a71d58b22baa92ee02410a2a9a9d2b95787183fb
      ```
    - **"POST the raw, full MIME message"** — leave UNCHECKED
    - **"Check incoming emails for spam"** — optional, your call
@@ -79,8 +79,8 @@ This adds 3 CNAME records to your DNS and lets you send from any `@r-link.com` a
 | `EMAIL_FROM` | `R-Link Support <support@r-link.com>` |
 | `EMAIL_AI_FROM` | `Ava from R-Link Support <support@r-link.com>` |
 | `INBOUND_EMAIL_ADDRESS` | `support@r-link.com` (update after step 3) |
-| `PORTAL_URL` | `https://support.r-link.com/portal` |
-| `NEXT_PUBLIC_APP_URL` | `https://support.r-link.com` |
+| `PORTAL_URL` | `https://nova.r-link.com/portal` |
+| `NEXT_PUBLIC_APP_URL` | `https://nova.r-link.com` |
 
 ### Webhook endpoint
 
