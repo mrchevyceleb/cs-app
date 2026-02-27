@@ -152,11 +152,13 @@ export default function WidgetPage() {
       isOpen: true,
       currentView: 'chat',
     }))
+    sendToParent('widget:open')
   }, [])
 
   // Handle widget close
   const handleClose = useCallback(() => {
     setState(prev => ({ ...prev, isOpen: false }))
+    sendToParent('widget:close')
   }, [])
 
   // Handle identify (pre-fill customer info / upgrade anonymous session)
