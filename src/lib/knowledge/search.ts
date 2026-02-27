@@ -144,7 +144,11 @@ async function keywordSearch(
     return []
   }
 
-  return (data || []).map((row: Record<string, unknown>) => ({
+  // Normalize keyword ranks to 0-1 similarity range for consistent scoring
+  const rows = data || []
+  const maxRank = rows.length > 0 ? Math.max(...rows.map((r: Record<string, unknown>) => (r.rank as number) || 0), 1) : 1
+
+  return rows.map((row: Record<string, unknown>) => ({
     id: row.id as string,
     title: row.title as string,
     content: row.content as string,
@@ -155,7 +159,7 @@ async function keywordSearch(
     chunk_index: row.chunk_index as number | null,
     metadata: row.metadata as Record<string, unknown> | null,
     is_kb_source: row.is_kb_source as boolean | null,
-    similarity: 0,
+    similarity: Math.min(((row.rank as number) || 0) / maxRank, 1),
     rank: row.rank as number,
   }))
 }
