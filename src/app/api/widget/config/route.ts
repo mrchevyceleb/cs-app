@@ -19,8 +19,8 @@ export async function GET() {
   try {
     // Create Supabase client with service role to bypass RLS for public widget requests
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.NEXT_PUBLIC_SB_URL!,
+      process.env.SB_SERVICE_ROLE_KEY!
     )
 
     const { data: settings, error } = await supabase

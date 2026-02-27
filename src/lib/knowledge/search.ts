@@ -12,8 +12,8 @@ import type { KBSearchResult, KBSearchOptions, KBSearchLogEntry } from './types'
 let _supabase: SupabaseClient | null = null
 function getSupabase(): SupabaseClient {
   if (!_supabase) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const url = process.env.NEXT_PUBLIC_SB_URL
+    const key = process.env.SB_SERVICE_ROLE_KEY
     if (!url || !key) throw new Error('Missing Supabase env vars')
     _supabase = createClient(url, key)
   }
@@ -37,10 +37,21 @@ export async function searchKnowledgeHybrid(
 
   try {
     // Run vector search and keyword search in parallel
-    const [vectorResults, keywordResults] = await Promise.all([
+    // Use allSettled so one failure doesn't kill the other
+    const [vectorSettled, keywordSettled] = await Promise.allSettled([
       vectorSearch(supabase, query, Math.min(limit * 2, 20)),
       keywordSearch(supabase, query, Math.min(limit * 2, 20)),
     ])
+
+    const vectorResults = vectorSettled.status === 'fulfilled' ? vectorSettled.value : []
+    const keywordResults = keywordSettled.status === 'fulfilled' ? keywordSettled.value : []
+
+    if (vectorSettled.status === 'rejected') {
+      console.error('[KB Search] Vector search failed (keyword search still used):', vectorSettled.reason)
+    }
+    if (keywordSettled.status === 'rejected') {
+      console.error('[KB Search] Keyword search failed (vector search still used):', keywordSettled.reason)
+    }
 
     // Merge with Reciprocal Rank Fusion
     const merged = reciprocalRankFusion(vectorResults, keywordResults)
@@ -69,10 +80,10 @@ export async function searchKnowledgeHybrid(
 
     return results
   } catch (error) {
-    console.error('Hybrid search error:', error)
-    // Fallback: try vector-only
+    console.error('[KB Search] Hybrid search error:', error)
+    // Fallback: try keyword-only (more reliable, no OpenAI dependency)
     try {
-      return await vectorSearch(supabase, query, limit)
+      return await keywordSearch(supabase, query, limit)
     } catch {
       return []
     }

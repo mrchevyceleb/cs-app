@@ -17,12 +17,12 @@ async function getSupabaseClient() {
   const devBypassCookie = cookieStore.get('dev_bypass')
   const isDevBypass = process.env.NODE_ENV === 'development' && devBypassCookie?.value === 'true'
 
-  if (isDevBypass && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (isDevBypass && process.env.SB_SERVICE_ROLE_KEY) {
     // Use service role in dev mode with auth bypass
     return {
       client: createAdminClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
+        process.env.NEXT_PUBLIC_SB_URL!,
+        process.env.SB_SERVICE_ROLE_KEY!
       ),
       isDevBypass: true,
     }

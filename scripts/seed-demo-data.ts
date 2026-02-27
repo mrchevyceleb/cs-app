@@ -4,12 +4,12 @@ import { createClient } from '@supabase/supabase-js'
 // Load .env.local
 config({ path: '.env.local' })
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SB_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SB_ANON_KEY!
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables')
-  console.log('Required: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY')
+  console.log('Required: NEXT_PUBLIC_SB_URL, NEXT_PUBLIC_SB_ANON_KEY')
   process.exit(1)
 }
 

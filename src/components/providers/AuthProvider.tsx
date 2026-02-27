@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleBeforeUnload = () => {
       if (user) {
         // Use sendBeacon for reliable delivery during page unload
-        const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/agents?id=eq.${user.id}`
+        const url = `${process.env.NEXT_PUBLIC_SB_URL}/rest/v1/agents?id=eq.${user.id}`
         navigator.sendBeacon(url, JSON.stringify({ status: 'offline' }))
       }
     }

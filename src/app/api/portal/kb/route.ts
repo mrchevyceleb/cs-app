@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SB_URL
+    const supabaseKey = process.env.SB_SERVICE_ROLE_KEY
     if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }

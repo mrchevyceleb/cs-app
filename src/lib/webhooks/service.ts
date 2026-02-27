@@ -17,8 +17,8 @@ import { createSignature, SIGNATURE_HEADER } from './signatures';
 let _supabase: SupabaseClient | null = null;
 function getSupabase(): SupabaseClient {
   if (!_supabase) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const url = process.env.NEXT_PUBLIC_SB_URL;
+    const key = process.env.SB_SERVICE_ROLE_KEY;
     if (!url || !key) {
       throw new Error('Missing required Supabase environment variables');
     }

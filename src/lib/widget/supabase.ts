@@ -12,8 +12,8 @@ export function getWidgetSupabase(): SupabaseClient | null {
   const existing = (globalThis as Record<string, unknown>)[GLOBAL_KEY] as SupabaseClient | undefined
   if (existing) return existing
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const url = process.env.NEXT_PUBLIC_SB_URL
+  const anonKey = process.env.NEXT_PUBLIC_SB_ANON_KEY
 
   if (!url || !anonKey) return null
 

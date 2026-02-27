@@ -4,11 +4,11 @@ import crypto from 'crypto'
 
 // Get admin Supabase client for feedback operations
 function getAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseUrl = process.env.NEXT_PUBLIC_SB_URL!
+  const serviceKey = process.env.SB_SERVICE_ROLE_KEY
 
   if (!serviceKey) {
-    return createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    return createClient(supabaseUrl, process.env.NEXT_PUBLIC_SB_ANON_KEY!)
   }
 
   return createClient(supabaseUrl, serviceKey)

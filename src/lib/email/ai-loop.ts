@@ -16,8 +16,8 @@ let _supabase: SupabaseClient<Database> | null = null
 function getSupabase(): SupabaseClient<Database> {
   if (!_supabase) {
     _supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.NEXT_PUBLIC_SB_URL!,
+      process.env.SB_SERVICE_ROLE_KEY!
     )
   }
   return _supabase

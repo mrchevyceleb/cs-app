@@ -12,11 +12,11 @@ import type {
 
 // Get admin Supabase client
 function getServiceClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseUrl = process.env.NEXT_PUBLIC_SB_URL!
+  const serviceKey = process.env.SB_SERVICE_ROLE_KEY
 
   if (!serviceKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
+    throw new Error('SB_SERVICE_ROLE_KEY is required')
   }
 
   return createAdminClient(supabaseUrl, serviceKey)

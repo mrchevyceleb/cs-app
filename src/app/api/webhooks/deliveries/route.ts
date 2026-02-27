@@ -12,8 +12,8 @@ let _supabase: SupabaseClient | null = null;
 function getSupabase(): SupabaseClient {
   if (!_supabase) {
     _supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.NEXT_PUBLIC_SB_URL!,
+      process.env.SB_SERVICE_ROLE_KEY!
     );
   }
   return _supabase;

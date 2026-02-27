@@ -71,6 +71,7 @@ function stripHtml(text: string): string {
 export async function searchBrave(options: BraveSearchOptions): Promise<BraveSearchResult[]> {
   const apiKey = process.env.BRAVE_SEARCH_API_KEY
   if (!apiKey) {
+    console.warn('[Brave] BRAVE_SEARCH_API_KEY is not set, web search disabled')
     return []
   }
 

@@ -5,7 +5,7 @@
  *   npx tsx scripts/ingest-kb.ts                    # Ingest all files
  *   npx tsx scripts/ingest-kb.ts 02-plans-and-pricing.md  # Single file
  *
- * Requires env vars: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY
+ * Requires env vars: NEXT_PUBLIC_SB_URL, SB_SERVICE_ROLE_KEY, OPENAI_API_KEY
  */
 
 import 'dotenv/config'

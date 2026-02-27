@@ -10,8 +10,8 @@ interface RouteParams {
 
 // Create admin client for widget operations
 function getServiceClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseUrl = process.env.NEXT_PUBLIC_SB_URL
+  const serviceKey = process.env.SB_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !serviceKey) {
     throw new Error('Missing Supabase environment variables')

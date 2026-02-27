@@ -21,11 +21,11 @@ interface BulkDeleteRequest {
 async function getSupabaseClient() {
   const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
 
-  if (isDevBypass && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (isDevBypass && process.env.SB_SERVICE_ROLE_KEY) {
     // Use service role in dev mode with auth bypass
     return createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.NEXT_PUBLIC_SB_URL!,
+      process.env.SB_SERVICE_ROLE_KEY!
     )
   }
 
