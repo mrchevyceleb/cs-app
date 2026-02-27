@@ -90,6 +90,7 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
       client.messages.create({
         model: config.model,
         max_tokens: getMaxTokensForChannel(input.channel),
+        temperature: 0.3,
         system: systemPrompt,
         tools: AGENT_TOOLS,
         messages,
@@ -220,6 +221,7 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
     client.messages.create({
       model: config.model,
       max_tokens: getMaxTokensForChannel(input.channel),
+      temperature: 0.3,
       system: systemPrompt + '\n\nYou have used all your tool rounds. Provide your best response with the information gathered.',
       messages,
     })
@@ -314,6 +316,7 @@ export async function* agenticSolveStreaming(
       client.messages.create({
         model: config.model,
         max_tokens: getMaxTokensForChannel(input.channel),
+        temperature: 0.3,
         system: systemPrompt,
         tools: AGENT_TOOLS,
         messages,
