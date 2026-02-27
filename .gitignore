@@ -53,3 +53,12 @@ next-env.d.ts
 # Windows artifacts
 nul
 NUL
+.env*.local
+
+# Secrets / temp exports
+*secrets*.json
+*doppler*.json
+
+# Screenshots
+*.png
+!public/**/*.png
