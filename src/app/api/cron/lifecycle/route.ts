@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient, verifyCronRequest, unauthorizedResponse, logCronExecution } from '@/lib/cron/auth'
+import { withFallback } from '@/lib/claude/client'
+import { sendEmail } from '@/lib/email/client'
 
 const JOB_NAME = 'lifecycle'
 
@@ -27,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     const { data: followUpTickets, error: followUpQueryError } = await supabase
       .from('tickets')
-      .select('id, customer_id')
+      .select('id, customer_id, subject, customers:customer_id(email, name)')
       .lt('follow_up_at', now)
       .in('status', ['open', 'pending'])
       .limit(FOLLOW_UP_BATCH_SIZE)
@@ -38,22 +40,77 @@ export async function GET(request: NextRequest) {
 
     for (const ticket of followUpTickets || []) {
       try {
-        // Insert follow-up message
+        // Fetch last few messages for context
+        const { data: recentMessages } = await supabase
+          .from('messages')
+          .select('sender_type, content')
+          .eq('ticket_id', ticket.id)
+          .order('created_at', { ascending: false })
+          .limit(6)
+
+        const conversationSummary = (recentMessages || [])
+          .reverse()
+          .map(m => `${m.sender_type === 'customer' ? 'Customer' : 'Nova'}: ${m.content?.slice(0, 150)}`)
+          .join('\n')
+
+        // Generate contextual follow-up via Haiku
+        let followUpContent: string
+        try {
+          const haiku = await Promise.race([
+            withFallback(client =>
+              client.messages.create({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 60,
+                temperature: 0.3,
+                system: `You are Nova, a support agent following up with a customer who hasn't replied. Write a brief, natural check-in (1-2 sentences, under 30 words) based on the conversation. Reference what you were helping with specifically. Don't be generic. Don't say "just checking in." End with an easy yes/no question if possible.`,
+                messages: [{ role: 'user', content: `Ticket subject: ${ticket.subject}\n\nConversation:\n${conversationSummary}` }],
+              })
+            ),
+            new Promise<null>(resolve => setTimeout(() => resolve(null), 5000)),
+          ])
+
+          followUpContent = haiku
+            ? haiku.content.filter(b => b.type === 'text').map(b => ('text' in b ? b.text : '')).join('').trim()
+            : ''
+        } catch {
+          followUpContent = ''
+        }
+
+        // Fallback if Haiku failed
+        if (!followUpContent) {
+          followUpContent = `Hey, wanted to circle back on your ${ticket.subject?.slice(0, 50) || 'issue'}. Were you able to get that sorted, or do you still need a hand?`
+        }
+
+        // Insert follow-up message in widget
         await supabase.from('messages').insert({
           ticket_id: ticket.id,
           sender_type: 'ai',
-          content:
-            "Hi! Just checking in - is there anything else we can help with? If not, we'll close this ticket automatically in a few days.",
+          content: followUpContent,
+          metadata: { type: 'follow_up' },
         })
+
+        // Send email follow-up if customer has email
+        const customerData = ticket.customers as unknown as { email: string | null; name: string | null } | null
+        const customerEmail = customerData?.email
+        const customerName = customerData?.name
+
+        if (customerEmail) {
+          const emailGreeting = customerName ? `Hey ${customerName}` : 'Hey there'
+          await sendEmail({
+            to: customerEmail,
+            subject: `Re: ${ticket.subject || 'Your R-Link support request'}`,
+            html: `<p>${emailGreeting},</p><p>${followUpContent}</p><p>Just reply to this email and I'll pick it right back up.</p><p>- Nova, R-Link Support</p>`,
+            text: `${emailGreeting},\n\n${followUpContent}\n\nJust reply to this email and I'll pick it right back up.\n\n- Nova, R-Link Support`,
+          })
+        }
 
         // Log to proactive_outreach_log
         await supabase.from('proactive_outreach_log').insert({
           customer_id: ticket.customer_id,
           ticket_id: ticket.id,
           outreach_type: 'stalled_revival',
-          channel: 'internal',
-          message_content:
-            "Hi! Just checking in - is there anything else we can help with? If not, we'll close this ticket automatically in a few days.",
+          channel: customerEmail ? 'email' : 'internal',
+          message_content: followUpContent,
           trigger_reason: 'Scheduled follow-up reached',
           delivery_status: 'sent',
           delivered_at: now,
