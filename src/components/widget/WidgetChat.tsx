@@ -365,6 +365,24 @@ export function WidgetChat({
                 break
               }
 
+              case 'email_prompt':
+              case 'email_confirmed': {
+                // Add email collection / confirmation as a separate Nova message
+                if (event.content) {
+                  const msgId = `${event.type}-${Date.now()}`
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: msgId,
+                      sender_type: 'ai',
+                      content: event.content,
+                      created_at: new Date().toISOString(),
+                    },
+                  ])
+                }
+                break
+              }
+
               case 'error': {
                 setError(event.error || 'Something went wrong')
                 // Remove streaming placeholder on error

@@ -152,6 +152,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save message' }, { status: 500 })
     }
 
+    // Detect email in message from anonymous users and link to their account
+    let emailLinked = false
+    if (session.isAnonymous) {
+      const emailMatch = content.trim().match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
+      if (emailMatch) {
+        const email = emailMatch[0].toLowerCase()
+        // Check if another customer already has this email
+        const { data: existingCustomer } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('email', email)
+          .single()
+
+        if (existingCustomer && existingCustomer.id !== session.customerId) {
+          // Email belongs to another customer -- merge: reassign this ticket to them
+          await supabase
+            .from('tickets')
+            .update({ customer_id: existingCustomer.id })
+            .eq('id', ticketId)
+        } else if (!existingCustomer) {
+          // No existing customer with this email -- update the anonymous record
+          await supabase
+            .from('customers')
+            .update({ email, metadata: { source: 'widget', anonymous: false } })
+            .eq('id', session.customerId)
+        }
+        emailLinked = true
+      }
+    }
+
     // Fetch ticket with customer info for AI context
     const { data: ticket } = await supabase
       .from('tickets')
@@ -191,6 +221,25 @@ export async function POST(request: NextRequest) {
               })}\n\n`
             )
           )
+
+          // If we just linked an email, confirm it to the user
+          if (emailLinked) {
+            const confirmMsg = "Got it, you're all linked up. Let me keep helping you here."
+            await supabase
+              .from('messages')
+              .insert({
+                ticket_id: ticketId,
+                sender_type: 'ai',
+                content: confirmMsg,
+                metadata: { type: 'email_confirmed' },
+              })
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({
+                type: 'email_confirmed',
+                content: confirmMsg,
+              })}\n\n`)
+            )
+          }
 
           if (agentConfig.enabled && ticket) {
             // Generate contextual acknowledgment (fast Haiku call, ~300ms)
@@ -344,6 +393,51 @@ export async function POST(request: NextRequest) {
                 content: fullContent,
               })}\n\n`)
             )
+
+            // After first response to an anonymous user, ask for their email
+            // so we can link them to their R-Link account and enable follow-ups
+            if (!existingTicketId && session.isAnonymous) {
+              try {
+                const emailAsk = await Promise.race([
+                  withFallback(client =>
+                    client.messages.create({
+                      model: 'claude-haiku-4-5-20251001',
+                      max_tokens: 40,
+                      temperature: 0.3,
+                      system: `You just helped a customer with their issue. Now you need their R-Link email so the team can look into their account. Write ONE casual sentence asking for it. Keep it under 20 words. Don't repeat the issue. Don't say "by the way". Examples of good asks:
+- "Also, drop me the email on your R-Link account so we can pull up your details."
+- "What email is on your R-Link account? Helps us track everything on our end."`,
+                      messages: [{ role: 'user', content: `Customer asked about: ${content.trim().slice(0, 80)}. Your response was about: ${fullContent.slice(0, 80)}` }],
+                    })
+                  ),
+                  new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
+                ])
+
+                const emailPrompt = emailAsk
+                  ? emailAsk.content.filter(b => b.type === 'text').map(b => ('text' in b ? b.text : '')).join('').trim()
+                  : "What email do you use for R-Link? Helps us keep track of everything on our end."
+
+                if (emailPrompt) {
+                  await supabase
+                    .from('messages')
+                    .insert({
+                      ticket_id: ticketId,
+                      sender_type: 'ai',
+                      content: emailPrompt,
+                      metadata: { type: 'email_collection' },
+                    })
+
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({
+                      type: 'email_prompt',
+                      content: emailPrompt,
+                    })}\n\n`)
+                  )
+                }
+              } catch {
+                // Non-critical -- skip email collection if Haiku fails
+              }
+            }
           } else {
             // No AI agent - just acknowledge message was saved
             controller.enqueue(
