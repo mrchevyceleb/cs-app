@@ -35,7 +35,7 @@ async function generateQuickAck(
 
     const response = await withFallback(client =>
       client.messages.create({
-        model: 'claude-3-5-haiku-20241022',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 35,
         system: `You are a live chat support agent. Write a brief acknowledgment (1 short sentence, max 12 words) for the customer's latest message.
 Rules:
@@ -55,7 +55,8 @@ Rules:
       .trim()
 
     return text || null
-  } catch {
+  } catch (error) {
+    console.error('[Widget] Quick ack failed:', error instanceof Error ? error.message : error)
     return null
   }
 }
