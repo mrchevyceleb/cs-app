@@ -89,18 +89,18 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
   {
     name: 'escalate_to_human',
     description:
-      'Escalate to a human agent. ONLY use as an absolute last resort after exhausting other tools. You must provide a reason and a summary of what you already tried.',
+      'Create an email follow-up ticket for the human support team. There are NO human agents in chat -- this triggers an EMAIL to the support team, not a live transfer. Only use after the customer has confirmed they want email follow-up. Your response to the customer should say the team will email them, never say you are "connecting" or "transferring" them.',
     input_schema: {
       type: 'object' as const,
       properties: {
         reason: {
           type: 'string',
           description:
-            'Why escalation is needed: repeated human demand, security breach, legal threat, billing dispute, or all tools exhausted.',
+            'INTERNAL: Why email follow-up is needed. Not shown to customer.',
         },
         summary: {
           type: 'string',
-          description: 'Summary of what you already tried and found for the human agent.',
+          description: 'INTERNAL: Summary of what was already tried and found, for the email support team. Not shown to customer.',
         },
       },
       required: ['reason', 'summary'],
