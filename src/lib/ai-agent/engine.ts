@@ -42,10 +42,10 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
     { role: 'user', content: userContent },
   ]
 
-  // Add conversation history if provided
+  // Add conversation history if provided (cap at 20 to avoid blowing context window)
   if (input.previousMessages && input.previousMessages.length > 0) {
-    // Prepend previous messages before the current one
-    const historyMessages: Anthropic.MessageParam[] = input.previousMessages.map((m) => ({
+    const recentMessages = input.previousMessages.slice(-20)
+    const historyMessages: Anthropic.MessageParam[] = recentMessages.map((m) => ({
       role: m.role === 'user' ? 'user' as const : 'assistant' as const,
       content: m.content,
     }))
@@ -265,9 +265,10 @@ export async function* agenticSolveStreaming(
 
   const messages: Anthropic.MessageParam[] = []
 
-  // Add conversation history
+  // Add conversation history (cap at 20 to avoid blowing context window)
   if (input.previousMessages && input.previousMessages.length > 0) {
-    for (const m of input.previousMessages) {
+    const recentMessages = input.previousMessages.slice(-20)
+    for (const m of recentMessages) {
       messages.push({
         role: m.role === 'user' ? 'user' as const : 'assistant' as const,
         content: m.content,
@@ -494,6 +495,7 @@ export async function* agenticSolveStreaming(
     const fallback = getFallbackClient()
     if (err instanceof Anthropic.APIError && (err.status === 429 || err.status === 529) && fallback) {
       fullContent = '' // reset partial content
+      yield { type: 'content_reset' } // tell consumer to discard partial text
       yield* consumeStream(fallback)
     } else {
       throw err

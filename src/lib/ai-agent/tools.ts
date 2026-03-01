@@ -130,7 +130,12 @@ export async function executeTool(
 
   switch (toolName) {
     case 'search_knowledge_base': {
-      const query = toolInput.query as string
+      const query = (toolInput.query as string || '').trim()
+      if (!query) {
+        result = 'Please provide a search query. What topic or issue should I look up?'
+        outputSummary = 'Empty query rejected'
+        break
+      }
       const articles = await searchKnowledgeHybrid({
         query,
         limit: 5,

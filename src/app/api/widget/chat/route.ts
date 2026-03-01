@@ -303,6 +303,13 @@ export async function POST(request: NextRequest) {
                   }
                   break
 
+                case 'content_reset':
+                  fullContent = ''
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ type: 'content_reset' })}\n\n`)
+                  )
+                  break
+
                 case 'text_delta':
                   fullContent += event.content
                   controller.enqueue(
@@ -386,17 +393,7 @@ export async function POST(request: NextRequest) {
               }
             }
 
-            // Send completion event
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({
-                type: 'complete',
-                messageId: savedAiMsg?.id,
-                content: fullContent,
-              })}\n\n`)
-            )
-
-            // After first response to an anonymous user, ask for their email
-            // so we can link them to their R-Link account and enable follow-ups
+            // Ask for email BEFORE complete event so client doesn't miss it
             if (!existingTicketId && session.isAnonymous && !emailLinked) {
               try {
                 const emailAsk = await Promise.race([
@@ -439,6 +436,15 @@ export async function POST(request: NextRequest) {
                 // Non-critical -- skip email collection if Haiku fails
               }
             }
+
+            // Send completion event (after email prompt so client doesn't close early)
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({
+                type: 'complete',
+                messageId: savedAiMsg?.id,
+                content: fullContent,
+              })}\n\n`)
+            )
           } else {
             // No AI agent - just acknowledge message was saved
             controller.enqueue(

@@ -52,5 +52,6 @@ export type AgentStreamEvent =
   | { type: 'tool_call'; tool: string; description: string }
   | { type: 'tool_result'; tool: string; success: boolean }
   | { type: 'text_delta'; content: string }
+  | { type: 'content_reset' }
   | { type: 'complete'; result: AgentResult }
   | { type: 'error'; error: string }

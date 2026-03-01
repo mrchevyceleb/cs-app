@@ -112,6 +112,13 @@ export async function POST(request: NextRequest) {
                   )
                   break
 
+                case 'content_reset':
+                  fullContent = ''
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ type: 'content_reset' })}\n\n`)
+                  )
+                  break
+
                 case 'text_delta':
                   fullContent += event.content
                   controller.enqueue(

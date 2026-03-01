@@ -78,11 +78,12 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
 
     ticket = existing;
   } else {
-    // Try to find recent open ticket
+    // Try to find recent open ticket on the same channel
     const { data: recentTicket } = await getSupabase()
       .from('tickets')
       .select('*')
       .eq('customer_id', customer.id)
+      .eq('source_channel', request.channel)
       .in('status', ['open', 'pending'])
       .order('updated_at', { ascending: false })
       .limit(1)
@@ -250,7 +251,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     const formattedResponse = formatResponseForChannel(agentResult.content, request.channel);
 
     // Create AI message
-    const { data: aiMessage } = await getSupabase()
+    const { data: aiMessage, error: aiMsgError } = await getSupabase()
       .from('messages')
       .insert({
         ticket_id: ticket.id,
@@ -269,6 +270,10 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
       })
       .select()
       .single();
+
+    if (aiMsgError) {
+      console.error('[AI Router] Failed to save AI message:', aiMsgError.message);
+    }
 
     // Send response via channel
     const sendResult = await sendChannelResponse(
@@ -401,7 +406,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
 
     const formattedResponse = formatResponseForChannel(responseContent, request.channel);
 
-    const { data: aiMessage } = await getSupabase()
+    const { data: aiMessage, error: legacyMsgError } = await getSupabase()
       .from('messages')
       .insert({
         ticket_id: ticket.id,
@@ -418,6 +423,10 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
       })
       .select()
       .single();
+
+    if (legacyMsgError) {
+      console.error('[AI Router] Failed to save legacy AI message:', legacyMsgError.message);
+    }
 
     const sendResult = await sendChannelResponse(
       request.channel,

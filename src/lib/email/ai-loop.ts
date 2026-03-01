@@ -158,13 +158,62 @@ export async function processEmailWithAI(
           } as any,
         })
 
+      // Send acknowledgment email to customer so they're not left waiting
+      const ackContent = "Thanks for reaching out. I've flagged your request for our team to take a closer look. Someone will follow up with you by email shortly."
+      const { data: ackMessage } = await supabase
+        .from('messages')
+        .insert({
+          ticket_id: ticketId,
+          sender_type: 'ai',
+          content: ackContent,
+          source: 'email',
+          metadata: { escalation_ack: true } as any,
+        })
+        .select('*')
+        .single()
+
+      if (ackMessage) {
+        try {
+          await sendAgentReplyEmail(
+            ticket as any,
+            ackMessage as any,
+            customer as any,
+            undefined,
+            emailConfig.aiFrom
+          )
+        } catch (emailErr) {
+          console.error('[Email AI] Failed to send escalation ack email:', emailErr)
+        }
+      }
+
       // Log agent session
       await logAgentSession(ticketId, agentResult)
 
       return { action: 'escalated' }
     }
 
-    // AI produced a response - save it and send email
+    // Increment exchange count (optimistic lock to prevent race condition)
+    // Must happen BEFORE saving AI message to avoid orphaned messages on lock failure
+    const { data: updated } = await supabase
+      .from('tickets')
+      .update({
+        ai_exchange_count: ticket.ai_exchange_count + 1,
+        ai_handled: true,
+        ai_confidence: agentResult.confidence,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', ticketId)
+      .eq('ai_exchange_count', ticket.ai_exchange_count)
+      .select('id')
+      .single()
+
+    if (!updated) {
+      // Another concurrent request already incremented - skip to avoid duplicate
+      console.log(`[Email AI] Skipping duplicate response for ticket ${ticketId} (exchange count race)`)
+      return { action: 'responded' }
+    }
+
+    // Lock acquired - now safe to save AI message and send email
     const { data: aiMessage } = await supabase
       .from('messages')
       .insert({
@@ -183,17 +232,6 @@ export async function processEmailWithAI(
       })
       .select('*')
       .single()
-
-    // Increment exchange count
-    await supabase
-      .from('tickets')
-      .update({
-        ai_exchange_count: ticket.ai_exchange_count + 1,
-        ai_handled: true,
-        ai_confidence: agentResult.confidence,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', ticketId)
 
     // Send email reply as Ava
     if (aiMessage) {
