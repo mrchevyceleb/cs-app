@@ -54,3 +54,129 @@ jobs:
         run: railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+  generate-kim-changelog:
+    runs-on: ubuntu-latest
+    name: Kim Dashboard Changelog
+    env:
+      PROJECT: cs-app
+      KIM_SUPABASE_URL: https://iycloielqcjnjqddeuet.supabase.co
+    steps:
+      - name: Checkout (full history for git log)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get last deploy SHA from Kim changelog
+        id: last_sha
+        run: |
+          RESPONSE=$(curl -s \
+            -H "apikey: ${{ secrets.KIM_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.KIM_SUPABASE_SERVICE_KEY }}" \
+            "$KIM_SUPABASE_URL/rest/v1/kim_changelog_entries?select=deploy_sha&project=eq.$PROJECT&order=deployed_at.desc&limit=1")
+          LAST_SHA=$(echo "$RESPONSE" | jq -r '.[0].deploy_sha // empty')
+          echo "last_sha=$LAST_SHA" >> "$GITHUB_OUTPUT"
+          echo "Last Kim changelog SHA for $PROJECT: ${LAST_SHA:-none}"
+
+      - name: Check idempotency
+        id: check
+        run: |
+          CURRENT_SHA="${{ github.sha }}"
+          LAST_SHA="${{ steps.last_sha.outputs.last_sha }}"
+          if [ "$CURRENT_SHA" = "$LAST_SHA" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "SHA already recorded, skipping"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get commits since last entry
+        if: steps.check.outputs.skip != 'true'
+        id: commits
+        run: |
+          LAST_SHA="${{ steps.last_sha.outputs.last_sha }}"
+          if [ -n "$LAST_SHA" ] && git cat-file -t "$LAST_SHA" 2>/dev/null; then
+            LOG_ARGS="$LAST_SHA..HEAD"
+          else
+            LOG_ARGS="-20 HEAD"
+          fi
+          echo '[]' > /tmp/commits.json
+          git log --format='%h%n%s%n%an' $LOG_ARGS > /tmp/raw_log.txt
+          while IFS= read -r sha && IFS= read -r msg && IFS= read -r author; do
+            jq --arg s "$sha" --arg m "$msg" --arg a "$author" \
+              '. + [{sha: $s, message: $m, author: $a}]' /tmp/commits.json > /tmp/commits_tmp.json
+            mv /tmp/commits_tmp.json /tmp/commits.json
+          done < /tmp/raw_log.txt
+          COUNT=$(jq 'length' /tmp/commits.json)
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Found $COUNT commits"
+
+      - name: Generate changelog with Claude
+        if: steps.check.outputs.skip != 'true' && steps.commits.outputs.count != '0'
+        id: changelog
+        run: |
+          COMMITS=$(cat /tmp/commits.json)
+
+          PROMPT=$(cat <<'PROMPT_EOF'
+          You are writing a changelog entry for a non-technical business owner. She needs to know what changed and why it matters, without any developer jargon.
+
+          Given these git commits, produce a JSON object with:
+          - title: A short plain-language title (max 80 chars)
+          - summary: A markdown summary (2-5 bullet points) explaining what changed in simple terms. Focus on business impact and user experience.
+          - category: One of "feature", "improvement", "fix", "internal"
+          - impact: One of "users", "cs_reps", "admins", "developers"
+
+          Respond with ONLY valid JSON, no markdown fencing.
+          PROMPT_EOF
+          )
+
+          FULL_PROMPT="$PROMPT
+
+          Commits:
+          $COMMITS"
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$(jq -n --arg prompt "$FULL_PROMPT" '{
+              model: "claude-sonnet-4-20250514",
+              max_tokens: 1024,
+              messages: [{role: "user", content: $prompt}]
+            }')")
+
+          CONTENT=$(echo "$RESPONSE" | jq -r '.content[0].text')
+          echo "$CONTENT" > /tmp/changelog.json
+          echo "Generated Kim changelog:"
+          cat /tmp/changelog.json
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_1 }}
+
+      - name: Insert into Kim changelog
+        if: steps.check.outputs.skip != 'true' && steps.commits.outputs.count != '0'
+        run: |
+          CHANGELOG=$(cat /tmp/changelog.json)
+          COMMITS=$(cat /tmp/commits.json)
+          TITLE=$(echo "$CHANGELOG" | jq -r '.title')
+          SUMMARY=$(echo "$CHANGELOG" | jq -r '.summary')
+          CATEGORY=$(echo "$CHANGELOG" | jq -r '.category')
+          IMPACT=$(echo "$CHANGELOG" | jq -r '.impact')
+          SHA="${{ github.sha }}"
+
+          curl -sf -X POST \
+            -H "apikey: ${{ secrets.KIM_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.KIM_SUPABASE_SERVICE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            "$KIM_SUPABASE_URL/rest/v1/kim_changelog_entries" \
+            -d "$(jq -n \
+              --arg project "$PROJECT" \
+              --arg title "$TITLE" \
+              --arg summary "$SUMMARY" \
+              --arg category "$CATEGORY" \
+              --arg impact "$IMPACT" \
+              --argjson raw_commits "$COMMITS" \
+              --arg deploy_sha "$SHA" \
+              '{project: $project, title: $title, summary: $summary, category: $category, impact: $impact, raw_commits: $raw_commits, deploy_sha: $deploy_sha}')"
+
+          echo "Kim changelog entry inserted for $PROJECT"
