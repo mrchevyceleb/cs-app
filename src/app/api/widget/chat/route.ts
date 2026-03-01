@@ -379,7 +379,7 @@ export async function POST(request: NextRequest) {
                   escalation_summary: agentResult.escalationSummary,
                 } as any)
 
-              // Move to human queue on escalation or timeout
+              // Update ticket metadata based on agent result
               if (agentResult.type === 'escalation' || agentResult.type === 'timeout') {
                 await supabase
                   .from('tickets')
@@ -387,6 +387,17 @@ export async function POST(request: NextRequest) {
                     status: 'escalated',
                     queue_type: 'human',
                     ai_handled: false,
+                    ai_confidence: agentResult.confidence,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', ticketId)
+              } else {
+                // Mark ticket as AI-handled on successful response
+                await supabase
+                  .from('tickets')
+                  .update({
+                    ai_handled: true,
+                    ai_confidence: agentResult.confidence,
                     updated_at: new Date().toISOString(),
                   })
                   .eq('id', ticketId)

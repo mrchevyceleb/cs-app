@@ -187,6 +187,29 @@ export async function POST(request: NextRequest) {
                   escalation_reason: agentResult.escalationReason,
                   escalation_summary: agentResult.escalationSummary,
                 } as any)
+
+              // Update ticket metadata based on agent result
+              if (agentResult.type === 'escalation' || agentResult.type === 'timeout') {
+                await supabase
+                  .from('tickets')
+                  .update({
+                    status: 'escalated',
+                    queue_type: 'human',
+                    ai_handled: false,
+                    ai_confidence: agentResult.confidence,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', ticketId)
+              } else {
+                await supabase
+                  .from('tickets')
+                  .update({
+                    ai_handled: true,
+                    ai_confidence: agentResult.confidence,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', ticketId)
+              }
             }
 
             // Send completion event

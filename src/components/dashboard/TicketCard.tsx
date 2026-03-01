@@ -206,7 +206,7 @@ export function TicketCard({
       {/* AI Confidence - hidden on mobile */}
       <div className="hidden md:block min-w-[120px]">
         <div className="text-xs text-muted-foreground mb-1">AI Confidence</div>
-        <ConfidenceScore value={ticket.ai_confidence || 0} size="sm" />
+        <ConfidenceScore value={Math.round((ticket.ai_confidence || 0) * 100)} size="sm" />
       </div>
 
       {/* Lifecycle Badge - hidden on mobile, shown on larger screens */}

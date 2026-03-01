@@ -212,7 +212,7 @@ export function CustomerContext({
               <Sparkles className="h-4 w-4" />
               AI Confidence
             </div>
-              <ConfidenceScore value={ticket.ai_confidence} size="sm" showLabel />
+              <ConfidenceScore value={Math.round(ticket.ai_confidence * 100)} size="sm" showLabel />
             </div>
           )}
         </div>

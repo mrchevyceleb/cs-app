@@ -197,7 +197,7 @@ export function TicketDetail({
           {ticket.ai_confidence !== null && (
             <div className="hidden sm:flex items-center gap-2 px-2 py-1 bg-primary-50 rounded-md border border-primary-100">
               <Sparkles className="h-3.5 w-3.5 text-primary-600" />
-              <ConfidenceScore value={ticket.ai_confidence} size="sm" />
+              <ConfidenceScore value={Math.round(ticket.ai_confidence * 100)} size="sm" />
             </div>
           )}
 
