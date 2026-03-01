@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
           const haiku = await Promise.race([
             withFallback(client =>
               client.messages.create({
-                model: 'claude-haiku-4-5-20251001',
+                model: 'claude-sonnet-4-6',
                 max_tokens: 60,
                 temperature: 0.3,
                 system: `You are Nova, a support agent following up with a customer who hasn't replied. Write a brief, natural check-in (1-2 sentences, under 30 words) based on the conversation. Reference what you were helping with specifically. Don't be generic. Don't say "just checking in." End with an easy yes/no question if possible.`,
