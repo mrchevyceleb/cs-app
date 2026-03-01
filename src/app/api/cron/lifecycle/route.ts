@@ -7,6 +7,10 @@ const JOB_NAME = 'lifecycle'
 
 const FOLLOW_UP_BATCH_SIZE = 50
 const AUTO_CLOSE_BATCH_SIZE = 100
+const FOLLOW_UP_AI_TIMEOUT_MS = 5000
+const FOLLOW_UP_MESSAGES_LIMIT = 20
+const FOLLOW_UP_MESSAGE_MAX_CHARS = 300
+const FOLLOW_UP_PROMPT_MAX_CHARS = 4000
 
 /**
  * GET /api/cron/lifecycle
@@ -40,45 +44,59 @@ export async function GET(request: NextRequest) {
 
     for (const ticket of followUpTickets || []) {
       try {
-        // Fetch last few messages for context
+        // Fetch recent messages for conversation context
         const { data: recentMessages } = await supabase
           .from('messages')
           .select('sender_type, content')
           .eq('ticket_id', ticket.id)
           .order('created_at', { ascending: false })
-          .limit(6)
+          .limit(FOLLOW_UP_MESSAGES_LIMIT)
 
-        const conversationSummary = (recentMessages || [])
+        const truncatedConversation = (recentMessages || [])
           .reverse()
-          .map(m => `${m.sender_type === 'customer' ? 'Customer' : 'Nova'}: ${m.content?.slice(0, 150)}`)
+          .map(m => {
+            const sender = m.sender_type === 'customer' ? 'Customer' : 'Nova'
+            const content = (m.content || '').replace(/\s+/g, ' ').trim()
+            return `${sender}: ${content.slice(0, FOLLOW_UP_MESSAGE_MAX_CHARS)}`
+          })
           .join('\n')
 
-        // Generate contextual follow-up via Haiku
+        const conversationSummary = truncatedConversation.slice(0, FOLLOW_UP_PROMPT_MAX_CHARS)
+
+        // Generate substantive follow-up with troubleshooting analysis
         let followUpContent: string
         try {
-          const haiku = await Promise.race([
+          const aiResponse = await Promise.race([
             withFallback(client =>
               client.messages.create({
                 model: 'claude-sonnet-4-6',
-                max_tokens: 60,
+                max_tokens: 300,
                 temperature: 0.3,
-                system: `You are Nova, a support agent following up with a customer who hasn't replied. Write a brief, natural check-in (1-2 sentences, under 30 words) based on the conversation. Reference what you were helping with specifically. Don't be generic. Don't say "just checking in." End with an easy yes/no question if possible.`,
-                messages: [{ role: 'user', content: `Ticket subject: ${ticket.subject}\n\nConversation:\n${conversationSummary}` }],
+                system: `You are Nova, a support agent following up with a customer who hasn't replied. Analyze the conversation to determine if the issue was resolved.
+
+Rules:
+- If the issue looks unresolved, provide specific next troubleshooting steps or information
+- If you need more info to help, ask a targeted question
+- If it looks resolved but unconfirmed, ask if everything is working
+- Be concise but substantive (2-4 sentences)
+- Reference the specific issue, not generic platitudes
+- Don't say "just checking in" or "wanted to circle back"`,
+                messages: [{ role: 'user', content: `Ticket subject: ${ticket.subject}\n\nFull conversation:\n${conversationSummary}` }],
               })
             ),
-            new Promise<null>(resolve => setTimeout(() => resolve(null), 5000)),
+            new Promise<null>(resolve => setTimeout(() => resolve(null), FOLLOW_UP_AI_TIMEOUT_MS)),
           ])
 
-          followUpContent = haiku
-            ? haiku.content.filter(b => b.type === 'text').map(b => ('text' in b ? b.text : '')).join('').trim()
+          followUpContent = aiResponse
+            ? aiResponse.content.filter(b => b.type === 'text').map(b => ('text' in b ? b.text : '')).join('').trim()
             : ''
         } catch {
           followUpContent = ''
         }
 
-        // Fallback if Haiku failed
+        // Fallback if AI generation failed
         if (!followUpContent) {
-          followUpContent = `Hey, wanted to circle back on your ${ticket.subject?.slice(0, 50) || 'issue'}. Were you able to get that sorted, or do you still need a hand?`
+          followUpContent = `I wanted to follow up on your ${ticket.subject?.slice(0, 50) || 'issue'}. If you're still experiencing this, could you let me know what's happening now so I can suggest specific next steps?`
         }
 
         // Insert follow-up message in widget

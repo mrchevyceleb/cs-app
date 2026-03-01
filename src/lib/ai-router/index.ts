@@ -369,7 +369,7 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
   } else if (
     !useAgentMode &&
     routingDecision.action === 'auto_respond' &&
-    routingDecision.confidence >= (channelConfig?.ai_confidence_threshold || 0.85) &&
+    routingDecision.confidence >= (channelConfig?.ai_confidence_threshold || 0.70) &&
     channelConfig?.ai_auto_respond
   ) {
     // --- Legacy auto-response (unchanged) ---
