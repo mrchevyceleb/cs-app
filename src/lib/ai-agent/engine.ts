@@ -109,7 +109,7 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
     )
 
     // If no tool use, Claude is done — return the text response
-    if (toolUseBlocks.length === 0 || response.stop_reason === 'end_turn') {
+    if (toolUseBlocks.length === 0) {
       // If there are text blocks, use them as the response
       if (textBlocks.length > 0) {
         const content = textBlocks.map((b) => b.text).join('')
@@ -187,7 +187,7 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
             escalationSummary = parsed.summary
             return {
               type: 'escalation',
-              content: `I've connected you with our support team. ${parsed.summary}`,
+              content: `I've flagged this for our team to review and follow up. ${parsed.summary}`,
               confidence: 0.2,
               kbArticleIds,
               webSearchCount,
@@ -331,7 +331,7 @@ export async function* agenticSolveStreaming(
     )
 
     // If no tool use, switch to streaming for the final response
-    if (toolUseBlocks.length === 0 || response.stop_reason === 'end_turn') {
+    if (toolUseBlocks.length === 0) {
       // Extract any text from this non-streaming response
       const textContent = response.content
         .filter((block): block is Anthropic.TextBlock => block.type === 'text')
@@ -421,7 +421,7 @@ export async function* agenticSolveStreaming(
         try {
           const parsed = JSON.parse(result)
           if (parsed.escalated) {
-            const content = `I've connected you with our support team. ${parsed.summary}`
+            const content = `I've flagged this for our team to review and follow up. ${parsed.summary}`
             yield { type: 'text_delta', content }
             yield {
               type: 'complete',

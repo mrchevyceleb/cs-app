@@ -9,6 +9,13 @@ import type { IngestRequest } from '@/types/channels';
 
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate: require INTERNAL_API_KEY
+    const authHeader = request.headers.get('Authorization');
+    const apiKey = process.env.INTERNAL_API_KEY;
+    if (!apiKey || authHeader !== `Bearer ${apiKey}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json() as IngestRequest;
 
     // Validate required fields

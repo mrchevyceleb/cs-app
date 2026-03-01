@@ -166,7 +166,8 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (existingCustomer && existingCustomer.id !== session.customerId) {
-          // Email belongs to another customer -- merge: reassign this ticket to them
+          // Email belongs to another customer -- merge: reassign ticket to them
+          // Messages link through ticket_id, so ticket reassignment is sufficient
           await supabase
             .from('tickets')
             .update({ customer_id: existingCustomer.id })
@@ -396,7 +397,7 @@ export async function POST(request: NextRequest) {
 
             // After first response to an anonymous user, ask for their email
             // so we can link them to their R-Link account and enable follow-ups
-            if (!existingTicketId && session.isAnonymous) {
+            if (!existingTicketId && session.isAnonymous && !emailLinked) {
               try {
                 const emailAsk = await Promise.race([
                   withFallback(client =>
@@ -495,6 +496,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
         'Access-Control-Allow-Origin': '*',
       },
     })

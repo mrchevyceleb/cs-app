@@ -197,6 +197,9 @@ export async function processIngest(request: IngestRequest): Promise<IngestRespo
     .update(ticketUpdate)
     .eq('id', ticket.id);
 
+  // Apply updates to local ticket object so webhooks report correct state
+  Object.assign(ticket, ticketUpdate);
+
   // 7. Dispatch webhooks
   if (isNewTicket) {
     await dispatchWebhook('ticket.created', ticket.id, {
