@@ -45,16 +45,23 @@ export async function POST(
       .order('created_at', { ascending: true })
       .limit(30)
 
-    const conversationHistory = ((messages || []) as Message[])
+    const visibleMessages = ((messages || []) as Message[])
       .filter((m: Message) => {
         const meta = m.metadata as Record<string, unknown> | null
         return !meta?.is_internal
       })
+
+    const conversationHistory = visibleMessages
       .map((m: Message) => {
         const role = m.sender_type === 'customer' ? 'Customer' : 'Support'
         return `${role}: ${m.content}`
       })
       .join('\n\n')
+
+    // Determine who sent the last message to give the AI critical context
+    const lastMessage = visibleMessages[visibleMessages.length - 1]
+    const lastSender = lastMessage?.sender_type === 'customer' ? 'customer' : 'support'
+    const waitingOnCustomer = lastSender !== 'customer'
 
     const customer = ticket.customer as { name?: string; email?: string } | null
     const customerName = customer?.name || customer?.email?.split('@')[0] || 'the customer'
@@ -69,6 +76,9 @@ Rules:
 - Write as a human support agent, not a bot.
 - Be concise but thorough. Match the complexity of the issue.
 - If the conversation already has AI responses, build on them naturally. Don't repeat what was already said.
+- PAY CLOSE ATTENTION to who sent the last message:
+  - If support sent the last message (especially a question), the customer has NOT replied yet. Your draft is a follow-up. Gently check in. Reference the specific question that was asked. Do NOT say "thanks for checking back" or "thanks for reaching out" because the customer didn't.
+  - If the customer sent the last message, your draft is a direct response to what they said.
 - If the customer's issue seems resolved, check in and offer to close.
 - If more info is needed, ask specific follow-up questions.
 - Don't include a greeting line (no "Hi [name]") -- the agent can add their own.
@@ -81,6 +91,7 @@ Rules:
 Priority: ${ticket.priority}
 Status: ${ticket.status}
 Customer: ${customerName}
+Last message was from: ${lastSender}${waitingOnCustomer ? ' (customer has NOT replied yet)' : ''}
 
 Conversation:
 ${conversationHistory}
