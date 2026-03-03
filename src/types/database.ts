@@ -467,7 +467,7 @@ export type Database = {
           id: string
           ticket_id: string | null
           customer_id: string | null
-          email_type: 'ticket_created' | 'ticket_updated' | 'ticket_resolved' | 'agent_reply' | 'reminder'
+          email_type: 'ticket_created' | 'ticket_updated' | 'ticket_resolved' | 'agent_reply' | 'reminder' | 'feedback_request' | 'stalled_revival' | 'post_resolution_checkin' | 'health_intervention' | 'issue_broadcast'
           recipient_email: string
           subject: string
           status: 'pending' | 'sent' | 'failed' | 'bounced'
@@ -481,7 +481,7 @@ export type Database = {
           id?: string
           ticket_id?: string | null
           customer_id?: string | null
-          email_type: 'ticket_created' | 'ticket_updated' | 'ticket_resolved' | 'agent_reply' | 'reminder'
+          email_type: 'ticket_created' | 'ticket_updated' | 'ticket_resolved' | 'agent_reply' | 'reminder' | 'feedback_request' | 'stalled_revival' | 'post_resolution_checkin' | 'health_intervention' | 'issue_broadcast'
           recipient_email: string
           subject: string
           status?: 'pending' | 'sent' | 'failed' | 'bounced'
@@ -495,7 +495,7 @@ export type Database = {
           id?: string
           ticket_id?: string | null
           customer_id?: string | null
-          email_type?: 'ticket_created' | 'ticket_updated' | 'ticket_resolved' | 'agent_reply' | 'reminder'
+          email_type?: 'ticket_created' | 'ticket_updated' | 'ticket_resolved' | 'agent_reply' | 'reminder' | 'feedback_request' | 'stalled_revival' | 'post_resolution_checkin' | 'health_intervention' | 'issue_broadcast'
           recipient_email?: string
           subject?: string
           status?: 'pending' | 'sent' | 'failed' | 'bounced'

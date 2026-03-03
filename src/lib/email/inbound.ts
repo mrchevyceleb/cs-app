@@ -5,15 +5,15 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { InboundEmail } from '@/types/channels';
-import type { Ticket, Message, EmailThread } from '@/types/database';
+import type { Database, Ticket, Message } from '@/types/database';
 import { findOrCreateCustomerByEmail } from '@/lib/channels/customer';
 import { classifyTicketPriority } from '@/lib/ai-agent/classify';
 
 // Lazy initialization to avoid build-time errors when env vars aren't available
-let _supabase: SupabaseClient | null = null;
-function getSupabase(): SupabaseClient {
+let _supabase: SupabaseClient<Database> | null = null;
+function getSupabase(): SupabaseClient<Database> {
   if (!_supabase) {
-    _supabase = createClient(
+    _supabase = createClient<Database>(
       process.env.NEXT_PUBLIC_SB_URL!,
       process.env.SB_SERVICE_ROLE_KEY!
     );
@@ -175,21 +175,8 @@ export async function processInboundEmail(
     }
   }
 
-  // Log inbound email
-  await getSupabase()
-    .from('channel_inbound_logs')
-    .insert({
-      channel: 'email',
-      external_id: messageId,
-      from_identifier: fromAddress,
-      to_identifier: email.to[0],
-      raw_payload: email as unknown as Record<string, unknown>,
-      processed: true,
-      ticket_id: ticket.id,
-      message_id: message.id,
-      customer_id: customer.id,
-      processed_at: new Date().toISOString(),
-    });
+  // Note: inbound logging is handled by the webhook route (route.ts)
+  // which inserts a channel_inbound_logs record and updates it after processing.
 
   return {
     ticket_id: ticket.id,

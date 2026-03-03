@@ -9,13 +9,14 @@ import { processInboundEmail } from '@/lib/email/inbound';
 import { processEmailWithAI } from '@/lib/email/ai-loop';
 import { notifyAgentsOfCustomerReply } from '@/lib/notifications/customer-reply';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 import type { InboundEmail } from '@/types/channels';
 
 // Lazy initialization to avoid build-time errors when env vars aren't available
-let _supabase: SupabaseClient | null = null;
-function getSupabase(): SupabaseClient {
+let _supabase: SupabaseClient<Database> | null = null;
+function getSupabase(): SupabaseClient<Database> {
   if (!_supabase) {
-    _supabase = createClient(
+    _supabase = createClient<Database>(
       process.env.NEXT_PUBLIC_SB_URL!,
       process.env.SB_SERVICE_ROLE_KEY!
     );
@@ -115,6 +116,29 @@ export async function POST(request: NextRequest) {
 
     const messageId = headers['Message-ID'] || headers['message-id'] || undefined;
 
+    // Deduplication: if we've already processed this Message-ID, return success
+    // without re-processing. Prevents duplicate messages on SendGrid retries.
+    if (messageId) {
+      const { data: existing } = await getSupabase()
+        .from('channel_inbound_logs')
+        .select('id, ticket_id, message_id')
+        .eq('external_id', messageId)
+        .eq('processed', true)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        console.log(`[Email Webhook] Duplicate Message-ID detected, skipping: ${messageId}`);
+        return NextResponse.json({
+          success: true,
+          ticket_id: existing.ticket_id,
+          message_id: existing.message_id,
+          is_new_ticket: false,
+          deduplicated: true,
+        });
+      }
+    }
+
     // Log the inbound email
     const { data: logEntry } = await getSupabase()
       .from('channel_inbound_logs')
@@ -123,7 +147,7 @@ export async function POST(request: NextRequest) {
         external_id: messageId,
         from_identifier: from,
         to_identifier: to[0],
-        raw_payload: Object.fromEntries(formData.entries()) as Record<string, unknown>,
+        raw_payload: Object.fromEntries(formData.entries()) as Record<string, string>,
         processed: false,
       })
       .select()
