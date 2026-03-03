@@ -340,7 +340,53 @@ export async function POST(request: NextRequest) {
               )
             }
 
-            // Save AI message to database
+            // Append email ask to the AI response for anonymous users (same bubble, not separate)
+            let emailPromptAppended = false
+            if (!existingTicketId && session.isAnonymous && !emailLinked) {
+              try {
+                const emailAsk = await Promise.race([
+                  withFallback(client =>
+                    client.messages.create({
+                      model: 'claude-haiku-4-5-20251001',
+                      max_tokens: 40,
+                      temperature: 0.3,
+                      system: `You just helped a customer with their issue. Now ask for their email so the team can follow up. Write ONE casual sentence asking for it. Keep it under 20 words. Don't repeat the issue. Don't say "by the way". Do NOT wrap your response in quotes. Output the sentence directly, no punctuation wrapping.
+
+Good examples:
+Also, drop me your email so we can pull up your account details.
+What email is on your account? Helps us track everything on our end.`,
+                      messages: [{ role: 'user', content: `Customer asked about: ${content.trim().slice(0, 80)}. Your response was about: ${fullContent.slice(0, 80)}` }],
+                    })
+                  ),
+                  new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
+                ])
+
+                let emailPrompt = emailAsk
+                  ? emailAsk.content.filter(b => b.type === 'text').map(b => ('text' in b ? b.text : '')).join('').trim()
+                  : "What email is on your account? Helps us keep track of everything on our end."
+
+                // Strip wrapping quotes the model sometimes adds
+                if (emailPrompt.length > 2 && emailPrompt.startsWith('"') && emailPrompt.endsWith('"')) {
+                  emailPrompt = emailPrompt.slice(1, -1).trim()
+                }
+
+                if (emailPrompt) {
+                  // Append to the AI response so it's one message, one bubble
+                  const separator = '\n\n'
+                  fullContent += separator + emailPrompt
+                  emailPromptAppended = true
+
+                  // Stream the appended portion so it appears in real-time
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: separator + emailPrompt })}\n\n`)
+                  )
+                }
+              } catch {
+                // Non-critical -- skip email collection if Haiku fails
+              }
+            }
+
+            // Save AI message to database (includes email ask if appended)
             const { data: savedAiMsg } = await supabase
               .from('messages')
               .insert({
@@ -355,6 +401,7 @@ export async function POST(request: NextRequest) {
                   web_searches: agentResult.webSearchCount,
                   total_tool_calls: agentResult.totalToolCalls,
                   duration_ms: agentResult.durationMs,
+                  ...(emailPromptAppended ? { email_collection: true } : {}),
                 } : {},
               })
               .select('id')
@@ -408,59 +455,7 @@ export async function POST(request: NextRequest) {
               }
             }
 
-            // Ask for email BEFORE complete event so client doesn't miss it
-            if (!existingTicketId && session.isAnonymous && !emailLinked) {
-              try {
-                const emailAsk = await Promise.race([
-                  withFallback(client =>
-                    client.messages.create({
-                      model: 'claude-haiku-4-5-20251001',
-                      max_tokens: 40,
-                      temperature: 0.3,
-                      system: `You just helped a customer with their issue. Now ask for their email so the team can follow up. Write ONE casual sentence asking for it. Keep it under 20 words. Don't repeat the issue. Don't say "by the way". Do NOT wrap your response in quotes. Output the sentence directly, no punctuation wrapping.
-
-Good examples:
-Also, drop me your email so we can pull up your account details.
-What email is on your account? Helps us track everything on our end.`,
-                      messages: [{ role: 'user', content: `Customer asked about: ${content.trim().slice(0, 80)}. Your response was about: ${fullContent.slice(0, 80)}` }],
-                    })
-                  ),
-                  new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
-                ])
-
-                let emailPrompt = emailAsk
-                  ? emailAsk.content.filter(b => b.type === 'text').map(b => ('text' in b ? b.text : '')).join('').trim()
-                  : "What email is on your account? Helps us keep track of everything on our end."
-
-                // Strip wrapping quotes the model sometimes adds
-                if (emailPrompt.length > 2 && emailPrompt.startsWith('"') && emailPrompt.endsWith('"')) {
-                  emailPrompt = emailPrompt.slice(1, -1).trim()
-                }
-
-                if (emailPrompt) {
-                  await supabase
-                    .from('messages')
-                    .insert({
-                      ticket_id: ticketId,
-                      sender_type: 'ai',
-                      content: emailPrompt,
-                      source: 'widget',
-                      metadata: { type: 'email_collection' },
-                    })
-
-                  controller.enqueue(
-                    encoder.encode(`data: ${JSON.stringify({
-                      type: 'email_prompt',
-                      content: emailPrompt,
-                    })}\n\n`)
-                  )
-                }
-              } catch {
-                // Non-critical -- skip email collection if Haiku fails
-              }
-            }
-
-            // Send completion event (after email prompt so client doesn't close early)
+            // Send completion event
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({
                 type: 'complete',

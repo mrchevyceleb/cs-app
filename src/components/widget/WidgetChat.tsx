@@ -365,11 +365,10 @@ export function WidgetChat({
                 break
               }
 
-              case 'email_prompt':
               case 'email_confirmed': {
-                // Add email collection / confirmation as a separate Nova message
+                // Add email link confirmation as a separate Nova message
                 if (event.content) {
-                  const msgId = `${event.type}-${Date.now()}`
+                  const msgId = `email_confirmed-${Date.now()}`
                   setMessages((prev) => [
                     ...prev,
                     {
