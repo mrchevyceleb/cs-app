@@ -1,7 +1,6 @@
 'use client'
 
 import { List, Columns3 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 interface ViewToggleProps {
@@ -11,33 +10,33 @@ interface ViewToggleProps {
 
 export function ViewToggle({ viewMode, onViewModeChange }: ViewToggleProps) {
   return (
-    <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-lg">
-      <Button
-        variant="ghost"
-        size="icon-sm"
+    <div className="flex items-center gap-1 p-1 bg-muted/60 dark:bg-muted/40 rounded-lg border border-border/50">
+      <button
         aria-label="List view"
+        onClick={() => onViewModeChange('list')}
         className={cn(
+          'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200',
           viewMode === 'list'
             ? 'bg-background text-foreground shadow-sm'
             : 'text-muted-foreground hover:text-foreground'
         )}
-        onClick={() => onViewModeChange('list')}
       >
         <List className="w-4 h-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon-sm"
+        <span>List</span>
+      </button>
+      <button
         aria-label="Board view"
+        onClick={() => onViewModeChange('board')}
         className={cn(
+          'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200',
           viewMode === 'board'
             ? 'bg-background text-foreground shadow-sm'
             : 'text-muted-foreground hover:text-foreground'
         )}
-        onClick={() => onViewModeChange('board')}
       >
         <Columns3 className="w-4 h-4" />
-      </Button>
+        <span>Board</span>
+      </button>
     </div>
   )
 }

@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 export type ViewMode = 'list' | 'board'
 
 const STORAGE_KEY = 'cs-app-view-preference'
-const DEFAULT_VIEW: ViewMode = 'list'
+const DEFAULT_VIEW: ViewMode = 'board'
 
 export function useViewPreference(): [ViewMode, (mode: ViewMode) => void] {
   const [viewMode, setViewModeState] = useState<ViewMode>(DEFAULT_VIEW)
