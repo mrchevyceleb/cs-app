@@ -113,6 +113,9 @@ export function BulkActionsBar({
       setIsLoading(true)
       try {
         await onBulkDelete(Array.from(selectedIds))
+      } catch {
+        // Error is handled by the parent (TicketQueue shows the error banner).
+        // Just close the dialog so the banner is visible.
       } finally {
         setIsLoading(false)
         setShowConfirmDialog(false)

@@ -33,6 +33,18 @@ async function getSupabaseClient() {
   return await createClient()
 }
 
+// Service role client for admin operations (bypasses RLS)
+function getServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SB_URL!
+  const serviceKey = process.env.SB_SERVICE_ROLE_KEY
+
+  if (!serviceKey) {
+    throw new Error('SB_SERVICE_ROLE_KEY is required')
+  }
+
+  return createAdminClient(supabaseUrl, serviceKey)
+}
+
 // PATCH /api/tickets/bulk - Bulk update tickets
 export async function PATCH(request: NextRequest) {
   try {
@@ -147,11 +159,11 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
-    const supabase = await getSupabaseClient()
 
-    // Check auth status (skip in dev bypass mode)
+    // Verify the caller is authenticated (unless dev bypass)
     if (!isDevBypass) {
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      const userClient = await createClient()
+      const { data: { user }, error: authError } = await userClient.auth.getUser()
       if (authError || !user) {
         console.error('Auth error:', authError || 'No user session')
         return NextResponse.json(
@@ -160,6 +172,9 @@ export async function DELETE(request: NextRequest) {
         )
       }
     }
+
+    // Use service role client for delete operations (no DELETE RLS policy on tickets)
+    const supabase = getServiceClient()
 
     const body: BulkDeleteRequest = await request.json()
     const { ticketIds } = body
@@ -195,7 +210,30 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Delete related messages first for compatibility with current schema constraints.
+    // Clean up related records that lack ON DELETE CASCADE
+    // proactive_outreach_log.response_ticket_id has no ON DELETE clause (defaults to RESTRICT)
+    const { error: outreachError } = await supabase
+      .from('proactive_outreach_log')
+      .update({ response_ticket_id: null })
+      .in('response_ticket_id', ticketIds)
+
+    if (outreachError) {
+      console.error('Error clearing outreach log references:', outreachError)
+      // Non-fatal: table may not exist in all environments
+    }
+
+    // kb_search_logs.ticket_id has no ON DELETE clause (defaults to RESTRICT)
+    const { error: kbLogsError } = await supabase
+      .from('kb_search_logs')
+      .update({ ticket_id: null })
+      .in('ticket_id', ticketIds)
+
+    if (kbLogsError) {
+      console.error('Error clearing kb_search_logs references:', kbLogsError)
+      // Non-fatal: table may not exist in all environments
+    }
+
+    // Delete related messages first (has CASCADE but being explicit)
     const { error: messagesError } = await supabase
       .from('messages')
       .delete()
