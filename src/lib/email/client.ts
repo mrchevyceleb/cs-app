@@ -15,6 +15,7 @@ if (sendgridApiKey) {
 export const emailConfig = {
   from: process.env.EMAIL_FROM || 'R-Link Support <support@r-link.com>',
   aiFrom: process.env.EMAIL_AI_FROM || 'Ava from R-Link Support <support@r-link.com>',
+  replyTo: process.env.INBOUND_EMAIL_ADDRESS || process.env.EMAIL_FROM || 'support@r-link.com',
   portalUrl: process.env.PORTAL_URL || 'http://localhost:3000/portal',
   companyName: 'R-Link',
   supportEmail: 'support@r-link.com',
@@ -68,6 +69,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     const [response] = await sgMail.send({
       to: options.to,
       from: options.from || emailConfig.from,
+      replyTo: emailConfig.replyTo,
       subject: options.subject,
       html: options.html,
       text: options.text,

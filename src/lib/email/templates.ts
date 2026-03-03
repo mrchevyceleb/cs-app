@@ -156,7 +156,7 @@ function wrapInLayout(content: string, options?: { unsubscribeUrl?: string }): s
         Need help? Contact us at <a href="mailto:${emailConfig.supportEmail}" style="color: ${colors.primary}; text-decoration: none;">${emailConfig.supportEmail}</a>
       </p>
       <p style="margin: 0; color: ${colors.textMuted};">
-        This email was sent by ${emailConfig.companyName}. Please do not reply directly to this email.
+        This email was sent by ${emailConfig.companyName}. You can reply directly to this email for support.
       </p>
       ${unsubscribeFooter}
     </div>
