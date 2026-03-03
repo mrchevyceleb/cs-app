@@ -366,18 +366,27 @@ export function WidgetChat({
               }
 
               case 'email_confirmed': {
-                // Add email link confirmation as a separate Nova message
+                // Insert email link confirmation BEFORE the streaming AI placeholder
+                // so it appears above the AI response that's about to stream in
                 if (event.content) {
                   const msgId = `email_confirmed-${Date.now()}`
-                  setMessages((prev) => [
-                    ...prev,
-                    {
-                      id: msgId,
-                      sender_type: 'ai',
-                      content: event.content,
-                      created_at: new Date().toISOString(),
-                    },
-                  ])
+                  const confirmationMsg: StreamingMessage = {
+                    id: msgId,
+                    sender_type: 'ai',
+                    content: event.content,
+                    created_at: new Date().toISOString(),
+                  }
+                  setMessages((prev) => {
+                    const streamIdx = prev.findIndex((m) => m.id === streamingId)
+                    if (streamIdx >= 0) {
+                      // Insert right before the streaming placeholder
+                      const next = [...prev]
+                      next.splice(streamIdx, 0, confirmationMsg)
+                      return next
+                    }
+                    // Fallback: append if streaming placeholder not found
+                    return [...prev, confirmationMsg]
+                  })
                 }
                 break
               }

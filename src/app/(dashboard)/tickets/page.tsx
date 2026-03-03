@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, keepPreviousData, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
