@@ -13,6 +13,9 @@ export {
 } from './templates'
 export type { TicketEmailData, FeedbackEmailData, EmailType } from './templates'
 
+// Unsubscribe utilities
+export { getUnsubscribeUrl, generateUnsubscribeToken, validateUnsubscribeToken } from './unsubscribe'
+
 // Email sending functions
 export {
   emailSenders,

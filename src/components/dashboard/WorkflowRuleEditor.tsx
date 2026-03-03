@@ -45,17 +45,19 @@ import type {
   Agent,
 } from '@/types/database'
 import {
-  TRIGGER_EVENT_DISPLAY_NAMES,
-  TRIGGER_EVENT_DESCRIPTIONS,
-  TRIGGER_EVENTS,
   FIELD_OPERATORS,
   FIELD_DISPLAY_NAMES,
   OPERATOR_DISPLAY_NAMES,
   FIELD_VALUE_OPTIONS,
+} from '@/lib/workflow/conditions'
+import {
+  TRIGGER_EVENTS,
+  TRIGGER_EVENT_DISPLAY_NAMES,
+  TRIGGER_EVENT_DESCRIPTIONS,
   ACTION_TYPE_DISPLAY_NAMES,
   ACTION_TYPE_DESCRIPTIONS,
   ACTION_TYPE_CONFIG,
-} from '@/lib/workflow/engine'
+} from '@/lib/workflow/constants'
 
 interface WorkflowRuleEditorProps {
   rule?: WorkflowRule | null

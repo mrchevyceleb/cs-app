@@ -30,7 +30,7 @@ npm run dev
 - **AI**: Claude AI (Anthropic SDK), OpenAI (embeddings)
 - **Auth**: Supabase Auth
 - **Real-time**: Supabase Realtime (WebSocket subscriptions)
-- **Email**: Resend
+- **Email**: SendGrid
 
 ## Project Structure
 
@@ -106,7 +106,7 @@ npm run dev
 
 **Core:** Supabase (URL, anon key, service role key), `NEXT_PUBLIC_APP_URL`
 **AI:** Anthropic keys (2x for load balancing), OpenAI, Brave Search, agent config
-**Channels:** Resend (email), Twilio (SMS), Slack
+**Channels:** SendGrid (email)
 **Security:** `CRON_SECRET`, `INTERNAL_API_KEY`, widget CORS origins
 
 Doppler auto-syncs to Vercel (no manual env var management).

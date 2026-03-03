@@ -363,7 +363,7 @@ async function handleNotifyAgents(
 }
 
 /**
- * Send email (log to email_logs table for processing)
+ * Send email using the ticketUpdated template and log to email_logs.
  */
 async function handleSendEmail(
   action: WorkflowAction,
@@ -387,27 +387,78 @@ async function handleSendEmail(
     }
   }
 
-  // Create email log entry
-  const { error } = await supabase.from('email_logs').insert({
-    ticket_id: ticket.id,
-    customer_id: ticket.customer_id,
-    email_type: 'ticket_updated',
-    recipient_email: customer.email,
-    subject: `Update: ${ticket.subject}`,
-    status: 'pending',
-    metadata: { workflow_action: true, template },
+  const subject = `Update: ${ticket.subject}`
+
+  // Create email log entry (pending)
+  const { data: emailLog, error: logError } = await supabase
+    .from('email_logs')
+    .insert({
+      ticket_id: ticket.id,
+      customer_id: ticket.customer_id,
+      email_type: 'ticket_updated',
+      recipient_email: customer.email,
+      subject,
+      status: 'pending',
+      metadata: { workflow_action: true, template },
+    })
+    .select('id')
+    .single()
+
+  if (logError) {
+    return { action, success: false, error: logError.message }
+  }
+
+  // Dynamic imports to avoid pulling @sendgrid/mail into client bundles
+  // (this module is re-exported to client components via workflow display names)
+  const { sendEmail } = await import('@/lib/email/client')
+  const { ticketUpdatedTemplate } = await import('@/lib/email/templates')
+  const { generatePortalToken } = await import('@/lib/portal/auth')
+
+  // Generate portal token and build template
+  const portalToken = await generatePortalToken(ticket.customer_id, ticket.id)
+  const { html, text } = ticketUpdatedTemplate({
+    ticketId: ticket.id,
+    ticketSubject: ticket.subject,
+    customerName: customer.name || 'there',
+    portalToken: portalToken || '',
+    status: ticket.status,
   })
 
-  if (error) {
-    return { action, success: false, error: error.message }
+  // Send the email
+  const result = await sendEmail({
+    to: customer.email,
+    subject,
+    html,
+    text,
+    tags: [
+      { name: 'type', value: 'ticket_updated' },
+      { name: 'ticket_id', value: ticket.id },
+      { name: 'source', value: 'workflow' },
+    ],
+  })
+
+  // Update email log with send result
+  await supabase
+    .from('email_logs')
+    .update({
+      status: result.success ? 'sent' : 'failed',
+      provider_id: result.id || null,
+      error_message: result.error || null,
+      sent_at: result.success ? new Date().toISOString() : null,
+    })
+    .eq('id', emailLog.id)
+
+  if (!result.success) {
+    return { action, success: false, error: result.error }
   }
 
   return {
     action,
     success: true,
     result: {
-      email_queued: true,
+      email_sent: true,
       recipient: customer.email,
+      provider_id: result.id,
     },
   }
 }
@@ -522,99 +573,11 @@ export async function executeActions(
   return results
 }
 
-/**
- * Action type display names for UI
- */
-export const ACTION_TYPE_DISPLAY_NAMES: Record<WorkflowActionType, string> = {
-  set_status: 'Set Status',
-  set_priority: 'Set Priority',
-  add_tag: 'Add Tag',
-  remove_tag: 'Remove Tag',
-  assign_agent: 'Assign to Agent',
-  notify_agents: 'Notify Agents',
-  send_email: 'Send Email',
-  add_internal_note: 'Add Internal Note',
-}
-
-/**
- * Action type descriptions for UI
- */
-export const ACTION_TYPE_DESCRIPTIONS: Record<WorkflowActionType, string> = {
-  set_status: 'Change the ticket status',
-  set_priority: 'Change the ticket priority',
-  add_tag: 'Add a tag to the ticket',
-  remove_tag: 'Remove a tag from the ticket',
-  assign_agent: 'Assign the ticket to a specific agent',
-  notify_agents: 'Send notifications to agents',
-  send_email: 'Queue an email to the customer',
-  add_internal_note: 'Add an internal note to the ticket',
-}
-
-/**
- * Configuration options for each action type
- */
-export const ACTION_TYPE_CONFIG: Record<
-  WorkflowActionType,
-  {
-    requiresValue: boolean
-    valueType: 'text' | 'select' | 'agent' | 'template'
-    valueOptions?: { value: string; label: string }[]
-    requiresFilter?: boolean
-    filterOptions?: { value: string; label: string }[]
-    requiresTemplate?: boolean
-  }
-> = {
-  set_status: {
-    requiresValue: true,
-    valueType: 'select',
-    valueOptions: [
-      { value: 'open', label: 'Open' },
-      { value: 'pending', label: 'Pending' },
-      { value: 'resolved', label: 'Resolved' },
-      { value: 'escalated', label: 'Escalated' },
-    ],
-  },
-  set_priority: {
-    requiresValue: true,
-    valueType: 'select',
-    valueOptions: [
-      { value: 'low', label: 'Low' },
-      { value: 'normal', label: 'Normal' },
-      { value: 'high', label: 'High' },
-      { value: 'urgent', label: 'Urgent' },
-    ],
-  },
-  add_tag: {
-    requiresValue: true,
-    valueType: 'text',
-  },
-  remove_tag: {
-    requiresValue: true,
-    valueType: 'text',
-  },
-  assign_agent: {
-    requiresValue: true,
-    valueType: 'agent',
-  },
-  notify_agents: {
-    requiresValue: false,
-    valueType: 'template',
-    requiresFilter: true,
-    filterOptions: [
-      { value: 'all', label: 'All Agents' },
-      { value: 'online', label: 'Online Agents Only' },
-      { value: 'assigned', label: 'Assigned Agent' },
-    ],
-    requiresTemplate: true,
-  },
-  send_email: {
-    requiresValue: false,
-    valueType: 'template',
-    requiresTemplate: true,
-  },
-  add_internal_note: {
-    requiresValue: false,
-    valueType: 'template',
-    requiresTemplate: true,
-  },
-}
+// UI display constants are in ./constants.ts to avoid pulling server-only
+// dependencies into client component bundles.
+// Re-export them here for backward compatibility with existing imports.
+export {
+  ACTION_TYPE_DISPLAY_NAMES,
+  ACTION_TYPE_DESCRIPTIONS,
+  ACTION_TYPE_CONFIG,
+} from './constants'

@@ -59,12 +59,15 @@ export type {
 export {
   executeActions,
   executeAction,
-  // Constants
-  ACTION_TYPE_DISPLAY_NAMES,
-  ACTION_TYPE_DESCRIPTIONS,
-  ACTION_TYPE_CONFIG,
 } from './actions'
 
 export type {
   ActionContext,
 } from './actions'
+
+// UI display constants (separated to avoid pulling server-only deps into client bundles)
+export {
+  ACTION_TYPE_DISPLAY_NAMES,
+  ACTION_TYPE_DESCRIPTIONS,
+  ACTION_TYPE_CONFIG,
+} from './constants'

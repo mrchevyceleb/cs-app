@@ -52,6 +52,8 @@ export type Database = {
         Row: {
           created_at: string
           email: string | null
+          email_opt_out: boolean
+          email_opt_out_at: string | null
           id: string
           metadata: Json
           name: string | null
@@ -62,6 +64,8 @@ export type Database = {
         Insert: {
           created_at?: string
           email?: string | null
+          email_opt_out?: boolean
+          email_opt_out_at?: string | null
           id?: string
           metadata?: Json
           name?: string | null
@@ -72,6 +76,8 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string | null
+          email_opt_out?: boolean
+          email_opt_out_at?: string | null
           id?: string
           metadata?: Json
           name?: string | null

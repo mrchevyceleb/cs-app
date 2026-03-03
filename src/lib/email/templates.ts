@@ -126,8 +126,17 @@ function getPortalLink(ticketId: string, token: string): string {
   return `${emailConfig.portalUrl}/tickets/${ticketId}?token=${token}`
 }
 
+// Re-export getUnsubscribeUrl from the standalone utility
+export { getUnsubscribeUrl } from './unsubscribe'
+
 // Base HTML template wrapper
-function wrapInLayout(content: string): string {
+function wrapInLayout(content: string, options?: { unsubscribeUrl?: string }): string {
+  const unsubscribeFooter = options?.unsubscribeUrl
+    ? `<p style="margin: 8px 0 0 0; color: ${colors.textMuted};">
+        <a href="${options.unsubscribeUrl}" style="color: ${colors.textMuted}; text-decoration: underline; font-size: 11px;">Unsubscribe from proactive emails</a>
+      </p>`
+    : ''
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -149,6 +158,7 @@ function wrapInLayout(content: string): string {
       <p style="margin: 0; color: ${colors.textMuted};">
         This email was sent by ${emailConfig.companyName}. Please do not reply directly to this email.
       </p>
+      ${unsubscribeFooter}
     </div>
   </div>
 </body>

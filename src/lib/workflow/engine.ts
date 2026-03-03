@@ -279,38 +279,13 @@ export async function testWorkflowRule(
   }
 }
 
-/**
- * Trigger event display names for UI
- */
-export const TRIGGER_EVENT_DISPLAY_NAMES: Record<WorkflowTriggerEvent, string> = {
-  ticket_created: 'Ticket Created',
-  status_changed: 'Status Changed',
-  priority_changed: 'Priority Changed',
-  ticket_assigned: 'Ticket Assigned',
-  message_received: 'Message Received',
-}
-
-/**
- * Trigger event descriptions for UI
- */
-export const TRIGGER_EVENT_DESCRIPTIONS: Record<WorkflowTriggerEvent, string> = {
-  ticket_created: 'Triggered when a new ticket is created',
-  status_changed: 'Triggered when a ticket status changes',
-  priority_changed: 'Triggered when ticket priority is updated',
-  ticket_assigned: 'Triggered when a ticket is assigned to an agent',
-  message_received: 'Triggered when a new message is added to a ticket',
-}
-
-/**
- * Get available trigger events
- */
-export const TRIGGER_EVENTS: WorkflowTriggerEvent[] = [
-  'ticket_created',
-  'status_changed',
-  'priority_changed',
-  'ticket_assigned',
-  'message_received',
-]
+// UI display constants are in ./constants.ts to avoid pulling server-only
+// dependencies into client component bundles. Re-export for backward compatibility.
+export {
+  TRIGGER_EVENT_DISPLAY_NAMES,
+  TRIGGER_EVENT_DESCRIPTIONS,
+  TRIGGER_EVENTS,
+} from './constants'
 
 /**
  * Helper to create workflow event data for specific triggers
@@ -364,4 +339,4 @@ export {
   ACTION_TYPE_DISPLAY_NAMES,
   ACTION_TYPE_DESCRIPTIONS,
   ACTION_TYPE_CONFIG,
-} from './actions'
+} from './constants'

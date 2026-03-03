@@ -21,7 +21,7 @@
 ## Integration points
 - Supabase (auth, DB, realtime) via src/lib/supabase and RLS-driven schema in supabase/migrations.
 - AI: Anthropic (Claude) + OpenAI embeddings (see src/lib/ai-router and src/lib/openai).
-- Email: Resend + inbound processing in src/lib/email/inbound.ts and webhook routes.
+- Email: SendGrid + inbound processing in src/lib/email/inbound.ts and webhook routes.
 - SMS: Twilio client in src/lib/twilio/client.ts with webhooks under src/app/api/webhooks/twilio/sms.
 - Slack: inbound webhook at src/app/api/webhooks/inbound/slack.
 

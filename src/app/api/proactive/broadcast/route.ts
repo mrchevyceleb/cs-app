@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { verifyCronRequest, unauthorizedResponse } from '@/lib/cron/auth'
+import { getUnsubscribeUrl } from '@/lib/email/templates'
 import type { ProactiveOutreachLogInsert } from '@/types/database'
 
 // Get admin Supabase client
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date()
-    let targetCustomers: { id: string; email: string | null; ticketId: string | null }[] = []
+    let targetCustomers: { id: string; email: string | null; emailOptOut: boolean; ticketId: string | null }[] = []
 
     // Get customers from pattern
     if (patternId) {
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
       if (affectedCustomerIds.length > 0) {
         const { data: customers } = await supabase
           .from('customers')
-          .select('id, email')
+          .select('id, email, email_opt_out')
           .in('id', affectedCustomerIds)
 
         // Map customers to their most recent affected ticket
@@ -121,6 +122,7 @@ export async function POST(request: NextRequest) {
         targetCustomers = (customers || []).map((c) => ({
           id: c.id,
           email: c.email,
+          emailOptOut: c.email_opt_out ?? false,
           ticketId: customerTicketMap.get(c.id) || null,
         }))
       }
@@ -130,17 +132,18 @@ export async function POST(request: NextRequest) {
     if (ticketIds && ticketIds.length > 0) {
       const { data: tickets } = await supabase
         .from('tickets')
-        .select('id, customer_id, customer:customers(id, email)')
+        .select('id, customer_id, customer:customers(id, email, email_opt_out)')
         .in('id', ticketIds)
 
       for (const ticket of tickets || []) {
-        const customerData = ticket.customer as { id: string; email: string | null } | { id: string; email: string | null }[] | null
+        const customerData = ticket.customer as { id: string; email: string | null; email_opt_out: boolean } | { id: string; email: string | null; email_opt_out: boolean }[] | null
         // Handle both single object and array cases from Supabase
         const customer = Array.isArray(customerData) ? customerData[0] : customerData
         if (customer && !targetCustomers.find((c) => c.id === customer.id)) {
           targetCustomers.push({
             id: customer.id,
             email: customer.email,
+            emailOptOut: customer.email_opt_out ?? false,
             ticketId: ticket.id,
           })
         }
@@ -151,7 +154,7 @@ export async function POST(request: NextRequest) {
     if (customerIds && customerIds.length > 0) {
       const { data: customers } = await supabase
         .from('customers')
-        .select('id, email')
+        .select('id, email, email_opt_out')
         .in('id', customerIds)
 
       for (const customer of customers || []) {
@@ -159,6 +162,7 @@ export async function POST(request: NextRequest) {
           targetCustomers.push({
             id: customer.id,
             email: customer.email,
+            emailOptOut: customer.email_opt_out ?? false,
             ticketId: null,
           })
         }
@@ -205,27 +209,35 @@ export async function POST(request: NextRequest) {
 
       // Send based on channel
       if (channel === 'email' && customer.email) {
-        try {
-          const { sendEmail } = await import('@/lib/email/client')
+        // Skip opted-out customers for email channel
+        if (customer.emailOptOut) {
+          error = 'Customer opted out of proactive emails'
+        } else {
+          try {
+            const { sendEmail } = await import('@/lib/email/client')
+            const unsubscribeUrl = getUnsubscribeUrl(customer.id)
 
-          const result = await sendEmail({
-            to: customer.email,
-            subject,
-            text: message,
-            html: `<div style="font-family: sans-serif; line-height: 1.6;">
-              ${message.split('\n').map((line) => `<p>${line || '&nbsp;'}</p>`).join('')}
-            </div>`,
-            tags: [
-              { name: 'type', value: 'issue_broadcast' },
-              ...(patternId ? [{ name: 'pattern_id', value: patternId }] : []),
-            ],
-          })
+            const result = await sendEmail({
+              to: customer.email,
+              subject,
+              text: `${message}\n\nUnsubscribe from proactive emails: ${unsubscribeUrl}`,
+              html: `<div style="font-family: sans-serif; line-height: 1.6;">
+                ${message.split('\n').map((line) => `<p>${line || '&nbsp;'}</p>`).join('')}
+                <p style="font-size: 11px; color: #94A3B8; margin-top: 24px;"><a href="${unsubscribeUrl}" style="color: #94A3B8;">Unsubscribe from proactive emails</a></p>
+              </div>`,
+              tags: [
+                { name: 'type', value: 'issue_broadcast' },
+                ...(patternId ? [{ name: 'pattern_id', value: patternId }] : []),
+              ],
+              unsubscribeUrl,
+            })
 
-          success = result.success
-          error = result.error
-        } catch (err) {
-          success = false
-          error = err instanceof Error ? err.message : 'Email send failed'
+            success = result.success
+            error = result.error
+          } catch (err) {
+            success = false
+            error = err instanceof Error ? err.message : 'Email send failed'
+          }
         }
       } else if (channel === 'internal' && customer.ticketId) {
         // Add message to ticket

@@ -30,6 +30,8 @@ export interface SendEmailOptions {
   from?: string
   headers?: Record<string, string>
   tags?: { name: string; value: string }[]
+  /** URL for List-Unsubscribe header (CAN-SPAM compliance for proactive emails) */
+  unsubscribeUrl?: string
 }
 
 export interface SendEmailResult {
@@ -56,6 +58,13 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
   }
 
   try {
+    // Build headers, adding List-Unsubscribe for proactive emails
+    const headers: Record<string, string> = { ...options.headers }
+    if (options.unsubscribeUrl) {
+      headers['List-Unsubscribe'] = `<${options.unsubscribeUrl}>`
+      headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
+    }
+
     const [response] = await sgMail.send({
       to: options.to,
       from: options.from || emailConfig.from,
@@ -63,7 +72,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       html: options.html,
       text: options.text,
       categories: options.tags?.map(t => `${t.name}:${t.value}`),
-      headers: options.headers || {},
+      headers,
     })
 
     const messageId = response.headers['x-message-id']

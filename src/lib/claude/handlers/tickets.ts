@@ -242,11 +242,12 @@ export async function escalateTicket(
   }
 
   try {
-    // Update ticket status to escalated
+    // Update ticket status to escalated and move to human queue
     const { data: ticket, error: updateError } = await supabase
       .from('tickets')
       .update({
         status: 'escalated',
+        queue_type: 'human',
         updated_at: new Date().toISOString(),
       })
       .eq('id', input.ticket_id)
@@ -569,3 +570,4 @@ function extractSentiment(text: string): 'frustrated' | 'neutral' | 'happy' {
   }
   return 'neutral'
 }
+

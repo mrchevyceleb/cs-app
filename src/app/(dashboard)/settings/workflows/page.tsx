@@ -42,7 +42,7 @@ import type { WorkflowRule, Agent } from '@/types/database'
 import {
   TRIGGER_EVENT_DISPLAY_NAMES,
   ACTION_TYPE_DISPLAY_NAMES,
-} from '@/lib/workflow/engine'
+} from '@/lib/workflow/constants'
 
 export default function WorkflowsSettingsPage() {
   const [rules, setRules] = useState<WorkflowRule[]>([])

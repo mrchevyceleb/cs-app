@@ -510,8 +510,11 @@ export async function sendChannelResponse(
 ): Promise<{ success: boolean; external_id?: string; error?: string }> {
   switch (channel) {
     case 'email':
-      // Email sending is handled separately via the email service
-      // This is a placeholder for the response tracking
+      // Email channel sends are handled by dedicated paths, NOT here:
+      // - Agentic AI replies: src/lib/email/ai-loop.ts -> processEmailWithAI() -> sendAgentReplyEmail()
+      // - Human agent replies: src/app/api/tickets/[id]/messages/route.ts -> sendAgentReplyEmail()
+      // Wiring sendEmail here would cause duplicate sends since the message is already
+      // saved to the DB above, and those paths handle the actual email delivery.
       return { success: true };
 
     case 'widget':

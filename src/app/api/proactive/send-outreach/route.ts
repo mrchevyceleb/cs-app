@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getUnsubscribeUrl } from '@/lib/email/templates'
 import type {
   Json,
   ProactiveOutreachType,
@@ -50,10 +51,10 @@ async function sendEmailOutreach(
   subject: string,
   content: string
 ): Promise<{ success: boolean; error?: string }> {
-  // Get customer email
+  // Get customer email and opt-out status
   const { data: customer } = await supabase
     .from('customers')
-    .select('email, name')
+    .select('email, name, email_opt_out')
     .eq('id', customerId)
     .single()
 
@@ -61,22 +62,29 @@ async function sendEmailOutreach(
     return { success: false, error: 'Customer has no email address' }
   }
 
+  if (customer.email_opt_out) {
+    return { success: false, error: 'Customer opted out of proactive emails' }
+  }
+
   // Use the existing email sending infrastructure
   // Import dynamically to avoid circular dependencies
   try {
     const { sendEmail } = await import('@/lib/email/client')
+    const unsubscribeUrl = getUnsubscribeUrl(customerId)
 
     const result = await sendEmail({
       to: customer.email,
       subject,
-      text: content,
+      text: `${content}\n\nUnsubscribe from proactive emails: ${unsubscribeUrl}`,
       html: `<div style="font-family: sans-serif; line-height: 1.6;">
         <p>${content.replace(/\n/g, '</p><p>')}</p>
+        <p style="font-size: 11px; color: #94A3B8; margin-top: 24px;"><a href="${unsubscribeUrl}" style="color: #94A3B8;">Unsubscribe from proactive emails</a></p>
       </div>`,
       tags: [
         { name: 'type', value: 'proactive_outreach' },
         ...(ticketId ? [{ name: 'ticket_id', value: ticketId }] : []),
       ],
+      unsubscribeUrl,
     })
 
     return { success: result.success, error: result.error }

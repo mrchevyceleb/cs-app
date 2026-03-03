@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient, verifyCronRequest, unauthorizedResponse, logCronExecution } from '@/lib/cron/auth'
+import { withFallback } from '@/lib/claude/client'
+import { sendEmail } from '@/lib/email/client'
+import { getUnsubscribeUrl } from '@/lib/email/templates'
 import type { CustomerHealthScore, CustomerHealthFactors, HealthRiskLevel, HealthTrend } from '@/types/database'
 
 const JOB_NAME = 'health-scores'
@@ -162,7 +165,7 @@ async function triggerAtRiskIntervention(
   // Get customer info
   const { data: customer } = await supabase
     .from('customers')
-    .select('id, name, email')
+    .select('id, name, email, email_opt_out')
     .eq('id', result.customerId)
     .single()
 
@@ -219,10 +222,94 @@ async function triggerAtRiskIntervention(
       delivered_at: now.toISOString(),
     })
 
-  // For critical customers with email, consider sending a proactive outreach
-  if (result.riskLevel === 'critical' && customer.email) {
-    // This could trigger an email, but we'll leave that as a manual action
-    // to avoid over-automation. The operator notification above will alert staff.
+  // Send proactive email to critical customers
+  if (result.riskLevel === 'critical' && customer.email && !customer.email_opt_out) {
+    try {
+      // Build context for AI-generated outreach
+      const openTicketSummary = openTickets && openTickets.length > 0
+        ? `They have an open ticket: "${openTickets[0].subject}" (status: ${openTickets[0].status}).`
+        : 'They have no open tickets currently.'
+
+      const factorSummary = Object.entries(result.factors)
+        .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+        .join(', ')
+
+      let emailBody: string
+      try {
+        const aiResponse = await Promise.race([
+          withFallback(client =>
+            client.messages.create({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 300,
+              temperature: 0.3,
+              system: `You are writing a brief, warm check-in email from an R-Link support team member to a customer whose account health is critical. The goal is to proactively offer help before they churn.
+
+Rules:
+- Be warm but not salesy. 2-4 sentences max.
+- Reference their specific situation if possible (open ticket, recent issues).
+- Offer a clear next step (reply to this email, or we can schedule a call).
+- Sign off as "The R-Link Support Team".
+- Do NOT include a subject line, greeting, or closing - just the body paragraphs.`,
+              messages: [{
+                role: 'user',
+                content: `Customer: ${customer.name || 'Unknown'}\nHealth score: ${result.score}/100 (critical, trend: ${result.trend})\n${openTicketSummary}\nKey factors: ${factorSummary}`,
+              }],
+            })
+          ),
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 5000)),
+        ])
+
+        emailBody = aiResponse
+          ? aiResponse.content.filter(b => b.type === 'text').map(b => ('text' in b ? b.text : '')).join('').trim()
+          : ''
+      } catch {
+        emailBody = ''
+      }
+
+      // Fallback if AI generation failed
+      if (!emailBody) {
+        const name = customer.name || 'there'
+        emailBody = `We noticed your recent experience with R-Link may not have been ideal, and we want to make sure you're getting the support you need. If there's anything we can help with, just reply to this email and we'll prioritize your request.\n\nThe R-Link Support Team`
+      }
+
+      const emailGreeting = customer.name ? `Hi ${customer.name},` : 'Hi there,'
+      const unsubscribeUrl = getUnsubscribeUrl(result.customerId)
+
+      await sendEmail({
+        to: customer.email,
+        subject: 'We want to make sure you\'re taken care of',
+        html: `<div style="font-family: sans-serif; line-height: 1.6;"><p>${emailGreeting}</p>${emailBody.split('\n').map(line => `<p>${line || '&nbsp;'}</p>`).join('')}<p style="font-size: 11px; color: #94A3B8; margin-top: 24px;"><a href="${unsubscribeUrl}" style="color: #94A3B8;">Unsubscribe from proactive emails</a></p></div>`,
+        text: `${emailGreeting}\n\n${emailBody}\n\nUnsubscribe from proactive emails: ${unsubscribeUrl}`,
+        tags: [
+          { name: 'type', value: 'health_intervention' },
+          { name: 'customer_id', value: result.customerId },
+        ],
+        unsubscribeUrl,
+      })
+
+      // Log the email outreach separately from the internal notification
+      await supabase
+        .from('proactive_outreach_log')
+        .insert({
+          customer_id: result.customerId,
+          ticket_id: openTickets?.[0]?.id || null,
+          outreach_type: 'health_score_intervention',
+          channel: 'email',
+          message_content: emailBody,
+          message_subject: 'We want to make sure you\'re taken care of',
+          trigger_reason: `Health score critical (${result.score}), trend ${result.trend}`,
+          trigger_data: {
+            score: result.score,
+            risk_level: result.riskLevel,
+            trend: result.trend,
+            ai_generated: !!emailBody,
+          },
+          delivery_status: 'sent',
+          delivered_at: now.toISOString(),
+        })
+    } catch (emailErr) {
+      console.error(`[${JOB_NAME}] Error sending critical health email to ${customer.email}:`, emailErr)
+    }
   }
 }
 

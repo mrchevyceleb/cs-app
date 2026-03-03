@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova CS vs Zendesk - Feature Comparison Report</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%236366f1'/><stop offset='100%25' style='stop-color:%2310b981'/></linearGradient></defs><circle cx='50' cy='50' r='48' fill='url(%23g)'/><text x='50' y='68' font-size='52' font-weight='bold' fill='white' text-anchor='middle' font-family='Arial'>N</text></svg>" type="image/svg+xml">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    :root {
+      --indigo-50: #eef2ff;
+      --indigo-100: #e0e7ff;
+      --indigo-200: #c7d2fe;
+      --indigo-300: #a5b4fc;
+      --indigo-400: #818cf8;
+      --indigo-500: #6366f1;
+      --indigo-600: #4f46e5;
+      --indigo-700: #4338ca;
+      --indigo-800: #3730a3;
+      --indigo-900: #312e81;
+      --emerald-400: #34d399;
+      --emerald-500: #10b981;
+      --emerald-600: #059669;
+      --rose-400: #fb7185;
+      --rose-500: #f43f5e;
+      --amber-400: #fbbf24;
+      --amber-500: #f59e0b;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-300: #cbd5e1;
+      --slate-400: #94a3b8;
+      --slate-500: #64748b;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--slate-900);
+      color: var(--slate-200);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Hero Section */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 80px 40px 100px;
+      background: linear-gradient(135deg, var(--slate-900) 0%, #1a1a2e 50%, var(--indigo-900) 100%);
+      text-align: center;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(ellipse at 30% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 60%),
+                  radial-gradient(ellipse at 70% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 60%);
+    }
+
+    .hero-content { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; }
+
+    .hero-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--indigo-300);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #fff 0%, var(--indigo-200) 50%, var(--emerald-400) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 20px;
+      color: var(--slate-400);
+      max-width: 700px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 60px;
+      margin-top: 48px;
+    }
+
+    .hero-stat {
+      text-align: center;
+    }
+
+    .hero-stat .number {
+      font-size: 48px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--emerald-400), var(--indigo-400));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-stat .label {
+      font-size: 14px;
+      color: var(--slate-400);
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    /* Navigation */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+      padding: 0 40px;
+    }
+
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav-inner::-webkit-scrollbar { display: none; }
+
+    .nav a {
+      padding: 16px 20px;
+      color: var(--slate-400);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .nav a:hover {
+      color: var(--indigo-300);
+      border-bottom-color: var(--indigo-500);
+    }
+
+    /* Main Content */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 40px;
+    }
+
+    /* Section */
+    .section {
+      padding: 80px 0;
+    }
+
+    .section-header {
+      margin-bottom: 48px;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--indigo-400);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 36px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .section-subtitle {
+      font-size: 16px;
+      color: var(--slate-400);
+      max-width: 600px;
+    }
+
+    /* Comparison Table */
+    .comparison-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(99, 102, 241, 0.1);
+    }
+
+    .comparison-table thead th {
+      padding: 20px 24px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: rgba(99, 102, 241, 0.08);
+      border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+    }
+
+    .comparison-table thead th:first-child { color: var(--slate-400); }
+    .comparison-table thead th:nth-child(2) {
+      color: var(--indigo-300);
+      text-align: center;
+    }
+    .comparison-table thead th:nth-child(3) {
+      color: var(--slate-500);
+      text-align: center;
+    }
+
+    .comparison-table tbody tr {
+      transition: background 0.2s;
+    }
+
+    .comparison-table tbody tr:hover {
+      background: rgba(99, 102, 241, 0.04);
+    }
+
+    .comparison-table td {
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      font-size: 14px;
+      vertical-align: top;
+    }
+
+    .comparison-table td:first-child {
+      font-weight: 500;
+      color: var(--slate-300);
+      width: 240px;
+    }
+
+    .comparison-table td:nth-child(2),
+    .comparison-table td:nth-child(3) {
+      text-align: center;
+      width: calc((100% - 240px) / 2);
+    }
+
+    .comparison-table tbody tr:last-child td { border-bottom: none; }
+
+    .check {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .check-yes {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--emerald-400);
+    }
+
+    .check-no {
+      background: rgba(244, 63, 94, 0.1);
+      color: var(--rose-400);
+    }
+
+    .check-partial {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--amber-400);
+    }
+
+    .feature-note {
+      display: block;
+      font-size: 12px;
+      color: var(--slate-500);
+      margin-top: 4px;
+      font-weight: 400;
+    }
+
+    /* Feature Cards */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(30, 41, 59, 0.4));
+      border: 1px solid rgba(99, 102, 241, 0.1);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(99, 102, 241, 0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .feature-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    .feature-card-icon.indigo {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.05));
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .feature-card-icon.emerald {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05));
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .feature-card-icon.amber {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05));
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .feature-card h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--slate-400);
+      line-height: 1.7;
+    }
+
+    .feature-card .tag {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tag-nova {
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--indigo-300);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .tag-advantage {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--emerald-400);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    /* Pricing Comparison */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      margin-top: 40px;
+    }
+
+    .pricing-card {
+      border-radius: 20px;
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pricing-card.nova {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(16, 185, 129, 0.08));
+      border: 2px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .pricing-card.zendesk {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(51, 65, 85, 0.5);
+    }
+
+    .pricing-card .brand {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .pricing-card.nova .brand { color: var(--indigo-400); }
+    .pricing-card.zendesk .brand { color: var(--slate-500); }
+
+    .pricing-card .price-label {
+      font-size: 14px;
+      color: var(--slate-400);
+      margin-bottom: 24px;
+    }
+
+    .pricing-card .price {
+      font-size: 48px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .pricing-card.nova .price { color: #fff; }
+    .pricing-card.zendesk .price { color: var(--slate-300); }
+
+    .pricing-card .price span {
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--slate-500);
+    }
+
+    .pricing-list {
+      list-style: none;
+      margin-top: 28px;
+    }
+
+    .pricing-list li {
+      padding: 8px 0;
+      font-size: 14px;
+      color: var(--slate-300);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .pricing-list li::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+
+    .pricing-card.nova .pricing-list li::before { background: var(--emerald-400); }
+    .pricing-card.zendesk .pricing-list li::before { background: var(--slate-600); }
+
+    .pricing-note {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: rgba(244, 63, 94, 0.08);
+      border: 1px solid rgba(244, 63, 94, 0.15);
+      border-radius: 10px;
+      font-size: 13px;
+      color: var(--rose-400);
+      line-height: 1.6;
+    }
+
+    /* Advantages */
+    .advantage-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(99, 102, 241, 0.1));
+      border: 1px solid rgba(16, 185, 129, 0.15);
+      border-radius: 20px;
+      padding: 48px;
+      margin: 40px 0;
+    }
+
+    .advantage-banner h3 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+
+    .advantage-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .advantage-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .advantage-item .icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(16, 185, 129, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--emerald-400);
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .advantage-item .text h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--emerald-400);
+      margin-bottom: 2px;
+    }
+
+    .advantage-item .text p {
+      font-size: 13px;
+      color: var(--slate-400);
+    }
+
+    /* CTA */
+    .cta-section {
+      text-align: center;
+      padding: 80px 0 100px;
+    }
+
+    .cta-section h2 {
+      font-size: 42px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+
+    .cta-section p {
+      font-size: 18px;
+      color: var(--slate-400);
+      margin-bottom: 40px;
+    }
+
+    .cta-badge {
+      display: inline-block;
+      padding: 6px 20px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 100px;
+      color: var(--emerald-400);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.2), transparent);
+    }
+
+    /* Zendesk Complaints */
+    .complaints-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 32px;
+    }
+
+    .complaint-card {
+      background: rgba(244, 63, 94, 0.04);
+      border: 1px solid rgba(244, 63, 94, 0.1);
+      border-radius: 14px;
+      padding: 24px;
+    }
+
+    .complaint-card h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--rose-400);
+      margin-bottom: 8px;
+    }
+
+    .complaint-card p {
+      font-size: 13px;
+      color: var(--slate-400);
+      line-height: 1.7;
+    }
+
+    .complaint-card .quote {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: rgba(244, 63, 94, 0.06);
+      border-left: 2px solid rgba(244, 63, 94, 0.3);
+      border-radius: 0 8px 8px 0;
+      font-style: italic;
+      font-size: 12px;
+      color: var(--slate-500);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 36px; }
+      .hero { padding: 60px 20px 80px; }
+      .hero-stats { flex-direction: column; gap: 24px; }
+      .container { padding: 0 20px; }
+      .pricing-grid { grid-template-columns: 1fr; }
+      .advantage-list { grid-template-columns: 1fr; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .section { padding: 60px 0; }
+      .comparison-table { font-size: 13px; }
+      .comparison-table td:first-child { width: 140px; }
+    }
+
+    /* Architecture Diagram */
+    .arch-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      margin-top: 40px;
+    }
+
+    .arch-card {
+      border-radius: 16px;
+      padding: 32px;
+    }
+
+    .arch-card.modern {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(16, 185, 129, 0.04));
+      border: 1px solid rgba(99, 102, 241, 0.15);
+    }
+
+    .arch-card.legacy {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid rgba(51, 65, 85, 0.4);
+    }
+
+    .arch-card h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .arch-card.modern h4 { color: var(--indigo-300); }
+    .arch-card.legacy h4 { color: var(--slate-500); }
+
+    .arch-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .arch-layer {
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .arch-card.modern .arch-layer {
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.1);
+      color: var(--slate-300);
+    }
+
+    .arch-card.legacy .arch-layer {
+      background: rgba(51, 65, 85, 0.3);
+      border: 1px solid rgba(51, 65, 85, 0.4);
+      color: var(--slate-500);
+    }
+
+    .winner-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--emerald-400);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .section-divider {
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--indigo-500), var(--emerald-500));
+      border-radius: 2px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">Competitive Analysis 2026</div>
+      <h1>Nova CS vs Zendesk</h1>
+      <p>A comprehensive feature comparison showing how Nova CS delivers a modern, AI-first customer support platform that outperforms the legacy incumbent at a fraction of the cost.</p>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="number">10x</div>
+          <div class="label">More Capable AI</div>
+        </div>
+        <div class="hero-stat">
+          <div class="number">90%</div>
+          <div class="label">Lower Cost</div>
+        </div>
+        <div class="hero-stat">
+          <div class="number">0</div>
+          <div class="label">Feature Paywalls</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#executive-summary">Executive Summary</a>
+      <a href="#one-person">1 Person, 1M Users</a>
+      <a href="#ai-comparison">AI Capabilities</a>
+      <a href="#features">Feature Matrix</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#omnichannel">Omnichannel</a>
+      <a href="#knowledge">Knowledge Base</a>
+      <a href="#realtime">Real-time</a>
+      <a href="#zendesk-issues">Zendesk Pain Points</a>
+      <a href="#verdict">Verdict</a>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- Executive Summary -->
+    <section class="section" id="executive-summary">
+      <div class="section-header">
+        <div class="section-label">Executive Summary</div>
+        <h2 class="section-title">Built for the AI Era, Not Adapted to It</h2>
+        <p class="section-subtitle">Zendesk bolted AI onto a 15-year-old ticketing system. Nova CS was built from the ground up with AI at its core.</p>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-card-icon indigo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--indigo-400)"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <h3>True Agentic AI</h3>
+          <p>Nova CS uses Claude AI with real tool use. The AI doesn't just answer questions; it takes actions like updating tickets, searching the web, and escalating with full context. Zendesk's AI is limited to scripted flows and knowledge base deflection.</p>
+          <span class="tag tag-advantage">Key Differentiator</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon emerald">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--emerald-400)"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+          </div>
+          <h3>Semantic RAG Search</h3>
+          <p>Real vector embeddings (OpenAI text-embedding-3-small, 1536 dimensions) with pgvector for true semantic understanding. Zendesk Guide still relies on keyword-based search, missing nuance and intent.</p>
+          <span class="tag tag-advantage">Key Differentiator</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon amber">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--amber-400)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>No Feature Paywalls</h3>
+          <p>Every feature is available from day one. Real-time dashboards, SLA management, custom analytics, AI capabilities, all included. Zendesk gates critical features behind $115-$169/agent/month tiers plus add-on fees.</p>
+          <span class="tag tag-advantage">Key Differentiator</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon indigo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--indigo-400)"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9"/></svg>
+          </div>
+          <h3>Live Web Search</h3>
+          <p>When the knowledge base doesn't have the answer, Nova CS's AI searches the live internet via Brave Search API. Zendesk's AI is confined to your knowledge base content only.</p>
+          <span class="tag tag-nova">Nova Exclusive</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon emerald">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--emerald-400)"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          </div>
+          <h3>Modern Stack</h3>
+          <p>Built on Next.js 16, React 19, Supabase, and Tailwind CSS 4. Open-source foundations with no vendor lock-in. Zendesk's proprietary architecture means you're locked into their ecosystem forever.</p>
+          <span class="tag tag-advantage">Key Differentiator</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon amber">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--amber-400)"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <h3>Confidence-Based Routing</h3>
+          <p>AI self-assesses response confidence (0-100 scale) and automatically escalates to humans when uncertain. Zendesk has no equivalent. Their bots either answer or don't, with no quality gradient.</p>
+          <span class="tag tag-nova">Nova Exclusive</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- One Person Section -->
+    <section class="section" id="one-person">
+      <div class="section-header">
+        <div class="section-label">The Core Thesis</div>
+        <h2 class="section-title">1 Person. 1 Million Customers. <span class="winner-badge">Nova Only</span></h2>
+        <p class="section-subtitle">Nova CS wasn't built to make a 20-person team slightly faster. It was built so one person with AI can replace that team entirely.</p>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="advantage-banner" style="margin-bottom: 40px; border-color: rgba(99, 102, 241, 0.2); background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(16, 185, 129, 0.06));">
+        <h3 style="margin-bottom: 8px;">Zendesk's model: hire more agents, pay more per seat.</h3>
+        <p style="color: var(--slate-400); font-size: 15px; margin-bottom: 0;">Nova's model: AI handles 85-95% of the work autonomously. The human supervises, handles edge cases, and steers strategy. The economics are fundamentally different.</p>
+      </div>
+
+      <!-- How one person replaces 20 -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: rgba(51, 65, 85, 0.3); border-radius: 16px; overflow: hidden; border: 1px solid rgba(99, 102, 241, 0.1);">
+
+        <!-- Header row -->
+        <div style="padding: 16px 24px; background: rgba(99, 102, 241, 0.08); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--slate-400);">Traditional 20-Person Team Role</div>
+        <div style="padding: 16px 24px; background: rgba(99, 102, 241, 0.08); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--indigo-300);">Nova CS Replacement</div>
+
+        <!-- Row 1 -->
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.6); color: var(--slate-300); font-size: 14px;">
+          <strong>8-10 L1 Agents</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-500); margin-top: 2px;">Answering common questions, copy-pasting KB articles</span>
+        </div>
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.6); color: var(--emerald-400); font-size: 14px;">
+          <strong>AI Agent Engine</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-400); margin-top: 2px;">Multi-round agentic AI with RAG search, web search, and tool use. Auto-resolves confidently, escalates when uncertain.</span>
+        </div>
+
+        <!-- Row 2 -->
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.4); color: var(--slate-300); font-size: 14px;">
+          <strong>2-3 Triage Agents</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-500); margin-top: 2px;">Reading tickets, assigning priority, routing to the right team</span>
+        </div>
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.4); color: var(--emerald-400); font-size: 14px;">
+          <strong>AI Router + Auto-Triage</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-400); margin-top: 2px;">Every inbound message auto-classified by priority, intent, and sentiment. Routed instantly.</span>
+        </div>
+
+        <!-- Row 3 -->
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.6); color: var(--slate-300); font-size: 14px;">
+          <strong>1-2 SLA Coordinators</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-500); margin-top: 2px;">Following up on stale tickets, chasing SLA compliance</span>
+        </div>
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.6); color: var(--emerald-400); font-size: 14px;">
+          <strong>Lifecycle Cron + Stalled Conversation Detection</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-400); margin-top: 2px;">AI-generated follow-ups by priority. Auto-closes stale tickets. Revives stalled conversations. Nothing falls through the cracks.</span>
+        </div>
+
+        <!-- Row 4 -->
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.4); color: var(--slate-300); font-size: 14px;">
+          <strong>1 KB Writer/Manager</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-500); margin-top: 2px;">Writing articles, updating outdated content, spotting gaps</span>
+        </div>
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.4); color: var(--emerald-400); font-size: 14px;">
+          <strong>Knowledge Gap Detection + Article Lifecycle Crons</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-400); margin-top: 2px;">Auto-detects topics with low KB coverage, drafts new articles, flags underperformers, retires stale content. The operator just approves.</span>
+        </div>
+
+        <!-- Row 5 -->
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.6); color: var(--slate-300); font-size: 14px;">
+          <strong>1 QA / Quality Lead</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-500); margin-top: 2px;">Reviewing AI responses, monitoring accuracy, calibrating quality</span>
+        </div>
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.6); color: var(--emerald-400); font-size: 14px;">
+          <strong>Confidence Calibration Cron</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-400); margin-top: 2px;">Analyzes 30 days of AI outcomes, CSAT by intent category, and auto-adjusts the confidence threshold. Self-tuning quality.</span>
+        </div>
+
+        <!-- Row 6 -->
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.4); color: var(--slate-300); font-size: 14px;">
+          <strong>1-2 Customer Success Reps</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-500); margin-top: 2px;">Checking in with at-risk customers, sending post-resolution follow-ups</span>
+        </div>
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.4); color: var(--emerald-400); font-size: 14px;">
+          <strong>Health Scores + Post-Resolution Check-ins + Proactive Outreach</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-400); margin-top: 2px;">Calculates customer health (0-100), auto-intervenes with declining accounts, sends personalized check-ins 5 days after resolution.</span>
+        </div>
+
+        <!-- Row 7 -->
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.6); color: var(--slate-300); font-size: 14px;">
+          <strong>0.5 WFM Analyst</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-500); margin-top: 2px;">Forecasting volume, planning staffing</span>
+        </div>
+        <div style="padding: 16px 24px; background: rgba(30, 41, 59, 0.6); color: var(--emerald-400); font-size: 14px;">
+          <strong>Volume Forecast Cron</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-400); margin-top: 2px;">Analyzes 12 weeks of history with day-of-week seasonality. Predicts 24h/48h/7d volume. No analyst needed.</span>
+        </div>
+
+        <!-- Row 8: The operator -->
+        <div style="padding: 16px 24px; background: rgba(99, 102, 241, 0.06); color: var(--slate-300); font-size: 14px; border-top: 2px solid rgba(99, 102, 241, 0.2);">
+          <strong style="color: var(--rose-400);">= ~20 people</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-500); margin-top: 2px;">$60-80K average salary each. ~$1.2-1.6M/year.</span>
+        </div>
+        <div style="padding: 16px 24px; background: rgba(99, 102, 241, 0.06); color: var(--emerald-400); font-size: 14px; border-top: 2px solid rgba(99, 102, 241, 0.2);">
+          <strong>= 1 person with Nova</strong>
+          <span style="display: block; font-size: 12px; color: var(--slate-400); margin-top: 2px;">Command palette, keyboard shortcuts, copilot, smart queue. The operator handles the 5-15% AI can't.</span>
+        </div>
+      </div>
+
+      <!-- Nova Copilot spotlight -->
+      <div style="margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+        <div class="feature-card" style="border-color: rgba(99, 102, 241, 0.2);">
+          <div class="feature-card-icon indigo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--indigo-400)"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </div>
+          <h3>Nova Copilot</h3>
+          <p>Always-on AI sidebar for the operator. Ask questions about any ticket, customer, or trend in natural language. Streams answers with invisible tool use. Like having a senior analyst on call 24/7.</p>
+          <span class="tag tag-nova">Nova Exclusive</span>
+        </div>
+        <div class="feature-card" style="border-color: rgba(16, 185, 129, 0.2);">
+          <div class="feature-card-icon emerald">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--emerald-400)"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <h3>Power Operator UX</h3>
+          <p>Ctrl+K command palette, vim-style keyboard shortcuts, hover-to-prefetch, "Get Next Ticket" auto-assignment. The operator triages a ticket in under 2 seconds without touching the mouse.</p>
+          <span class="tag tag-nova">Nova Exclusive</span>
+        </div>
+        <div class="feature-card" style="border-color: rgba(245, 158, 11, 0.2);">
+          <div class="feature-card-icon amber">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--amber-400)"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3>10 Background Crons</h3>
+          <p>Follow-ups, stalled detection, knowledge gaps, pattern alerts, volume forecasting, confidence calibration, health scores, post-resolution check-ins, article QA, and retirement. All running on autopilot.</p>
+          <span class="tag tag-nova">Nova Exclusive</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 32px; text-align: center; padding: 24px; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.12); border-radius: 14px;">
+        <p style="font-size: 16px; color: var(--slate-300); margin: 0;">Zendesk charges $50/agent/month for workforce management. Nova doesn't need workforce management <strong style="color: var(--emerald-400);">because there's no workforce to manage.</strong></p>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- AI Comparison -->
+    <section class="section" id="ai-comparison">
+      <div class="section-header">
+        <div class="section-label">AI Capabilities</div>
+        <h2 class="section-title">Agentic AI vs Scripted Bots <span class="winner-badge">Nova Wins</span></h2>
+        <p class="section-subtitle">The most consequential difference between the two platforms. Nova CS's AI can actually do things.</p>
+        <div class="section-divider"></div>
+      </div>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>AI Feature</th>
+            <th>Nova CS</th>
+            <th>Zendesk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>AI Architecture</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">True agentic with tool use (Claude AI, multi-round reasoning)</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Flow-based bot builder + OpenAI partnership (scripted paths)</span></td>
+          </tr>
+          <tr>
+            <td>Takes Real Actions</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Updates tickets, adds notes, escalates, sends responses</span></td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">Can only deflect or hand off. No action-taking.</span></td>
+          </tr>
+          <tr>
+            <td>Web Search</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Brave Search API for real-time internet search</span></td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">Confined to knowledge base content only</span></td>
+          </tr>
+          <tr>
+            <td>Semantic Knowledge Search</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Vector embeddings with pgvector (1536-dim)</span></td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">Keyword-based search only</span></td>
+          </tr>
+          <tr>
+            <td>Confidence Scoring</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">0-1.0 scale (displayed as %), configurable threshold (default 70%)</span></td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">No self-assessment capability</span></td>
+          </tr>
+          <tr>
+            <td>Multi-Round Tool Use</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Up to 8 reasoning rounds with 5 tools, 15 max tool calls</span></td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">Single-pass responses only</span></td>
+          </tr>
+          <tr>
+            <td>Auto-Triage</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">AI classifies priority, category, sentiment automatically</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Requires $50/agent/month "Advanced AI" add-on</span></td>
+          </tr>
+          <tr>
+            <td>Channel-Aware Formatting</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">AI formats for email (HTML), SMS (plain), chat (markdown)</span></td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">No channel-aware AI output formatting</span></td>
+          </tr>
+          <tr>
+            <td>Token Usage Tracking</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Full token consumption tracking per conversation</span></td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">Opaque per-resolution pricing ($1.00 each)</span></td>
+          </tr>
+          <tr>
+            <td>Smart Escalation</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Includes reason, priority, suggested assignee, full context</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Basic handoff with conversation transcript</span></td>
+          </tr>
+          <tr>
+            <td>AI Cost Model</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Transparent token-based pricing you control</span></td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">$50/agent/month + $1.00 per resolution</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Feature Matrix -->
+    <section class="section" id="features">
+      <div class="section-header">
+        <div class="section-label">Feature Comparison</div>
+        <h2 class="section-title">Complete Feature Matrix</h2>
+        <p class="section-subtitle">Side-by-side comparison of every major capability across both platforms.</p>
+        <div class="section-divider"></div>
+      </div>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Nova CS</th>
+            <th>Zendesk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Ticketing</strong></td>
+            <td colspan="2" style="text-align:center; color: var(--slate-500); font-style: italic;"></td>
+          </tr>
+          <tr>
+            <td>Omnichannel Ticketing</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>Bulk Actions</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>Keyboard Shortcuts</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>SLA Management</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Included on all plans</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Growth plan ($89/agent) and above only</span></td>
+          </tr>
+          <tr>
+            <td>Custom Ticket Fields</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>Full Audit Trail</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">ticket_events table logs everything</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>AI Confidence Display</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Shows AI confidence score on each ticket</span></td>
+            <td><span class="check check-no">&#10007;</span></td>
+          </tr>
+          <tr><td colspan="3" style="height: 8px; border: none;"></td></tr>
+          <tr>
+            <td><strong>Channels</strong></td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td>Email</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Resend integration with branded HTML templates</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>Live Chat / Widget</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Lightweight embeddable widget</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>SMS</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Twilio integration</span></td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Via Zendesk Talk, extra cost</span></td>
+          </tr>
+          <tr>
+            <td>Phone / VoIP</td>
+            <td><span class="check check-no">&#10007;</span></td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Zendesk Talk (separate pricing)</span></td>
+          </tr>
+          <tr>
+            <td>Social Media</td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Slack integration</span></td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Facebook, X, Instagram, WhatsApp</span></td>
+          </tr>
+          <tr>
+            <td>Customer Portal</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Full self-service portal with token auth</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Growth plan ($89/agent) and above</span></td>
+          </tr>
+          <tr><td colspan="3" style="height: 8px; border: none;"></td></tr>
+          <tr>
+            <td><strong>Knowledge Base</strong></td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td>Help Center / Articles</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>Semantic Vector Search</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">OpenAI embeddings + pgvector</span></td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">Keyword search only</span></td>
+          </tr>
+          <tr>
+            <td>Smart Chunking</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Intelligent chunking with overlap</span></td>
+            <td><span class="check check-no">&#10007;</span></td>
+          </tr>
+          <tr>
+            <td>Multi-Format Ingestion</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Markdown, text, HTML</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">WYSIWYG editor only</span></td>
+          </tr>
+          <tr>
+            <td>Community Forums</td>
+            <td><span class="check check-no">&#10007;</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Professional ($115/agent) only</span></td>
+          </tr>
+          <tr><td colspan="3" style="height: 8px; border: none;"></td></tr>
+          <tr>
+            <td><strong>Analytics</strong></td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td>Ticket Volume Analytics</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>Custom Dashboards</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Included on all plans</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Professional ($115/agent) and above</span></td>
+          </tr>
+          <tr>
+            <td>Real-time Dashboards</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Included on all plans</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Enterprise ($169/agent) only</span></td>
+          </tr>
+          <tr>
+            <td>AI Performance Metrics</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Confidence, resolution rate, escalation rate</span></td>
+            <td><span class="check check-no">&#10007;</span></td>
+          </tr>
+          <tr>
+            <td>Agent Performance</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>CSAT Tracking</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr><td colspan="3" style="height: 8px; border: none;"></td></tr>
+          <tr>
+            <td><strong>Real-time</strong></td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td>Live Message Delivery</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">WebSocket via Supabase Realtime</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>Typing Indicators</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>Read Receipts</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Limited to messaging channel</span></td>
+          </tr>
+          <tr>
+            <td>Presence Tracking</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr><td colspan="3" style="height: 8px; border: none;"></td></tr>
+          <tr>
+            <td><strong>Platform</strong></td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td>Open Source Foundation</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Next.js, React, Supabase, PostgreSQL</span></td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">Fully proprietary</span></td>
+          </tr>
+          <tr>
+            <td>Self-Hostable</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Deploy anywhere (Vercel, AWS, etc.)</span></td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">SaaS only</span></td>
+          </tr>
+          <tr>
+            <td>API Access</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>Marketplace / Integrations</td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Custom integrations via API</span></td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">1,500+ pre-built integrations</span></td>
+          </tr>
+          <tr>
+            <td>Mobile SDKs</td>
+            <td><span class="check check-no">&#10007;</span></td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">iOS and Android SDKs</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Pricing -->
+    <section class="section" id="pricing">
+      <div class="section-header">
+        <div class="section-label">Pricing</div>
+        <h2 class="section-title">The Cost of Complexity <span class="winner-badge">Nova Wins</span></h2>
+        <p class="section-subtitle">Zendesk's "death by add-ons" pricing model creates unpredictable costs that balloon at scale.</p>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="pricing-grid">
+        <div class="pricing-card nova">
+          <div class="brand">Nova CS</div>
+          <div class="price">Flat<span> / infrastructure costs only</span></div>
+          <div class="price-label">All features included. No per-agent pricing. No add-ons.</div>
+          <ul class="pricing-list">
+            <li>All AI capabilities included (agentic, RAG, web search, auto-triage)</li>
+            <li>Unlimited agents and users</li>
+            <li>Real-time dashboards and custom analytics</li>
+            <li>SLA management on every plan</li>
+            <li>Customer portal and widget included</li>
+            <li>Full API access, no rate limit tiers</li>
+            <li>Self-hostable. Deploy on your infrastructure</li>
+            <li>Transparent AI costs (pay only for tokens used)</li>
+            <li>No annual contract required</li>
+            <li>No vendor lock-in</li>
+          </ul>
+        </div>
+        <div class="pricing-card zendesk">
+          <div class="brand">Zendesk</div>
+          <div class="price">$55-$169<span> / agent / month</span></div>
+          <div class="price-label">Per-agent pricing with critical features locked behind higher tiers.</div>
+          <ul class="pricing-list">
+            <li>Team plan ($55): Basic ticketing, no SLA, no custom analytics</li>
+            <li>Growth plan ($89): Adds SLA, portal. Still no custom reports.</li>
+            <li>Professional ($115): Custom analytics, skills routing, forums</li>
+            <li>Enterprise ($169): Real-time dashboards, advanced roles, sandbox</li>
+            <li>Advanced AI add-on: +$50/agent/month for intelligent triage</li>
+            <li>AI resolutions: +$1.00 per automated resolution</li>
+            <li>WFM add-on: +$25/agent/month</li>
+            <li>QA add-on: +$35/agent/month</li>
+            <li>Annual contracts required for listed prices</li>
+            <li>15-25% price increases at renewal commonly reported</li>
+          </ul>
+          <div class="pricing-note">
+            <strong>Real cost example:</strong> A 10-agent team on Professional with Advanced AI costs $1,650/month ($19,800/year). Enterprise with all add-ons: $2,790/month ($33,480/year). That's before phone, SMS, and WhatsApp per-message charges.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Architecture -->
+    <section class="section" id="architecture">
+      <div class="section-header">
+        <div class="section-label">Architecture</div>
+        <h2 class="section-title">Modern vs Legacy <span class="winner-badge">Nova Wins</span></h2>
+        <p class="section-subtitle">The architectural foundation determines what's possible. Nova CS is built on a modern, open stack.</p>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="arch-comparison">
+        <div class="arch-card modern">
+          <h4>Nova CS Stack</h4>
+          <div class="arch-stack">
+            <div class="arch-layer">Next.js 16 (App Router) + React 19</div>
+            <div class="arch-layer">Tailwind CSS 4 + Radix UI</div>
+            <div class="arch-layer">Claude AI (Anthropic SDK) + Agentic Tool Use</div>
+            <div class="arch-layer">OpenAI Embeddings + pgvector (RAG)</div>
+            <div class="arch-layer">Supabase (PostgreSQL + Auth + Realtime + RLS)</div>
+            <div class="arch-layer">Brave Search API (Live Web Search)</div>
+            <div class="arch-layer">Resend (Email) + Twilio (SMS)</div>
+            <div class="arch-layer">Doppler (Secrets) + Vercel (Deploy)</div>
+          </div>
+        </div>
+        <div class="arch-card legacy">
+          <h4>Zendesk Stack</h4>
+          <div class="arch-stack">
+            <div class="arch-layer">Proprietary SaaS Platform (monolithic)</div>
+            <div class="arch-layer">Legacy UI (incremental React migration)</div>
+            <div class="arch-layer">OpenAI Partnership (bolted-on AI)</div>
+            <div class="arch-layer">Keyword Search (no vector/semantic)</div>
+            <div class="arch-layer">Proprietary Database (no direct SQL access)</div>
+            <div class="arch-layer">No Web Search Capability</div>
+            <div class="arch-layer">Proprietary Talk (phone) + Sunshine (messaging)</div>
+            <div class="arch-layer">Vendor-locked Infrastructure</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="advantage-banner" style="margin-top: 40px;">
+        <h3>Why Architecture Matters</h3>
+        <div class="advantage-list">
+          <div class="advantage-item">
+            <div class="icon">&#9889;</div>
+            <div class="text">
+              <h4>Speed of Innovation</h4>
+              <p>Modern frameworks and open-source tools mean faster iteration. Nova ships features in days that would take Zendesk months.</p>
+            </div>
+          </div>
+          <div class="advantage-item">
+            <div class="icon">&#128274;</div>
+            <div class="text">
+              <h4>No Vendor Lock-in</h4>
+              <p>Built on PostgreSQL, open-source libraries, and standard APIs. You own your data and can migrate anytime.</p>
+            </div>
+          </div>
+          <div class="advantage-item">
+            <div class="icon">&#9881;</div>
+            <div class="text">
+              <h4>Full Customizability</h4>
+              <p>Direct database access, custom SQL, full API control. Modify anything. Zendesk limits you to their app framework.</p>
+            </div>
+          </div>
+          <div class="advantage-item">
+            <div class="icon">&#128640;</div>
+            <div class="text">
+              <h4>Deploy Anywhere</h4>
+              <p>Self-host on Vercel, AWS, GCP, or your own servers. Zendesk is SaaS-only with no self-hosting option.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Omnichannel Detail -->
+    <section class="section" id="omnichannel">
+      <div class="section-header">
+        <div class="section-label">Omnichannel</div>
+        <h2 class="section-title">Unified Communications</h2>
+        <p class="section-subtitle">Both platforms offer multi-channel support, but the approach and cost differ significantly.</p>
+        <div class="section-divider"></div>
+      </div>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Channel</th>
+            <th>Nova CS</th>
+            <th>Zendesk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Email</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Resend with branded HTML templates, auto-ack</span></td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Built-in email, all plans</span></td>
+          </tr>
+          <tr>
+            <td>Embeddable Widget</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Lightweight iframe, single script tag, public API</span></td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Web Widget, limited customization</span></td>
+          </tr>
+          <tr>
+            <td>Customer Portal</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Included. Token-based auth, ticket tracking, KB access</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Growth ($89/agent) and above only</span></td>
+          </tr>
+          <tr>
+            <td>SMS</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Twilio integration, bidirectional</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Via Talk or integration, extra per-message costs</span></td>
+          </tr>
+          <tr>
+            <td>Slack</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Notifications and routing</span></td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Via integration</span></td>
+          </tr>
+          <tr>
+            <td>Phone / VoIP</td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">Not yet available</span></td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Zendesk Talk with IVR, separate pricing</span></td>
+          </tr>
+          <tr>
+            <td>Social Media</td>
+            <td><span class="check check-no">&#10007;</span><span class="feature-note">Roadmap item</span></td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Facebook, X, Instagram, WhatsApp</span></td>
+          </tr>
+          <tr>
+            <td>Unified AI Routing</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">All channels feed into single AI router with channel-aware formatting</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Unified workspace but AI is channel-agnostic</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top: 24px; font-size: 14px; color: var(--slate-500);">Zendesk offers more channels today (phone, social). Nova CS covers the most important digital channels and provides superior AI integration across all of them. Social media and phone are on the roadmap.</p>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Knowledge Base -->
+    <section class="section" id="knowledge">
+      <div class="section-header">
+        <div class="section-label">Knowledge Base</div>
+        <h2 class="section-title">Semantic Search vs Keyword Search <span class="winner-badge">Nova Wins</span></h2>
+        <p class="section-subtitle">The quality of your knowledge base search directly determines AI accuracy and customer self-service success.</p>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-card-icon indigo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--indigo-400)"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+          </div>
+          <h3>Vector Embeddings</h3>
+          <p>Nova CS converts every knowledge article into 1536-dimensional vector embeddings using OpenAI's text-embedding-3-small model. Searches find semantically similar content, not just keyword matches. "How do I reset my password?" finds articles about "account access recovery" even without the word "password."</p>
+          <span class="tag tag-nova">Nova CS</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon emerald">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--emerald-400)"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <h3>Intelligent Chunking</h3>
+          <p>Documents are split into overlapping chunks that preserve context. The AI searches at the chunk level for precision but returns full article context. This means more accurate retrieval with complete answers.</p>
+          <span class="tag tag-nova">Nova CS</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon amber">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--amber-400)"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9"/></svg>
+          </div>
+          <h3>Web Search Fallback</h3>
+          <p>When the knowledge base doesn't have the answer, Nova CS's AI searches the live internet via Brave Search API and synthesizes results. Zendesk's bot simply gives up if the article doesn't exist.</p>
+          <span class="tag tag-nova">Nova CS</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon indigo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--indigo-400)"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+          </div>
+          <h3>Multi-Format Ingestion</h3>
+          <p>Ingest markdown, plain text, and HTML. Pre-loaded with 33 comprehensive knowledge base articles. Zendesk requires manual article creation through their WYSIWYG editor only.</p>
+          <span class="tag tag-nova">Nova CS</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Real-time -->
+    <section class="section" id="realtime">
+      <div class="section-header">
+        <div class="section-label">Real-time Features</div>
+        <h2 class="section-title">Everything Live, No Paywall</h2>
+        <p class="section-subtitle">Nova CS provides full real-time capabilities on every plan. Zendesk gates real-time behind Enterprise.</p>
+        <div class="section-divider"></div>
+      </div>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Real-time Feature</th>
+            <th>Nova CS</th>
+            <th>Zendesk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>WebSocket Infrastructure</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Supabase Realtime (always-on)</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Chat/messaging only, varies by channel</span></td>
+          </tr>
+          <tr>
+            <td>Real-time Dashboards</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Included. Live updating metrics.</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Enterprise only ($169/agent/month)</span></td>
+          </tr>
+          <tr>
+            <td>Typing Indicators</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Supabase Broadcast</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>Read Receipts</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Full delivery status tracking</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Messaging channel only</span></td>
+          </tr>
+          <tr>
+            <td>Presence</td>
+            <td><span class="check check-yes">&#10003;</span></td>
+            <td><span class="check check-yes">&#10003;</span></td>
+          </tr>
+          <tr>
+            <td>Live Ticket Updates</td>
+            <td><span class="check check-yes">&#10003;</span><span class="feature-note">Status changes reflected instantly</span></td>
+            <td><span class="check check-partial">~</span><span class="feature-note">Polling-based on lower tiers</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Zendesk Pain Points -->
+    <section class="section" id="zendesk-issues">
+      <div class="section-header">
+        <div class="section-label">Market Feedback</div>
+        <h2 class="section-title">What Users Say About Zendesk</h2>
+        <p class="section-subtitle">Common complaints from real Zendesk customers, sourced from review sites, forums, and community discussions.</p>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="complaints-grid">
+        <div class="complaint-card">
+          <h4>Death by Add-ons</h4>
+          <p>The base price looks reasonable until you need AI ($50/agent), WFM ($25/agent), QA ($35/agent), and advanced privacy ($50/agent). A fully-featured setup can cost $279/agent/month.</p>
+          <div class="quote">"We thought we were getting a $89/agent deal. Our actual bill was $180/agent after the add-ons we needed."</div>
+        </div>
+        <div class="complaint-card">
+          <h4>Unpredictable AI Costs</h4>
+          <p>Zendesk's AI agents now charge $1.00 per "automated resolution" on top of the subscription. As AI handles more tickets, costs increase. There's no cap.</p>
+          <div class="quote">"We wanted AI to reduce costs. Instead our bill went up because every successful AI interaction costs $1."</div>
+        </div>
+        <div class="complaint-card">
+          <h4>Annual Lock-in + Price Hikes</h4>
+          <p>Annual contracts are required for listed pricing. Monthly billing is 20% more. Customers report 15-25% price increases at renewal with little negotiation room.</p>
+          <div class="quote">"They raised our price 22% at renewal. When we pushed back, they said 'that's the new price.' Take it or migrate."</div>
+        </div>
+        <div class="complaint-card">
+          <h4>Steep Learning Curve</h4>
+          <p>Triggers, automations, macros, and views can interact in unpredictable ways. Admin configuration is complex enough that companies hire dedicated "Zendesk admins."</p>
+          <div class="quote">"We had to hire someone just to manage our Zendesk instance. That's a full salary on top of the subscription."</div>
+        </div>
+        <div class="complaint-card">
+          <h4>Ironic Support Quality</h4>
+          <p>Zendesk's own customer support is frequently criticized for slow response times and unhelpful answers. Premium support costs extra.</p>
+          <div class="quote">"They sell customer service software but can't do customer service themselves."</div>
+        </div>
+        <div class="complaint-card">
+          <h4>Vendor Lock-in</h4>
+          <p>Proprietary data formats, custom apps tied to ZAF, and complex migrations make leaving Zendesk extremely expensive and time-consuming.</p>
+          <div class="quote">"Migrating off Zendesk took us 6 months. The data export was incomplete and we lost ticket history formatting."</div>
+        </div>
+        <div class="complaint-card">
+          <h4>Legacy Architecture</h4>
+          <p>Built over 15+ years, Zendesk's UI feels dated in many areas. The transition from Chat to Messaging confused customers. Multiple disconnected admin consoles.</p>
+          <div class="quote">"Why do I need three different admin panels to configure my help desk?"</div>
+        </div>
+        <div class="complaint-card">
+          <h4>Feature Gating</h4>
+          <p>SLA management requires Growth ($89+). Custom analytics requires Professional ($115+). Real-time dashboards require Enterprise ($169+). Basic features treated as premium.</p>
+          <div class="quote">"I can't believe SLA management isn't on the base plan. That's table stakes for support software."</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Honest Assessment -->
+    <section class="section">
+      <div class="section-header">
+        <div class="section-label">Honest Assessment</div>
+        <h2 class="section-title">Where Zendesk Still Leads</h2>
+        <p class="section-subtitle">A credible comparison acknowledges where the incumbent has advantages.</p>
+        <div class="section-divider"></div>
+      </div>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>Zendesk Advantage</th>
+            <th>Nova CS Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Integration Marketplace</td>
+            <td>1,500+ pre-built integrations with major tools (Salesforce, Jira, Shopify)</td>
+            <td>Custom integrations via API. Growing ecosystem.</td>
+          </tr>
+          <tr>
+            <td>Phone / VoIP</td>
+            <td>Built-in Zendesk Talk with IVR, call recording, voicemail</td>
+            <td>Not yet available. SMS only via Twilio.</td>
+          </tr>
+          <tr>
+            <td>Social Media Channels</td>
+            <td>Facebook, Instagram, X, WhatsApp native integrations</td>
+            <td>Slack only. Social channels on roadmap.</td>
+          </tr>
+          <tr>
+            <td>Enterprise Scale Proof</td>
+            <td>Proven at massive scale with Fortune 500 companies</td>
+            <td>Built for scale on proven infrastructure (Supabase/PostgreSQL).</td>
+          </tr>
+          <tr>
+            <td>Mobile SDKs</td>
+            <td>Native iOS and Android SDKs</td>
+            <td>Web-based widget. Mobile SDKs on roadmap.</td>
+          </tr>
+          <tr>
+            <td>Community Forums</td>
+            <td>Built-in community forum feature (Professional+)</td>
+            <td>Not yet available.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Verdict -->
+    <section class="section" id="verdict">
+      <div class="section-header">
+        <div class="section-label">Verdict</div>
+        <h2 class="section-title">The Bottom Line</h2>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="advantage-banner">
+        <h3>Nova CS wins on the metrics that matter most</h3>
+        <div class="advantage-list">
+          <div class="advantage-item">
+            <div class="icon">&#129302;</div>
+            <div class="text">
+              <h4>AI That Actually Works</h4>
+              <p>True agentic AI with tool use, confidence scoring, web search, and multi-round reasoning. Not a scripted chatbot with a marketing label.</p>
+            </div>
+          </div>
+          <div class="advantage-item">
+            <div class="icon">&#128176;</div>
+            <div class="text">
+              <h4>Transparent, Predictable Costs</h4>
+              <p>No per-agent pricing, no feature paywalls, no surprise add-ons. Pay for infrastructure and AI tokens. That's it.</p>
+            </div>
+          </div>
+          <div class="advantage-item">
+            <div class="icon">&#128269;</div>
+            <div class="text">
+              <h4>Semantic Search Over Keywords</h4>
+              <p>RAG with vector embeddings means your knowledge base actually understands questions. Zendesk's keyword search misses intent.</p>
+            </div>
+          </div>
+          <div class="advantage-item">
+            <div class="icon">&#128275;</div>
+            <div class="text">
+              <h4>Freedom to Own Your Stack</h4>
+              <p>Open-source foundations, self-hostable, no vendor lock-in. Your data, your infrastructure, your rules.</p>
+            </div>
+          </div>
+          <div class="advantage-item">
+            <div class="icon">&#9889;</div>
+            <div class="text">
+              <h4>Modern Developer Experience</h4>
+              <p>Next.js 16, React 19, TypeScript, Tailwind. A stack developers actually want to work with.</p>
+            </div>
+          </div>
+          <div class="advantage-item">
+            <div class="icon">&#127919;</div>
+            <div class="text">
+              <h4>Built for 1M Users, 1 Person</h4>
+              <p>The north star: handle a million customers with a single person and AI. That's not Zendesk's vision. That's Nova's.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+      <h2>The Future of Support is Here</h2>
+      <p>Nova CS isn't competing with Zendesk on Zendesk's terms. It's redefining what customer support software should be in the AI era.</p>
+      <div class="cta-badge">Nova CS - AI-First Customer Support</div>
+    </section>
+
+  </div>
+
+  <!-- Footer -->
+  <footer style="text-align: center; padding: 40px; border-top: 1px solid rgba(99, 102, 241, 0.1); color: var(--slate-600); font-size: 13px;">
+    Nova CS Competitive Analysis Report. Generated March 2026. Data sourced from Zendesk.com, G2, Capterra, and community forums.
+  </footer>
+
+</body>
+</html>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient, verifyCronRequest, unauthorizedResponse, logCronExecution } from '@/lib/cron/auth'
 import { withFallback } from '@/lib/claude/client'
 import { sendEmail } from '@/lib/email/client'
+import { getUnsubscribeUrl } from '@/lib/email/templates'
 
 const JOB_NAME = 'lifecycle'
 
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     const { data: followUpTickets, error: followUpQueryError } = await supabase
       .from('tickets')
-      .select('id, customer_id, subject, customers:customer_id(email, name)')
+      .select('id, customer_id, subject, customers:customer_id(email, name, email_opt_out)')
       .lt('follow_up_at', now)
       .in('status', ['open', 'pending'])
       .limit(FOLLOW_UP_BATCH_SIZE)
@@ -107,18 +108,21 @@ Rules:
           metadata: { type: 'follow_up' },
         })
 
-        // Send email follow-up if customer has email
-        const customerData = ticket.customers as unknown as { email: string | null; name: string | null } | null
+        // Send email follow-up if customer has email and hasn't opted out
+        const customerData = ticket.customers as unknown as { email: string | null; name: string | null; email_opt_out: boolean } | null
         const customerEmail = customerData?.email
         const customerName = customerData?.name
+        const emailOptOut = customerData?.email_opt_out
 
-        if (customerEmail) {
+        if (customerEmail && !emailOptOut) {
           const emailGreeting = customerName ? `Hey ${customerName}` : 'Hey there'
+          const unsubscribeUrl = getUnsubscribeUrl(ticket.customer_id)
           await sendEmail({
             to: customerEmail,
             subject: `Re: ${ticket.subject || 'Your R-Link support request'}`,
-            html: `<p>${emailGreeting},</p><p>${followUpContent}</p><p>Just reply to this email and I'll pick it right back up.</p><p>- Nova, R-Link Support</p>`,
-            text: `${emailGreeting},\n\n${followUpContent}\n\nJust reply to this email and I'll pick it right back up.\n\n- Nova, R-Link Support`,
+            html: `<p>${emailGreeting},</p><p>${followUpContent}</p><p>Just reply to this email and I'll pick it right back up.</p><p>- Nova, R-Link Support</p><p style="font-size: 11px; color: #94A3B8; margin-top: 24px;"><a href="${unsubscribeUrl}" style="color: #94A3B8;">Unsubscribe from proactive emails</a></p>`,
+            text: `${emailGreeting},\n\n${followUpContent}\n\nJust reply to this email and I'll pick it right back up.\n\n- Nova, R-Link Support\n\nUnsubscribe: ${unsubscribeUrl}`,
+            unsubscribeUrl,
           })
         }
 
@@ -127,7 +131,7 @@ Rules:
           customer_id: ticket.customer_id,
           ticket_id: ticket.id,
           outreach_type: 'stalled_revival',
-          channel: customerEmail ? 'email' : 'internal',
+          channel: (customerEmail && !emailOptOut) ? 'email' : 'internal',
           message_content: followUpContent,
           trigger_reason: 'Scheduled follow-up reached',
           delivery_status: 'sent',

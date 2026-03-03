@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient, verifyCronRequest, unauthorizedResponse, logCronExecution } from '@/lib/cron/auth'
+import { getUnsubscribeUrl } from '@/lib/email/templates'
 import type { Ticket, Customer } from '@/types/database'
 
 const JOB_NAME = 'post-resolution-checkin'
@@ -137,8 +138,12 @@ export async function POST(request: NextRequest) {
         const customer = ticket.customer
         if (!customer) continue
 
-        // Skip if no email
+        // Skip if no email or opted out
         if (!customer.email) {
+          skippedNoEmail++
+          continue
+        }
+        if (customer.email_opt_out) {
           skippedNoEmail++
           continue
         }
@@ -184,6 +189,8 @@ export async function POST(request: NextRequest) {
             ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/portal/tickets/${ticket.id}?token=${portalToken}`
             : null
 
+          const unsubscribeUrl = getUnsubscribeUrl(customer.id)
+
           const emailContent = portalUrl
             ? `${checkinMessage}\n\nYou can also view your ticket history here: ${portalUrl}`
             : checkinMessage
@@ -191,15 +198,17 @@ export async function POST(request: NextRequest) {
           const result = await sendEmail({
             to: customer.email,
             subject: `Following up on your support request - #${ticket.id.slice(0, 8).toUpperCase()}`,
-            text: emailContent,
+            text: `${emailContent}\n\nUnsubscribe from proactive emails: ${unsubscribeUrl}`,
             html: `<div style="font-family: sans-serif; line-height: 1.6;">
               ${checkinMessage.split('\n').map(line => `<p>${line || '&nbsp;'}</p>`).join('')}
               ${portalUrl ? `<p><a href="${portalUrl}" style="color: #3B82F6;">View your ticket history</a></p>` : ''}
+              <p style="font-size: 11px; color: #94A3B8; margin-top: 24px;"><a href="${unsubscribeUrl}" style="color: #94A3B8;">Unsubscribe from proactive emails</a></p>
             </div>`,
             tags: [
               { name: 'type', value: 'post_resolution_checkin' },
               { name: 'ticket_id', value: ticket.id },
             ],
+            unsubscribeUrl,
           })
 
           // Update outreach log with result
