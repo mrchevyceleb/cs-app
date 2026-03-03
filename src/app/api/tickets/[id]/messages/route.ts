@@ -191,9 +191,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .update(updateData)
       .eq('id', id)
 
-    // Send email notification for agent replies on email-sourced tickets (not internal notes)
-    // Widget/portal tickets are delivered via Supabase Realtime - no email needed
-    if (senderType === 'agent' && !isInternal && message && ticket.customer && ticket.source_channel === 'email') {
+    // Send email notification for agent replies (not internal notes)
+    // Email ensures the customer gets the reply even if they're no longer watching the widget
+    // (e.g. AI escalated to human, human replies hours later)
+    if (senderType === 'agent' && !isInternal && message && ticket.customer) {
       const customer = ticket.customer as Customer
       if (customer.email) {
         const portalToken = await generatePortalToken(customer.id, ticket.id)

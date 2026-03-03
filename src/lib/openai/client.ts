@@ -41,19 +41,3 @@ export const EMBEDDING_DIMENSIONS = 1536
 // Chat model for customer interactions
 export const CHAT_MODEL = 'gpt-4-turbo-preview'
 
-export const openai = new Proxy({} as OpenAI, {
-  get(_target, prop) {
-    const client = getOpenAIClient()
-    return client[prop as keyof OpenAI]
-  },
-})
-
-// Embedding model for knowledge base
-export const EMBEDDING_MODEL = 'text-embedding-3-small'
-export const EMBEDDING_DIMENSIONS = 1536
-
-// Chat model for customer interactions
-export const CHAT_MODEL = 'gpt-4o-mini'
-
-export const CHAT_MODEL = 'gpt-4-turbo-preview'
-
