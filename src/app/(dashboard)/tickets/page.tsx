@@ -18,7 +18,7 @@ export default function TicketsPage() {
   const queryClient = useQueryClient()
   const [filters, setFilters] = useState<FilterOptions>(defaultFilters)
   const [currentPage, setCurrentPage] = useState(0)
-  const [activeQueue, setActiveQueue] = useState<QueueTab>('human')
+  const [activeQueue, setActiveQueue] = useState<QueueTab>('all')
 
   // Reset to first page when filters or queue tab change
   useEffect(() => {
