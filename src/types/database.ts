@@ -257,8 +257,11 @@ export type Database = {
           // Lifecycle fields
           follow_up_at: string | null
           auto_close_at: string | null
-          // Channel field
+           // Channel field
           source_channel: ChannelType
+          // Needs attention tracking
+          last_message_sender: string | null
+          last_message_at: string | null
         }
         Insert: {
           ai_confidence?: number | null
@@ -277,8 +280,11 @@ export type Database = {
           // Lifecycle fields
           follow_up_at?: string | null
           auto_close_at?: string | null
-          // Channel field
+           // Channel field
           source_channel?: ChannelType
+          // Needs attention tracking
+          last_message_sender?: string | null
+          last_message_at?: string | null
         }
         Update: {
           ai_confidence?: number | null
@@ -299,6 +305,9 @@ export type Database = {
           auto_close_at?: string | null
           // Channel field
           source_channel?: ChannelType
+          // Needs attention tracking
+          last_message_sender?: string | null
+          last_message_at?: string | null
         }
         Relationships: [
           {
@@ -622,7 +631,7 @@ export type Database = {
         Row: {
           id: string
           agent_id: string
-          type: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback'
+          type: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback' | 'new_customer_message'
           title: string
           message: string | null
           ticket_id: string | null
@@ -633,7 +642,7 @@ export type Database = {
         Insert: {
           id?: string
           agent_id: string
-          type: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback'
+          type: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback' | 'new_customer_message'
           title: string
           message?: string | null
           ticket_id?: string | null
@@ -644,7 +653,7 @@ export type Database = {
         Update: {
           id?: string
           agent_id?: string
-          type?: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback'
+          type?: 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback' | 'new_customer_message'
           title?: string
           message?: string | null
           ticket_id?: string | null
@@ -1840,7 +1849,7 @@ export interface WorkflowTestResult {
 // ==========================================
 
 // Notification types
-export type NotificationType = 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback'
+export type NotificationType = 'mention' | 'handoff' | 'assignment' | 'escalation' | 'feedback' | 'new_customer_message'
 
 // Handoff status
 export type HandoffStatus = 'pending' | 'accepted' | 'declined'

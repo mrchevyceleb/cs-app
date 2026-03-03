@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
 import { processInboundEmail } from '@/lib/email/inbound';
 import { processEmailWithAI } from '@/lib/email/ai-loop';
+import { notifyAgentsOfCustomerReply } from '@/lib/notifications/customer-reply';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { InboundEmail } from '@/types/channels';
 
@@ -165,10 +166,32 @@ export async function POST(request: NextRequest) {
         .trim();
     })();
 
-    // Trigger AI processing in the background (fire-and-forget)
-    // Webhook returns 200 immediately to SendGrid while AI processes
+    // Trigger AI processing and agent notifications in the background (fire-and-forget)
+    // Webhook returns 200 immediately to SendGrid while these run
     if (emailContent) {
-      after(() =>
+      after(async () => {
+        // Notify agents of the customer reply (bell + email alert)
+        try {
+          // Fetch ticket subject for the notification
+          const { data: ticketData } = await getSupabase()
+            .from('tickets')
+            .select('subject')
+            .eq('id', result.ticket_id)
+            .single()
+
+          await notifyAgentsOfCustomerReply({
+            ticketId: result.ticket_id,
+            ticketSubject: ticketData?.subject || subject || 'Support request',
+            customerName: senderName,
+            customerEmail: senderAddress,
+            messagePreview: emailContent,
+            channel: 'email',
+          })
+        } catch (err) {
+          console.error('[Email Notify] Background notification error:', err)
+        }
+
+        // AI auto-reply
         processEmailWithAI(
           result.ticket_id,
           emailContent,
@@ -176,7 +199,7 @@ export async function POST(request: NextRequest) {
           senderAddress,
           senderName
         ).catch(err => console.error('[Email AI] Background processing error:', err))
-      );
+      });
     }
 
     return NextResponse.json({

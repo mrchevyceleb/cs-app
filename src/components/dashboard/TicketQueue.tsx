@@ -16,7 +16,7 @@ import { RefreshCw, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Ticket, Customer } from '@/types/database'
 
-type FilterTab = 'all' | 'ai' | 'human' | 'escalated'
+type FilterTab = 'all' | 'attention' | 'ai' | 'human' | 'escalated'
 
 interface TicketQueueProps {
   onTicketSelect?: (ticket: TicketWithCustomer) => void
@@ -145,6 +145,12 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
   const filteredTickets = useMemo(() => {
     return tickets.filter((ticket) => {
       switch (activeTab) {
+        case 'attention':
+          // Tickets where the last message is from a customer and ticket is not resolved
+          return (
+            (ticket as any).last_message_sender === 'customer' &&
+            ticket.status !== 'resolved'
+          )
         case 'ai':
           return ticket.ai_handled === true
         case 'human':
@@ -253,6 +259,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
   // Count badges
   const counts = {
     all: tickets.length,
+    attention: tickets.filter((t) => (t as any).last_message_sender === 'customer' && t.status !== 'resolved').length,
     ai: tickets.filter((t) => t.ai_handled).length,
     human: tickets.filter((t) => !t.ai_handled).length,
     escalated: tickets.filter((t) => t.status === 'escalated').length,
@@ -293,13 +300,22 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
               onValueChange={(v) => setActiveTab(v as FilterTab)}
               className="w-full sm:w-auto"
             >
-              <TabsList className="h-8 w-full sm:w-auto grid grid-cols-4 sm:flex">
+              <TabsList className="h-8 w-full sm:w-auto grid grid-cols-5 sm:flex">
                 <TabsTrigger value="all" className="text-xs px-2 sm:px-3">
                   <span className="hidden sm:inline">All</span>
                   <span className="sm:hidden">All</span>
                   {counts.all > 0 && (
                     <span className="ml-1 sm:ml-1.5 text-[10px] bg-muted px-1 sm:px-1.5 py-0.5 rounded-full">
                       {counts.all}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="attention" className="text-xs px-2 sm:px-3">
+                  <span className="hidden sm:inline">Needs Attention</span>
+                  <span className="sm:hidden">Inbox</span>
+                  {counts.attention > 0 && (
+                    <span className="ml-1 sm:ml-1.5 text-[10px] bg-cyan-200 dark:bg-cyan-800 text-cyan-700 dark:text-cyan-300 px-1 sm:px-1.5 py-0.5 rounded-full font-semibold">
+                      {counts.attention}
                     </span>
                   )}
                 </TabsTrigger>
@@ -426,6 +442,11 @@ function EmptyState({ filter }: { filter: FilterTab }) {
       icon: String.fromCodePoint(0x2615),
       title: 'All caught up! Time for coffee.',
       description: 'Nova is watching the queue. You\'ll be notified instantly.',
+    },
+    attention: {
+      icon: String.fromCodePoint(0x2705),
+      title: 'Nothing waiting on you',
+      description: 'All customer messages have been responded to.',
     },
     ai: {
       icon: String.fromCodePoint(0x1F916),

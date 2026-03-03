@@ -45,6 +45,7 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
   assignment: UserPlus,
   escalation: AlertTriangle,
   feedback: Star,
+  new_customer_message: MessageSquare,
 }
 
 const notificationColors: Record<NotificationType, { icon: string; bg: string }> = {
@@ -67,6 +68,10 @@ const notificationColors: Record<NotificationType, { icon: string; bg: string }>
   feedback: {
     icon: 'text-purple-600 dark:text-purple-400',
     bg: 'bg-purple-100 dark:bg-purple-900/30',
+  },
+  new_customer_message: {
+    icon: 'text-cyan-600 dark:text-cyan-400',
+    bg: 'bg-cyan-100 dark:bg-cyan-900/30',
   },
 }
 
@@ -243,7 +248,7 @@ export function NotificationBell({
   const hasImportant = notifications.some(
     (n) =>
       !n.read_at &&
-      (n.type === 'escalation' || n.type === 'handoff')
+      (n.type === 'escalation' || n.type === 'handoff' || n.type === 'new_customer_message')
   )
 
   return (
