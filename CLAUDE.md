@@ -99,17 +99,24 @@ npm run dev
 ```
 **API:** `window.csWidget.open()`, `.close()`, `.identify({email, name})`
 
-## Environment Variables
+## Secrets Management (DOPPLER ONLY)
 
-**Source:** [Doppler](https://dashboard.doppler.com) project `r-link-customer-service` (configs: `dev`, `stg`, `prd`)
+**NEVER set env vars directly in Vercel, .env files, or any other provider.** All secrets are managed exclusively through [Doppler](https://dashboard.doppler.com), project `r-link-customer-service` (configs: `dev`, `stg`, `prd`).
+
+```bash
+doppler secrets set KEY="value"           # Set a secret
+doppler secrets get KEY --plain           # Read a secret
+doppler secrets                           # List all secrets
+```
+
+Doppler syncs to Vercel automatically. If Vercel env vars appear stale, re-trigger the sync from the Doppler dashboard (never manually add/edit Vercel env vars).
+
 **Reference:** See `.env.example` for all variables
 
 **Core:** Supabase (URL, anon key, service role key), `NEXT_PUBLIC_APP_URL`
 **AI:** Anthropic keys (2x for load balancing), OpenAI, Brave Search, agent config
-**Channels:** SendGrid (email)
-**Security:** `CRON_SECRET`, `INTERNAL_API_KEY`, widget CORS origins
-
-Doppler auto-syncs to Vercel (no manual env var management).
+**Channels:** SendGrid (email), `INBOUND_EMAIL_ADDRESS`, `EMAIL_FROM`, `EMAIL_AI_FROM`
+**Security:** `CRON_SECRET`, `WEBHOOK_EMAIL_SECRET`, `INTERNAL_API_KEY`, widget CORS origins
 
 ## Development
 
