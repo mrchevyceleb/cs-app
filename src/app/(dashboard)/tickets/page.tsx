@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation'
 import { useQuery, keepPreviousData, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { FilterBar, defaultFilters, TicketCard, TicketCardSkeleton, GetNextTicketButton } from '@/components/dashboard'
+import { FilterBar, defaultFilters, TicketCard, TicketCardSkeleton, GetNextTicketButton, ViewToggle, KanbanBoard } from '@/components/dashboard'
 import type { FilterOptions, TicketWithCustomer } from '@/components/dashboard'
 import { BulkActionsBar } from '@/components/dashboard/BulkActionsBar'
 import type { BulkUpdates } from '@/components/dashboard/BulkActionsBar'
 import { fetchTicketById, fetchTicketMessages } from '@/lib/api/tickets'
-import { useTicketSelection } from '@/hooks'
+import { useTicketSelection, useViewPreference } from '@/hooks'
 import { useAuth } from '@/components/providers/AuthProvider'
 
 const PAGE_SIZE = 20
+const BOARD_PAGE_SIZE = 200
 
 type QueueTab = 'human' | 'ai' | 'all'
 
@@ -21,6 +22,7 @@ export default function TicketsPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const { agent } = useAuth()
+  const [viewMode, setViewMode] = useViewPreference()
   const [filters, setFilters] = useState<FilterOptions>(defaultFilters)
   const [currentPage, setCurrentPage] = useState(0)
   const [activeQueue, setActiveQueue] = useState<QueueTab>('all')
@@ -57,12 +59,14 @@ export default function TicketsPage() {
     refetchInterval: 30000,
   })
 
+  const pageSize = viewMode === 'board' ? BOARD_PAGE_SIZE : PAGE_SIZE
+
   const { data, isPending } = useQuery({
-    queryKey: ['tickets', filters, currentPage, activeQueue],
+    queryKey: ['tickets', filters, viewMode === 'board' ? 0 : currentPage, activeQueue, viewMode],
     queryFn: async ({ signal }) => {
       const params = new URLSearchParams()
-      params.set('limit', String(PAGE_SIZE))
-      params.set('offset', String(currentPage * PAGE_SIZE))
+      params.set('limit', String(pageSize))
+      params.set('offset', viewMode === 'board' ? '0' : String(currentPage * PAGE_SIZE))
 
       // Apply queue filter
       if (activeQueue !== 'all') {
@@ -166,6 +170,33 @@ export default function TicketsPage() {
     }
   }, [clearSelection, queryClient])
 
+  const handleStatusChange = useCallback(async (ticketId: string, newStatus: string) => {
+    // Optimistic update on the tickets query cache
+    const currentQueryKey = ['tickets', filters, viewMode === 'board' ? 0 : currentPage, activeQueue, viewMode]
+    const previousData = queryClient.getQueryData(currentQueryKey)
+    queryClient.setQueryData(currentQueryKey, (old: typeof data) => {
+      if (!old?.tickets) return old
+      return {
+        ...old,
+        tickets: old.tickets.map((t: TicketWithCustomer) =>
+          t.id === ticketId ? { ...t, status: newStatus } : t
+        ),
+      }
+    })
+
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (!res.ok) throw new Error('Failed to update')
+    } catch {
+      // Rollback
+      queryClient.setQueryData(currentQueryKey, previousData)
+    }
+  }, [queryClient, filters, currentPage, activeQueue, viewMode, data])
+
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
   const hasNextPage = currentPage < totalPages - 1
   const hasPrevPage = currentPage > 0
@@ -182,6 +213,7 @@ export default function TicketsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
           <GetNextTicketButton />
           <Button
             className="bg-primary-600 hover:bg-primary-700 text-white"
@@ -225,57 +257,105 @@ export default function TicketsPage() {
       {/* Filters */}
       <FilterBar filters={filters} onFiltersChange={setFilters} />
 
-      {/* Ticket List */}
-      <Card className="glass border-0 overflow-hidden">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="divide-y divide-border/70">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <TicketCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : tickets.length === 0 ? (
-            <div className="py-16 text-center">
-              <div className="mx-auto w-16 h-16 mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-8 h-8 text-gray-400"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-                No tickets found
-              </h3>
+      {/* Content: List or Board */}
+      {viewMode === 'board' ? (
+        <KanbanBoard
+          tickets={tickets}
+          filters={filters}
+          isLoading={isLoading}
+          isChecked={isTicketChecked}
+          selectionMode={hasSelection}
+          onTicketClick={handleTicketClick}
+          onTicketCheckboxChange={toggleTicket}
+          onTicketHover={prefetchTicket}
+          onStatusChange={handleStatusChange}
+        />
+      ) : (
+        <>
+          {/* Ticket List */}
+          <Card className="glass border-0 overflow-hidden">
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="divide-y divide-border/70">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <TicketCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : tickets.length === 0 ? (
+                <div className="py-16 text-center">
+                  <div className="mx-auto w-16 h-16 mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-8 h-8 text-gray-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+                    No tickets found
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.aiHandled !== 'all'
+                      ? 'Try adjusting your filters'
+                      : 'No tickets have been created yet'}
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/70">
+                  {tickets.map((ticket) => (
+                    <TicketCard
+                      key={ticket.id}
+                      ticket={ticket}
+                      isChecked={isTicketChecked(ticket.id)}
+                      selectionMode={hasSelection}
+                      onClick={() => handleTicketClick(ticket)}
+                      onCheckboxChange={() => toggleTicket(ticket.id)}
+                      onHover={() => prefetchTicket(ticket.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pagination (list view only) */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                {filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.aiHandled !== 'all'
-                  ? 'Try adjusting your filters'
-                  : 'No tickets have been created yet'}
+                Showing {currentPage * PAGE_SIZE + 1} -{' '}
+                {Math.min((currentPage + 1) * PAGE_SIZE, totalCount)} of {totalCount}
               </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border/70">
-              {tickets.map((ticket) => (
-                <TicketCard
-                  key={ticket.id}
-                  ticket={ticket}
-                  isChecked={isTicketChecked(ticket.id)}
-                  selectionMode={hasSelection}
-                  onClick={() => handleTicketClick(ticket)}
-                  onCheckboxChange={() => toggleTicket(ticket.id)}
-                  onHover={() => prefetchTicket(ticket.id)}
-                />
-              ))}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  disabled={!hasPrevPage || isLoading}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground px-2">
+                  Page {currentPage + 1} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  disabled={!hasNextPage || isLoading}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
 
       {/* Bulk Update Message */}
       {bulkMessage && (
@@ -288,36 +368,6 @@ export default function TicketsPage() {
         </div>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {currentPage * PAGE_SIZE + 1} -{' '}
-            {Math.min((currentPage + 1) * PAGE_SIZE, totalCount)} of {totalCount}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => p - 1)}
-              disabled={!hasPrevPage || isLoading}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-muted-foreground px-2">
-              Page {currentPage + 1} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => p + 1)}
-              disabled={!hasNextPage || isLoading}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
       {/* Bulk Actions Bar */}
       <BulkActionsBar
         selectedCount={selectedCount}

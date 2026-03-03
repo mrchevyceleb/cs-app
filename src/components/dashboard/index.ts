@@ -1,8 +1,12 @@
 // Dashboard Components
+export { ViewToggle } from './ViewToggle'
 export { MetricsBar } from './MetricsBar'
 export { Sidebar } from './Sidebar'
 export { ConfidenceScore } from './ConfidenceScore'
 export { TicketCard, TicketCardSkeleton } from './TicketCard'
+export { KanbanTicketCard, KanbanTicketCardSkeleton } from './KanbanTicketCard'
+export { KanbanColumn } from './KanbanColumn'
+export { KanbanBoard } from './KanbanBoard'
 export type { TicketWithCustomer } from './TicketCard'
 export { TicketQueue } from './TicketQueue'
 export { FilterBar, defaultFilters } from './FilterBar'
