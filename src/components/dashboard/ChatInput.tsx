@@ -32,6 +32,7 @@ import {
   Lock,
   LockOpen,
   Hash,
+  Wand2,
 } from 'lucide-react'
 import { CannedResponsePicker, useCannedResponseShortcut } from './CannedResponsePicker'
 import { FileChip, type UploadedFile } from './FileUpload'
@@ -100,6 +101,7 @@ export function ChatInput({
   const [isInternalNote, setIsInternalNote] = useState(false)
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0)
   const [attachments, setAttachments] = useState<UploadedFile[]>([])
+  const [isDrafting, setIsDrafting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -353,6 +355,28 @@ export function ChatInput({
     }
   }, [canSend, message, sendMode, isInternalNote, attachments, onSend])
 
+  // Generate AI draft reply
+  const handleAIDraft = useCallback(async () => {
+    if (!ticketId || isDrafting) return
+    setIsDrafting(true)
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/draft`, {
+        method: 'POST',
+      })
+      if (!response.ok) throw new Error('Failed to generate draft')
+      const { draft } = await response.json()
+      if (draft) {
+        setMessage(draft)
+        setIsExpanded(true)
+        textareaRef.current?.focus()
+      }
+    } catch (err) {
+      console.error('AI draft error:', err)
+    } finally {
+      setIsDrafting(false)
+    }
+  }, [ticketId, isDrafting])
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Handle shortcut suggestions navigation
     if (showSuggestions && shortcutSuggestions.length > 0) {
@@ -555,6 +579,33 @@ export function ChatInput({
               </Button>
             </TooltipTrigger>
             <TooltipContent>Add emoji</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {/* AI Draft Button */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  'h-8 w-8 shrink-0 transition-colors',
+                  isDrafting
+                    ? 'text-primary-600 animate-pulse'
+                    : 'text-muted-foreground hover:text-primary-600 hover:bg-primary-50'
+                )}
+                disabled={disabled || isSending || isDrafting || !ticketId}
+                onClick={handleAIDraft}
+              >
+                {isDrafting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>AI Draft Reply</TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
