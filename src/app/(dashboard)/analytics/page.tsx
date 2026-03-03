@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -187,28 +188,17 @@ function AgentLeaderboard({ agents }: { agents: AgentPerformance[] }) {
 }
 
 export default function AnalyticsPage() {
-  const [metrics, setMetrics] = useState<MetricsData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('30d')
 
-  useEffect(() => {
-    async function fetchMetrics() {
-      setIsLoading(true)
-      try {
-        const response = await fetch(`/api/metrics?period=${selectedPeriod}`)
-        if (response.ok) {
-          const data = await response.json()
-          setMetrics(data)
-        }
-      } catch (error) {
-        console.error('Failed to fetch metrics:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchMetrics()
-  }, [selectedPeriod])
+  const { data: metrics = null, isPending: isLoading } = useQuery<MetricsData>({
+    queryKey: ['analytics-metrics', selectedPeriod],
+    queryFn: async () => {
+      const response = await fetch(`/api/metrics?period=${selectedPeriod}`)
+      if (!response.ok) throw new Error('Failed to fetch metrics')
+      return response.json()
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes - avoid refetching on tab switch
+  })
 
   return (
     <div className="space-y-6">

@@ -64,31 +64,49 @@ export async function GET(request: NextRequest) {
     const { start, end } = getDateRange(period)
     const prevPeriod = getPreviousPeriodRange(period)
 
-    // Fetch all tickets within the date range
-    const { data: tickets, error: ticketsError } = await supabase
-      .from('tickets')
-      .select(`
-        id,
-        status,
-        priority,
-        ai_handled,
-        created_at,
-        updated_at,
-        assigned_agent_id,
-        customer:customers(id, name, email)
-      `)
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString())
+    // Run all independent queries in parallel for speed
+    const [ticketsResult, feedbackResult, prevFeedbackResult, agentsResult] = await Promise.all([
+      supabase
+        .from('tickets')
+        .select(`
+          id,
+          status,
+          priority,
+          ai_handled,
+          created_at,
+          updated_at,
+          assigned_agent_id,
+          customer:customers(id, name, email)
+        `)
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString()),
+      supabase
+        .from('ticket_feedback')
+        .select('*')
+        .not('submitted_at', 'is', null)
+        .gte('submitted_at', start.toISOString())
+        .lte('submitted_at', end.toISOString())
+        .order('submitted_at', { ascending: false }),
+      supabase
+        .from('ticket_feedback')
+        .select('rating')
+        .not('submitted_at', 'is', null)
+        .gte('submitted_at', prevPeriod.start.toISOString())
+        .lt('submitted_at', prevPeriod.end.toISOString()),
+      supabase
+        .from('agents')
+        .select('id, name, email, avatar_url'),
+    ])
 
-    if (ticketsError) {
-      console.error('Error fetching tickets:', ticketsError)
+    if (ticketsResult.error) {
+      console.error('Error fetching tickets:', ticketsResult.error)
       return NextResponse.json(
         { error: 'Failed to fetch tickets' },
         { status: 500 }
       )
     }
 
-    const ticketList = tickets || []
+    const ticketList = ticketsResult.data || []
     const totalTickets = ticketList.length
 
     // Count open tickets (open or pending status)
@@ -124,7 +142,7 @@ export async function GET(request: NextRequest) {
       aiResolutionRate = Math.round((aiResolvedCount / resolvedTickets.length) * 100)
     }
 
-    // Calculate average response time
+    // Calculate average response time (messages query depends on ticket IDs)
     let avgResponseTime: string = '--'
     const ticketIds = ticketList.map((t) => t.id)
 
@@ -173,21 +191,13 @@ export async function GET(request: NextRequest) {
     }
 
     // ========================================
-    // CSAT Metrics
+    // CSAT Metrics (already fetched in parallel above)
     // ========================================
-    const { data: feedback, error: feedbackError } = await supabase
-      .from('ticket_feedback')
-      .select('*')
-      .not('submitted_at', 'is', null)
-      .gte('submitted_at', start.toISOString())
-      .lte('submitted_at', end.toISOString())
-      .order('submitted_at', { ascending: false })
-
-    if (feedbackError) {
-      console.error('Error fetching feedback:', feedbackError)
+    if (feedbackResult.error) {
+      console.error('Error fetching feedback:', feedbackResult.error)
     }
 
-    const feedbackList = feedback || []
+    const feedbackList = feedbackResult.data || []
 
     // Calculate CSAT metrics
     const csatTotal = feedbackList.length
@@ -203,14 +213,8 @@ export async function GET(request: NextRequest) {
 
     const csatAverage = csatTotal > 0 ? Math.round((csatSum / csatTotal) * 100) / 100 : null
 
-    // Get previous period feedback for trend calculation
-    const { data: prevFeedback } = await supabase
-      .from('ticket_feedback')
-      .select('rating')
-      .not('submitted_at', 'is', null)
-      .gte('submitted_at', prevPeriod.start.toISOString())
-      .lt('submitted_at', prevPeriod.end.toISOString())
-
+    // Previous period trend (already fetched in parallel above)
+    const prevFeedback = prevFeedbackResult.data
     let csatTrend: number | null = null
     if (prevFeedback && prevFeedback.length > 0) {
       const prevSum = prevFeedback.reduce((acc, fb) => acc + (fb.rating ?? 0), 0)
@@ -233,11 +237,9 @@ export async function GET(request: NextRequest) {
       }))
 
     // ========================================
-    // Agent Performance Comparison
+    // Agent Performance (already fetched in parallel above)
     // ========================================
-    const { data: agents } = await supabase
-      .from('agents')
-      .select('id, name, email, avatar_url')
+    const agents = agentsResult.data
 
     const agentMap = new Map(agents?.map((a) => [a.id, a]) || [])
     const agentPerformance: Record<string, {
@@ -357,7 +359,11 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return NextResponse.json(metricsResponse)
+    return NextResponse.json(metricsResponse, {
+      headers: {
+        'Cache-Control': 'private, max-age=60, stale-while-revalidate=120',
+      },
+    })
   } catch (error) {
     console.error('Metrics API error:', error)
     return NextResponse.json(

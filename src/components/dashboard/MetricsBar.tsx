@@ -92,7 +92,7 @@ export function MetricsBar({ className }: MetricsBarProps) {
         customerSatisfaction: data.customerSatisfaction,
       }
     },
-    staleTime: 30 * 1000, // 30 seconds - metrics can be slightly stale
+    staleTime: 5 * 60 * 1000, // 5 minutes - avoid refetching on every tab switch
   })
 
   const displayValue = (value: number | string | null | undefined, suffix?: string): string => {
