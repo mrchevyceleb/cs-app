@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getWidgetSession } from '@/lib/widget/auth'
 import { getAgentConfig } from '@/lib/ai-agent/config'
 import { agenticSolveStreaming } from '@/lib/ai-agent/engine'
-import { classifyTicketPriority } from '@/lib/ai-agent/classify'
+import { classifyTicketPriority, generateTicketSubject } from '@/lib/ai-agent/classify'
 import { withFallback } from '@/lib/claude/client'
 import type { AgentResult } from '@/lib/ai-agent/types'
 
@@ -97,10 +97,11 @@ export async function POST(request: NextRequest) {
 
     // Auto-create ticket if none provided
     if (!ticketId) {
-      const subject = content.trim().slice(0, 100)
-
-      // Classify urgency from first message (fast Haiku call, ~200ms)
-      const priority = await classifyTicketPriority(content.trim(), subject)
+      // Classify urgency and generate subject in parallel (fast Haiku calls, ~200ms each)
+      const [priority, subject] = await Promise.all([
+        classifyTicketPriority(content.trim()),
+        generateTicketSubject(content.trim()),
+      ])
 
       const { data: newTicket, error: ticketError } = await supabase
         .from('tickets')
