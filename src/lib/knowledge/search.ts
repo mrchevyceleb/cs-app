@@ -246,6 +246,6 @@ export function formatKBResultsForPrompt(
       : r.content
     const source = r.source_file ? ` [Source: ${r.source_file}${r.section_path ? ` > ${r.section_path}` : ''}]` : ''
     const similarity = r.similarity > 0 ? ` (relevance: ${Math.round(r.similarity * 100)}%)` : ''
-    return `### Article ${i + 1}: ${r.title}${source}${similarity}\n${content}`
+    return `### Article ${i + 1}: ${r.title}${source}${similarity}\nID: ${r.id}\n${content}`
   }).join('\n\n---\n\n')
 }

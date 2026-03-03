@@ -143,6 +143,7 @@ export async function POST(request: NextRequest) {
         ticket_id: ticketId,
         sender_type: 'customer',
         content: content.trim(),
+        source: 'widget',
       })
       .select('id, sender_type, content, created_at')
       .single()
@@ -232,6 +233,7 @@ export async function POST(request: NextRequest) {
                 ticket_id: ticketId,
                 sender_type: 'ai',
                 content: confirmMsg,
+                source: 'widget',
                 metadata: { type: 'email_confirmed' },
               })
             controller.enqueue(
@@ -344,6 +346,7 @@ export async function POST(request: NextRequest) {
                 ticket_id: ticketId,
                 sender_type: 'ai',
                 content: fullContent,
+                source: 'widget',
                 confidence: agentResult ? Math.round(agentResult.confidence * 100) : 75,
                 metadata: agentResult ? {
                   agent_mode: true,
@@ -413,18 +416,25 @@ export async function POST(request: NextRequest) {
                       model: 'claude-haiku-4-5-20251001',
                       max_tokens: 40,
                       temperature: 0.3,
-                      system: `You just helped a customer with their issue. Now you need their R-Link email so the team can look into their account. Write ONE casual sentence asking for it. Keep it under 20 words. Don't repeat the issue. Don't say "by the way". Examples of good asks:
-- "Also, drop me the email on your R-Link account so we can pull up your details."
-- "What email is on your R-Link account? Helps us track everything on our end."`,
+                      system: `You just helped a customer with their issue. Now ask for their email so the team can follow up. Write ONE casual sentence asking for it. Keep it under 20 words. Don't repeat the issue. Don't say "by the way". Do NOT wrap your response in quotes. Output the sentence directly, no punctuation wrapping.
+
+Good examples:
+Also, drop me your email so we can pull up your account details.
+What email is on your account? Helps us track everything on our end.`,
                       messages: [{ role: 'user', content: `Customer asked about: ${content.trim().slice(0, 80)}. Your response was about: ${fullContent.slice(0, 80)}` }],
                     })
                   ),
                   new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
                 ])
 
-                const emailPrompt = emailAsk
+                let emailPrompt = emailAsk
                   ? emailAsk.content.filter(b => b.type === 'text').map(b => ('text' in b ? b.text : '')).join('').trim()
-                  : "What email do you use for R-Link? Helps us keep track of everything on our end."
+                  : "What email is on your account? Helps us keep track of everything on our end."
+
+                // Strip wrapping quotes the model sometimes adds
+                if (emailPrompt.length > 2 && emailPrompt.startsWith('"') && emailPrompt.endsWith('"')) {
+                  emailPrompt = emailPrompt.slice(1, -1).trim()
+                }
 
                 if (emailPrompt) {
                   await supabase
@@ -433,6 +443,7 @@ export async function POST(request: NextRequest) {
                       ticket_id: ticketId,
                       sender_type: 'ai',
                       content: emailPrompt,
+                      source: 'widget',
                       metadata: { type: 'email_collection' },
                     })
 
@@ -479,6 +490,7 @@ export async function POST(request: NextRequest) {
                 ticket_id: ticketId,
                 sender_type: 'ai',
                 content: fallbackContent,
+                source: 'widget',
                 confidence: 0,
                 metadata: { fallback: true, error: String(error) },
               })
