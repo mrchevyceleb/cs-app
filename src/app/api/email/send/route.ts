@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        result = await sendAgentReplyEmail(ticket as Ticket, message as Message, customer, portalToken)
+        result = await sendAgentReplyEmail(ticket as Ticket, message as Message, customer, portalToken, undefined, { isAI: message.sender_type === 'ai' })
         break
 
       default:

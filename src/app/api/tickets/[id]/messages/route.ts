@@ -202,7 +202,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           console.error('[Messages API] Failed to generate portal token for agent reply email')
         } else {
           // Send email asynchronously (don't wait for it)
-          // Human agent replies use the standard from address (not Ava)
+          // Human agent replies use the standard from address, signed "R-Link Customer Support"
           sendAgentReplyEmail(ticket as Ticket, message as Message, customer, portalToken)
             .then((result) => {
               if (result.success) {

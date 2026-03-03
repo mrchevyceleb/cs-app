@@ -1,6 +1,6 @@
 /**
  * Email AI Loop
- * Processes inbound emails through the AI agent and auto-replies as "Ava".
+ * Processes inbound emails through the AI agent and auto-replies as "Nova".
  * After 3 AI exchanges without resolution, escalates to human queue.
  */
 
@@ -30,7 +30,7 @@ interface EmailAIResult {
 
 /**
  * Process an email ticket through the AI agent.
- * - If under 3 AI exchanges: AI processes and replies via email as Ava
+ * - If under 3 AI exchanges: AI processes and replies via email as Nova
  * - If 3+ exchanges: auto-escalates to human queue
  */
 export async function processEmailWithAI(
@@ -179,7 +179,8 @@ export async function processEmailWithAI(
             ackMessage as any,
             customer as any,
             undefined,
-            emailConfig.aiFrom
+            emailConfig.aiFrom,
+            { isAI: true }
           )
         } catch (emailErr) {
           console.error('[Email AI] Failed to send escalation ack email:', emailErr)
@@ -233,14 +234,15 @@ export async function processEmailWithAI(
       .select('*')
       .single()
 
-    // Send email reply as Ava
+    // Send email reply as Nova
     if (aiMessage) {
       await sendAgentReplyEmail(
         ticket as any,
         aiMessage as any,
         customer as any,
         undefined,
-        emailConfig.aiFrom
+        emailConfig.aiFrom,
+        { isAI: true }
       )
     }
 

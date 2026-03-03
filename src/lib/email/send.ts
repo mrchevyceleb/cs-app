@@ -245,7 +245,8 @@ export async function sendAgentReplyEmail(
   message: Message,
   customer: Customer,
   token?: string,
-  fromOverride?: string
+  fromOverride?: string,
+  options?: { isAI?: boolean }
 ): Promise<{ success: boolean; emailLogId?: string; error?: string }> {
   // Skip if customer has no email
   if (!customer.email) {
@@ -267,17 +268,20 @@ export async function sendAgentReplyEmail(
   }
 
   // Generate email content
-  const translatedPreview = message.content_translated?.trim()
+  const translatedContent = message.content_translated?.trim()
+  const isAI = options?.isAI ?? false
   const emailData: TicketEmailData = {
     ticketId: ticket.id,
     ticketSubject: ticket.subject,
     customerName: customer.name || 'there',
     portalToken,
-    messagePreview: translatedPreview || message.content,
+    messagePreview: translatedContent || message.content,
+    isAI,
   }
 
   const { html, text } = agentReplyTemplate(emailData)
-  const subject = `New reply on your support request - #${ticket.id.slice(0, 8).toUpperCase()}`
+  // Personal subject line: "Re: <ticket subject>" so it reads like a reply, not a notification
+  const subject = `Re: ${ticket.subject}`
 
   // Build email threading headers so replies thread correctly in customer's inbox
   const outboundMessageId = generateMessageId(ticket.id, message.id)

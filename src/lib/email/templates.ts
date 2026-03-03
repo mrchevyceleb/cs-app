@@ -11,6 +11,7 @@ export interface TicketEmailData {
   priority?: string
   status?: string
   feedbackUrl?: string // Optional feedback URL to include in emails
+  isAI?: boolean // Whether the message originated from the AI agent (Nova)
 }
 
 export interface FeedbackEmailData {
@@ -399,73 +400,39 @@ ${emailConfig.companyName}
 
 // ============================================
 // AGENT REPLY EMAIL
+// Personal, plain-text style. Reads like a message from a real person.
+// AI replies are signed "Nova", human agent replies are signed "R-Link Customer Support".
 // ============================================
 export function agentReplyTemplate(data: TicketEmailData): { html: string; text: string } {
-  const portalLink = getPortalLink(data.ticketId, data.portalToken)
-  const ticketRef = data.ticketNumber || data.ticketId.slice(0, 8).toUpperCase()
+  const signoff = data.isAI ? 'Nova' : `${emailConfig.companyName} Customer Support`
+  const messageBody = data.messagePreview || ''
 
-  const html = wrapInLayout(`
-    <div style="${styles.card}">
-      <div style="${styles.header}">
-        <a href="${emailConfig.portalUrl}" style="${styles.logo}">${emailConfig.companyName}</a>
-      </div>
-
-      <h1 style="${styles.h1}">New reply on your support request</h1>
-
-      <p style="${styles.paragraph}">
-        Hi ${data.customerName || 'there'},
-      </p>
-
-      <p style="${styles.paragraph}">
-        You have a new reply on your support request. Our team has responded to help you.
-      </p>
-
-      <div style="${styles.ticketInfo}">
-        <p style="${styles.ticketLabel}">Ticket Reference</p>
-        <p style="${styles.ticketValue}">#${ticketRef}</p>
-
-        <p style="${styles.ticketLabel}">Subject</p>
-        <p style="${styles.ticketValue}; margin-bottom: 0;">${data.ticketSubject}</p>
-      </div>
-
-      ${data.messagePreview ? `
-      <div style="${styles.messagePreview}">
-        <p style="color: ${colors.textMuted}; font-size: 12px; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">Message Preview</p>
-        <p style="color: ${colors.text}; font-size: 14px; line-height: 1.5; margin: 0; white-space: pre-wrap;">${data.messagePreview.length > 300 ? data.messagePreview.slice(0, 300) + '...' : data.messagePreview}</p>
-      </div>
-      ` : ''}
-
-      <p style="${styles.paragraph}">
-        Visit your customer portal to read the full message and reply.
-      </p>
-
-      <div style="text-align: center;">
-        <a href="${portalLink}" style="${styles.button}">View & Reply</a>
-      </div>
-    </div>
-  `)
-
-  const text = `
-New reply on your support request
-
-Hi ${data.customerName || 'there'},
-
-You have a new reply on your support request. Our team has responded to help you.
-
-Ticket Reference: #${ticketRef}
-Subject: ${data.ticketSubject}
-
-${data.messagePreview ? `--- Message Preview ---
-${data.messagePreview.length > 300 ? data.messagePreview.slice(0, 300) + '...' : data.messagePreview}
----` : ''}
-
-View the full message and reply here:
-${portalLink}
-
-Need help? Contact us at ${emailConfig.supportEmail}
-
-${emailConfig.companyName}
+  // Minimal HTML that renders like plain text in all email clients.
+  // No cards, no buttons, no ticket references. Just the message.
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #ffffff;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #1E293B;">
+    <p style="margin: 0 0 16px 0;">Hi ${data.customerName || 'there'},</p>
+    <div style="margin: 0 0 16px 0; white-space: pre-wrap;">${messageBody}</div>
+    <p style="margin: 0 0 4px 0;">Best,</p>
+    <p style="margin: 0; font-weight: 500;">${signoff}</p>
+  </div>
+</body>
+</html>
   `.trim()
+
+  const text = `Hi ${data.customerName || 'there'},
+
+${messageBody}
+
+Best,
+${signoff}`.trim()
 
   return { html, text }
 }

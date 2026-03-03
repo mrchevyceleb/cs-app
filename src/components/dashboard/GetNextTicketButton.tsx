@@ -50,13 +50,8 @@ export function GetNextTicketButton({
       }
 
       if (response.status === 409) {
-        // Conflict - ticket was assigned by another agent
-        toast({
-          type: 'warning',
-          title: 'Ticket taken',
-          description: 'Another agent grabbed that ticket. Trying again...',
-        })
-        // Retry once
+        // Conflict - ticket was assigned by another agent.
+        // Retry once silently so users only see one final message.
         const retryResponse = await fetch('/api/queue/next', {
           method: 'POST',
           headers: {
@@ -73,8 +68,18 @@ export function GetNextTicketButton({
           return
         }
 
+        if (retryResponse.status === 409) {
+          toast({
+            type: 'warning',
+            title: 'Ticket taken',
+            description: 'Another agent grabbed the next ticket. Please try again.',
+          })
+          return
+        }
+
         if (!retryResponse.ok) {
-          throw new Error('Failed to get next ticket on retry')
+          const retryErrorData = await retryResponse.json().catch(() => ({}))
+          throw new Error(retryErrorData.error || 'Failed to get next ticket on retry')
         }
 
         const retryData = await retryResponse.json()
