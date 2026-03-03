@@ -116,42 +116,71 @@ export async function POST(request: NextRequest) {
 
     const messageId = headers['Message-ID'] || headers['message-id'] || undefined;
 
-    // Deduplication: if we've already processed this Message-ID, return success
-    // without re-processing. Prevents duplicate messages on SendGrid retries.
+    // Atomic deduplication: attempt to insert a log row for this Message-ID.
+    // A unique index on (channel, external_id) WHERE external_id IS NOT NULL
+    // means concurrent retries will conflict. The winner proceeds; losers get
+    // the existing row back via onConflict + select and return early.
+    let logEntry: { id: string; ticket_id: string | null; message_id: string | null; processed: boolean } | null = null;
+
     if (messageId) {
-      const { data: existing } = await getSupabase()
+      // Try to claim this Message-ID atomically
+      const { data: inserted, error: insertErr } = await getSupabase()
         .from('channel_inbound_logs')
-        .select('id, ticket_id, message_id')
-        .eq('external_id', messageId)
-        .eq('processed', true)
-        .limit(1)
-        .maybeSingle();
+        .upsert({
+          channel: 'email',
+          external_id: messageId,
+          from_identifier: from,
+          to_identifier: to[0],
+          raw_payload: Object.fromEntries(formData.entries()) as Record<string, string>,
+          processed: false,
+        }, {
+          onConflict: 'channel,external_id',
+          ignoreDuplicates: true,
+        })
+        .select('id, ticket_id, message_id, processed')
+        .single();
 
-      if (existing) {
-        console.log(`[Email Webhook] Duplicate Message-ID detected, skipping: ${messageId}`);
-        return NextResponse.json({
-          success: true,
-          ticket_id: existing.ticket_id,
-          message_id: existing.message_id,
-          is_new_ticket: false,
-          deduplicated: true,
-        });
+      if (insertErr) {
+        // ignoreDuplicates returns no rows when the row already exists.
+        // Query for the existing row to check if it was already processed.
+        const { data: existing } = await getSupabase()
+          .from('channel_inbound_logs')
+          .select('id, ticket_id, message_id, processed')
+          .eq('channel', 'email')
+          .eq('external_id', messageId)
+          .maybeSingle();
+
+        if (existing) {
+          console.log(`[Email Webhook] Duplicate Message-ID detected (processed=${existing.processed}), skipping: ${messageId}`);
+          return NextResponse.json({
+            success: true,
+            ticket_id: existing.ticket_id,
+            message_id: existing.message_id,
+            is_new_ticket: false,
+            deduplicated: true,
+          });
+        }
+        // If we can't find it either, fall through and process without a log entry
+        console.warn(`[Email Webhook] Log insert failed and no existing row found for: ${messageId}`, insertErr);
+      } else {
+        logEntry = inserted;
       }
+    } else {
+      // No Message-ID: insert log entry without dedup (no unique constraint applies)
+      const { data: inserted } = await getSupabase()
+        .from('channel_inbound_logs')
+        .insert({
+          channel: 'email',
+          external_id: null,
+          from_identifier: from,
+          to_identifier: to[0],
+          raw_payload: Object.fromEntries(formData.entries()) as Record<string, string>,
+          processed: false,
+        })
+        .select('id, ticket_id, message_id, processed')
+        .single();
+      logEntry = inserted;
     }
-
-    // Log the inbound email
-    const { data: logEntry } = await getSupabase()
-      .from('channel_inbound_logs')
-      .insert({
-        channel: 'email',
-        external_id: messageId,
-        from_identifier: from,
-        to_identifier: to[0],
-        raw_payload: Object.fromEntries(formData.entries()) as Record<string, string>,
-        processed: false,
-      })
-      .select()
-      .single();
 
     // Process the email
     const result = await processInboundEmail(email);
