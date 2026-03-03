@@ -316,11 +316,33 @@ export function CustomerContext({
             Quick Actions
           </h4>
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" className="text-xs h-8">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-8"
+              disabled={!customer.email}
+              onClick={() => {
+                if (customer.email) {
+                  window.open(`mailto:${customer.email}?subject=Re: ${ticket.subject || ''}`, '_blank')
+                }
+              }}
+            >
               <Mail className="h-3 w-3 mr-1" />
               Email
             </Button>
-            <Button variant="outline" size="sm" className="text-xs h-8">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-8"
+              onClick={() => {
+                const info = [
+                  customer.name || 'Unknown',
+                  customer.email || 'No email',
+                  `ID: ${customer.id}`,
+                ].join('\n')
+                navigator.clipboard.writeText(info)
+              }}
+            >
               <ExternalLink className="h-3 w-3 mr-1" />
               Profile
             </Button>
