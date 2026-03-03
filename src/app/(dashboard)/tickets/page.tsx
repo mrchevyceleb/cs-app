@@ -1,13 +1,17 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, keepPreviousData, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { FilterBar, defaultFilters, TicketCard, TicketCardSkeleton, GetNextTicketButton } from '@/components/dashboard'
 import type { FilterOptions, TicketWithCustomer } from '@/components/dashboard'
+import { BulkActionsBar } from '@/components/dashboard/BulkActionsBar'
+import type { BulkUpdates } from '@/components/dashboard/BulkActionsBar'
 import { fetchTicketById, fetchTicketMessages } from '@/lib/api/tickets'
+import { useTicketSelection } from '@/hooks'
+import { useAuth } from '@/components/providers/AuthProvider'
 
 const PAGE_SIZE = 20
 
@@ -16,9 +20,20 @@ type QueueTab = 'human' | 'ai' | 'all'
 export default function TicketsPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { agent } = useAuth()
   const [filters, setFilters] = useState<FilterOptions>(defaultFilters)
   const [currentPage, setCurrentPage] = useState(0)
   const [activeQueue, setActiveQueue] = useState<QueueTab>('all')
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null)
+
+  const {
+    selectedIds,
+    isSelected: isTicketChecked,
+    toggleTicket,
+    clearSelection,
+    selectedCount,
+    hasSelection,
+  } = useTicketSelection()
 
   // Reset to first page when filters or queue tab change
   useEffect(() => {
@@ -108,6 +123,48 @@ export default function TicketsPage() {
       })
     }
   }, [queryClient])
+
+  const handleBulkUpdate = useCallback(async (updates: BulkUpdates) => {
+    const ticketIds = Array.from(selectedIds)
+    try {
+      const response = await fetch('/api/tickets/bulk', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketIds, updates }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Failed to update tickets')
+      setBulkMessage(`Updated ${result.updatedCount} ticket${result.updatedCount !== 1 ? 's' : ''}`)
+      setTimeout(() => setBulkMessage(null), 3000)
+      clearSelection()
+      await queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      await queryClient.invalidateQueries({ queryKey: ['queue-counts'] })
+    } catch (err) {
+      setBulkMessage(`Error: ${err instanceof Error ? err.message : 'Failed to update'}`)
+      setTimeout(() => setBulkMessage(null), 5000)
+    }
+  }, [selectedIds, clearSelection, queryClient])
+
+  const handleBulkDelete = useCallback(async (ticketIds: string[]) => {
+    try {
+      const response = await fetch('/api/tickets/bulk', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketIds }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Failed to delete tickets')
+      setBulkMessage(`Deleted ${result.deletedCount} ticket${result.deletedCount !== 1 ? 's' : ''}`)
+      setTimeout(() => setBulkMessage(null), 3000)
+      clearSelection()
+      await queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      await queryClient.invalidateQueries({ queryKey: ['queue-counts'] })
+      await queryClient.invalidateQueries({ queryKey: ['ticket-count'] })
+    } catch (err) {
+      setBulkMessage(`Error: ${err instanceof Error ? err.message : 'Failed to delete'}`)
+      setTimeout(() => setBulkMessage(null), 5000)
+    }
+  }, [clearSelection, queryClient])
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
   const hasNextPage = currentPage < totalPages - 1
@@ -208,7 +265,10 @@ export default function TicketsPage() {
                 <TicketCard
                   key={ticket.id}
                   ticket={ticket}
+                  isChecked={isTicketChecked(ticket.id)}
+                  selectionMode={hasSelection}
                   onClick={() => handleTicketClick(ticket)}
+                  onCheckboxChange={() => toggleTicket(ticket.id)}
                   onHover={() => prefetchTicket(ticket.id)}
                 />
               ))}
@@ -216,6 +276,17 @@ export default function TicketsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Bulk Update Message */}
+      {bulkMessage && (
+        <div className={`px-4 py-2 rounded-md text-sm font-medium ${
+          bulkMessage.startsWith('Error')
+            ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+            : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+        }`}>
+          {bulkMessage}
+        </div>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -247,6 +318,16 @@ export default function TicketsPage() {
           </div>
         </div>
       )}
+      {/* Bulk Actions Bar */}
+      <BulkActionsBar
+        selectedCount={selectedCount}
+        selectedIds={selectedIds}
+        onClearSelection={clearSelection}
+        onBulkUpdate={handleBulkUpdate}
+        onBulkDelete={handleBulkDelete}
+        currentAgentId={agent?.id}
+      />
+      {hasSelection && <div className="h-16" />}
     </div>
   )
 }
