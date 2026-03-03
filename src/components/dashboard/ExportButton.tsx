@@ -63,7 +63,15 @@ export function ExportButton({ period, className }: ExportButtonProps) {
       const response = await fetch(`/api/export?type=${type}&period=${period}`)
 
       if (!response.ok) {
-        throw new Error('Export failed')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Export failed')
+      }
+
+      // Check if response is JSON (error) instead of CSV
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Export failed')
       }
 
       // Get the blob from response
@@ -208,3 +216,4 @@ export function ExportButton({ period, className }: ExportButtonProps) {
 }
 
 export default ExportButton
+
