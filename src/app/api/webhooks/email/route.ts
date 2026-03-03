@@ -215,14 +215,18 @@ export async function POST(request: NextRequest) {
           console.error('[Email Notify] Background notification error:', err)
         }
 
-        // AI auto-reply
-        processEmailWithAI(
-          result.ticket_id,
-          emailContent,
-          result.customer_id,
-          senderAddress,
-          senderName
-        ).catch(err => console.error('[Email AI] Background processing error:', err))
+        // AI auto-reply (awaited so the after() callback lifecycle tracks it)
+        try {
+          await processEmailWithAI(
+            result.ticket_id,
+            emailContent,
+            result.customer_id,
+            senderAddress,
+            senderName
+          )
+        } catch (err) {
+          console.error('[Email AI] Background processing error:', err)
+        }
       });
     }
 

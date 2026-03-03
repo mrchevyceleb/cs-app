@@ -9,9 +9,14 @@ CREATE INDEX IF NOT EXISTS idx_tickets_needs_attention
   ON tickets (last_message_sender, status)
   WHERE last_message_sender = 'customer' AND status NOT IN ('resolved');
 
--- Trigger: auto-update last_message_sender on every new message
+-- Trigger: auto-update last_message_sender on every new message.
+-- SECURITY DEFINER so roles that can insert messages but not update tickets
+-- (e.g. anon/widget) don't have their message inserts rejected by this trigger.
 CREATE OR REPLACE FUNCTION update_ticket_last_message()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   -- Skip internal notes
   IF (NEW.metadata->>'is_internal')::boolean IS TRUE THEN
