@@ -8,6 +8,7 @@ export interface TicketEmailData {
   customerName: string
   portalToken: string
   messagePreview?: string
+  hasAttachments?: boolean
   priority?: string
   status?: string
   feedbackUrl?: string // Optional feedback URL to include in emails
@@ -404,8 +405,25 @@ ${emailConfig.companyName}
 // AI replies are signed "Nova", human agent replies are signed "R-Link Customer Support".
 // ============================================
 export function agentReplyTemplate(data: TicketEmailData): { html: string; text: string } {
+  const portalLink = getPortalLink(data.ticketId, data.portalToken)
   const signoff = data.isAI ? 'Nova' : `${emailConfig.companyName} Customer Support`
-  const messageBody = data.messagePreview || ''
+  const messageBody = data.messagePreview?.trim() || ''
+  const shouldShowPortalFallback = data.hasAttachments || messageBody.length === 0
+  const portalFallbackHtml = shouldShowPortalFallback
+    ? `<p style="margin: 0 0 16px 0;">
+        ${data.hasAttachments
+          ? 'You can view the latest reply and any attachments in your ticket portal:'
+          : 'You can view the latest update in your ticket portal:'}
+        <br />
+        <a href="${portalLink}" style="color: ${colors.primary};">${portalLink}</a>
+      </p>`
+    : ''
+  const portalFallbackText = shouldShowPortalFallback
+    ? `${data.hasAttachments
+      ? 'You can view the latest reply and any attachments in your ticket portal:'
+      : 'You can view the latest update in your ticket portal:'}
+${portalLink}`
+    : ''
 
   // Minimal HTML that renders like plain text in all email clients.
   // No cards, no buttons, no ticket references. Just the message.
@@ -420,6 +438,7 @@ export function agentReplyTemplate(data: TicketEmailData): { html: string; text:
   <div style="max-width: 600px; margin: 0 auto; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #1E293B;">
     <p style="margin: 0 0 16px 0;">Hi ${data.customerName || 'there'},</p>
     <div style="margin: 0 0 16px 0; white-space: pre-wrap;">${messageBody}</div>
+    ${portalFallbackHtml}
     <p style="margin: 0 0 4px 0;">Best,</p>
     <p style="margin: 0; font-weight: 500;">${signoff}</p>
   </div>
@@ -430,6 +449,8 @@ export function agentReplyTemplate(data: TicketEmailData): { html: string; text:
   const text = `Hi ${data.customerName || 'there'},
 
 ${messageBody}
+
+${portalFallbackText}
 
 Best,
 ${signoff}`.trim()

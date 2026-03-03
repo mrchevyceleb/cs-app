@@ -267,6 +267,20 @@ export async function sendAgentReplyEmail(
     return { success: false, error: 'Failed to generate portal token' }
   }
 
+  // Agent reply emails don't currently include file attachments in the outbound payload.
+  // Detect linked attachments so we can include a portal fallback in the template.
+  const supabase = getAdminClient()
+  const { count: attachmentCount, error: attachmentCountError } = await supabase
+    .from('message_attachments')
+    .select('id', { count: 'exact', head: true })
+    .eq('message_id', message.id)
+
+  if (attachmentCountError) {
+    console.error('[Email] Failed to count message attachments:', attachmentCountError)
+  }
+
+  const hasAttachments = (attachmentCount || 0) > 0
+
   // Generate email content
   const translatedContent = message.content_translated?.trim()
   const isAI = options?.isAI ?? false
@@ -276,6 +290,7 @@ export async function sendAgentReplyEmail(
     customerName: customer.name || 'there',
     portalToken,
     messagePreview: translatedContent || message.content,
+    hasAttachments,
     isAI,
   }
 
