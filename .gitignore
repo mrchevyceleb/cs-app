@@ -62,3 +62,4 @@ NUL
 # Screenshots
 *.png
 !public/**/*.png
+.ripley/command_history.txt

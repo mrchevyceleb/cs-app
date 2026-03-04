@@ -5,9 +5,10 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { InboundEmail } from '@/types/channels';
-import type { Database, Ticket, Message } from '@/types/database';
+import type { Database, Ticket } from '@/types/database';
 import { findOrCreateCustomerByEmail } from '@/lib/channels/customer';
 import { classifyTicketPriority } from '@/lib/ai-agent/classify';
+import { getCleanInboundEmailBody } from './content-cleaning';
 
 // Lazy initialization to avoid build-time errors when env vars aren't available
 let _supabase: SupabaseClient<Database> | null = null;
@@ -39,7 +40,7 @@ export async function processInboundEmail(
   const fromName = parseEmailName(email.from);
 
   // Find or create customer
-  const { customer, created: isNewCustomer } = await findOrCreateCustomerByEmail(
+  const { customer } = await findOrCreateCustomerByEmail(
     fromAddress,
     fromName
   );
@@ -92,7 +93,7 @@ export async function processInboundEmail(
     isNewTicket = false;
   } else {
     // Classify urgency from email content
-    const emailContent = email.text || stripHtml(email.html || '') || '';
+    const emailContent = getCleanInboundEmailBody(email.text, email.html);
     const priority = await classifyTicketPriority(emailContent, email.subject);
 
     // Create new ticket
@@ -138,7 +139,7 @@ export async function processInboundEmail(
   }
 
   // Create message
-  const content = email.text || stripHtml(email.html || '') || '(No content)';
+  const content = getCleanInboundEmailBody(email.text, email.html) || '(No content)';
 
   const { data: message, error: msgError } = await getSupabase()
     .from('messages')
@@ -330,13 +331,4 @@ function isSubjectRelated(newSubject: string, existingSubject: string): boolean 
   return cleanNew === cleanExisting ||
     cleanNew.includes(cleanExisting) ||
     cleanExisting.includes(cleanNew);
-}
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 }

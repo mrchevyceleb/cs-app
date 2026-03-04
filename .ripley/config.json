@@ -7,7 +7,7 @@
   "autoSaveHistory": true,
   "historyLimit": 50,
   "agenticMode": true,
-  "activeModel": "qwen35",
+  "activeModel": "coder",
   "activePrompt": "base",
   "mcpUrl": null,
   "geminiApiKey": null,

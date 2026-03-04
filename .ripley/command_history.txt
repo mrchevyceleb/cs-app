@@ -7,3 +7,6 @@ Parsing ecmascript source code failed
 /model
 /push
 inside the ticket view, can we make the AI draft button have a bit of a glow in ...
+analyze this codebase
+/model
+analyze this codebase

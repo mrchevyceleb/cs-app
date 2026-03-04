@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
 import { processInboundEmail } from '@/lib/email/inbound';
 import { processEmailWithAI } from '@/lib/email/ai-loop';
+import { getCleanInboundEmailBody } from '@/lib/email/content-cleaning';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 import type { InboundEmail } from '@/types/channels';
@@ -207,16 +208,7 @@ export async function POST(request: NextRequest) {
       const match = from.match(/^"?([^"<]+)"?\s*</);
       return match ? match[1].trim() : null;
     })();
-    // Use plain text body, or strip HTML if only HTML is available
-    const emailContent = (text || '').trim() || (() => {
-      if (!html) return '';
-      return html
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    })();
+    const emailContent = getCleanInboundEmailBody(text, html);
 
     // Trigger AI processing in the background (fire-and-forget)
     // Webhook returns 200 immediately to SendGrid while AI runs

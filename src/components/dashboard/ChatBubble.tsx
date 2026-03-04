@@ -1,13 +1,14 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ConfidenceScore } from './ConfidenceScore'
 import { MessageAttachments } from './MessageAttachment'
 import { Sparkles, User, Headphones, Globe, Loader2, Lock, Check, CheckCheck, Mail, MessageSquare } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import type { Message, MessageMetadata, MessageAttachment, MessageWithAttachments, DeliveryStatus, MessageSource } from '@/types/database'
+import type { Message, MessageMetadata, MessageAttachment, MessageWithAttachments, MessageSource } from '@/types/database'
+import { extractLatestEmailReply } from '@/lib/email/content-cleaning'
 
 interface ChatBubbleProps {
   message: Message | MessageWithAttachments
@@ -123,6 +124,10 @@ function getAttachments(message: Message | MessageWithAttachments): MessageAttac
 export function ChatBubble({ message, customerName, isPending = false, showReadStatus = false, isRead = false }: ChatBubbleProps) {
   const isInternal = isInternalNote(message)
   const attachments = getAttachments(message)
+  const displayContent =
+    message.source === 'email' && message.sender_type === 'customer' && message.content
+      ? extractLatestEmailReply(message.content)
+      : message.content
 
   // Use internal note config if this is an internal note, otherwise use sender config
   const config = isInternal
@@ -253,7 +258,7 @@ export function ChatBubble({ message, customerName, isPending = false, showReadS
           )}
         >
           {/* Message text content */}
-          {message.content && (
+          {displayContent && (
             <div className={cn(
               "text-sm prose prose-sm max-w-none prose-p:mt-3 prose-p:mb-1 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:mt-4 prose-headings:mb-1 prose-hr:my-3 prose-blockquote:my-2 prose-pre:my-2 prose-strong:font-semibold [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
               // For agent messages (dark background), always use inverted (light) prose
@@ -262,7 +267,7 @@ export function ChatBubble({ message, customerName, isPending = false, showReadS
                 ? 'prose-invert text-white prose-p:text-white prose-headings:text-white prose-strong:text-white prose-a:text-white' 
                 : 'dark:prose-invert'
             )}>
-              <ReactMarkdown>{message.content}</ReactMarkdown>
+              <ReactMarkdown>{displayContent}</ReactMarkdown>
             </div>
           )}
 
