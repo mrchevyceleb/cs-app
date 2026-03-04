@@ -9,8 +9,46 @@ import type { Database } from '@/types/database'
 import { agenticSolve } from '@/lib/ai-agent/engine'
 import { sendAgentReplyEmail } from './send'
 import { emailConfig } from './client'
+import { notifyAgentsOfCustomerReply } from '@/lib/notifications/customer-reply'
 
 const AI_EXCHANGE_LIMIT = 3
+
+/**
+ * Sanitize AI-generated email content.
+ * Strips reasoning preamble, duplicate greetings, Subject lines, and sign-offs
+ * that the email template already provides.
+ */
+function sanitizeEmailContent(raw: string): string {
+  let content = raw
+
+  // Strip everything before a "---" separator if the text starts with reasoning
+  // (the AI sometimes outputs "I have enough context..." then "---" then the actual email)
+  const separatorIndex = content.indexOf('\n---\n')
+  if (separatorIndex !== -1 && separatorIndex < content.length / 2) {
+    content = content.slice(separatorIndex + 5)
+  }
+
+  // Remove "Subject: ..." lines
+  content = content.replace(/^\s*\*{0,2}Subject:.*$/gm, '')
+
+  // Remove leading greeting lines (Hi/Hey/Hello + name) — template adds its own
+  content = content.replace(/^\s*(Hi|Hey|Hello|Dear)\s+[^,\n]*[,!]?\s*\n*/i, '')
+
+  // Remove trailing sign-off blocks — template adds "Best, Nova"
+  // Match patterns like "Best,\nNova", "Talk soon,\nNova", "Thanks,\n**Nova**\nR-Link Support", etc.
+  content = content.replace(
+    /\n*(Best|Thanks|Thank you|Talk soon|Cheers|Warm regards|Regards|Kind regards|Sincerely)[,!]?\s*\n\s*\*{0,2}Nova\*{0,2}(\s*\n.*R-Link.*)?(\s*\n.*Support.*)?$/i,
+    ''
+  )
+
+  // Also catch standalone "Nova" or "**Nova**" at the very end
+  content = content.replace(/\n\s*\*{0,2}Nova\*{0,2}\s*$/i, '')
+
+  // Clean up leading/trailing whitespace and excessive blank lines
+  content = content.replace(/\n{3,}/g, '\n\n').trim()
+
+  return content
+}
 
 let _supabase: SupabaseClient<Database> | null = null
 function getSupabase(): SupabaseClient<Database> {
@@ -84,6 +122,16 @@ export async function processEmailWithAI(
           content: `Auto-escalated after ${AI_EXCHANGE_LIMIT} AI email exchanges without resolution. Customer: ${customerName || customerEmail}. Review conversation history for context.`,
           metadata: { is_internal: true, escalation_reason: 'exchange_limit_reached' } as any,
         })
+
+      // Now that it's in human queue, notify agents
+      await notifyAgentsOfCustomerReply({
+        ticketId,
+        ticketSubject: ticket.subject,
+        customerName,
+        customerEmail,
+        messagePreview: `[Escalated] AI could not resolve after ${AI_EXCHANGE_LIMIT} exchanges. Latest: ${messageContent.slice(0, 100)}`,
+        channel: 'email',
+      }).catch(err => console.error('[Email AI] Escalation notification error:', err))
 
       return { action: 'escalated' }
     }
@@ -190,6 +238,16 @@ export async function processEmailWithAI(
       // Log agent session
       await logAgentSession(ticketId, agentResult)
 
+      // Now that it's in human queue, notify agents
+      await notifyAgentsOfCustomerReply({
+        ticketId,
+        ticketSubject: ticket.subject,
+        customerName,
+        customerEmail,
+        messagePreview: `[Escalated] ${agentResult.escalationReason || 'AI escalated'}. Latest: ${messageContent.slice(0, 100)}`,
+        channel: 'email',
+      }).catch(err => console.error('[Email AI] Escalation notification error:', err))
+
       return { action: 'escalated' }
     }
 
@@ -215,12 +273,13 @@ export async function processEmailWithAI(
     }
 
     // Lock acquired - now safe to save AI message and send email
+    const cleanContent = sanitizeEmailContent(agentResult.content)
     const { data: aiMessage } = await supabase
       .from('messages')
       .insert({
         ticket_id: ticketId,
         sender_type: 'ai',
-        content: agentResult.content,
+        content: cleanContent,
         source: 'email',
         confidence: Math.round(agentResult.confidence * 100),
         metadata: {

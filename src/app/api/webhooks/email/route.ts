@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
 import { processInboundEmail } from '@/lib/email/inbound';
 import { processEmailWithAI } from '@/lib/email/ai-loop';
-import { notifyAgentsOfCustomerReply } from '@/lib/notifications/customer-reply';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 import type { InboundEmail } from '@/types/channels';
@@ -219,32 +218,12 @@ export async function POST(request: NextRequest) {
         .trim();
     })();
 
-    // Trigger AI processing and agent notifications in the background (fire-and-forget)
-    // Webhook returns 200 immediately to SendGrid while these run
+    // Trigger AI processing in the background (fire-and-forget)
+    // Webhook returns 200 immediately to SendGrid while AI runs
+    // NOTE: Agent notifications are NOT sent here — they fire only on escalation
+    // to human queue (see ai-loop.ts), keeping agents undisturbed while AI handles tickets.
     if (emailContent) {
       after(async () => {
-        // Notify agents of the customer reply (bell + email alert)
-        try {
-          // Fetch ticket subject for the notification
-          const { data: ticketData } = await getSupabase()
-            .from('tickets')
-            .select('subject')
-            .eq('id', result.ticket_id)
-            .single()
-
-          await notifyAgentsOfCustomerReply({
-            ticketId: result.ticket_id,
-            ticketSubject: ticketData?.subject || subject || 'Support request',
-            customerName: senderName,
-            customerEmail: senderAddress,
-            messagePreview: emailContent,
-            channel: 'email',
-          })
-        } catch (err) {
-          console.error('[Email Notify] Background notification error:', err)
-        }
-
-        // AI auto-reply (awaited so the after() callback lifecycle tracks it)
         try {
           await processEmailWithAI(
             result.ticket_id,
