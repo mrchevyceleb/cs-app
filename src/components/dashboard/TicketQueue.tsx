@@ -14,6 +14,7 @@ import { BulkActionsBar, BulkUpdates } from './BulkActionsBar'
 import { useTicketSelection } from '@/hooks'
 import { RefreshCw, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getQueueVisualTheme } from '@/lib/queue-theme'
 import type { Ticket, Customer } from '@/types/database'
 
 type FilterTab = 'all' | 'attention' | 'ai' | 'human' | 'escalated'
@@ -22,9 +23,10 @@ interface TicketQueueProps {
   onTicketSelect?: (ticket: TicketWithCustomer) => void
   selectedTicketId?: string
   currentAgentId?: string
+  queueFilter?: 'all' | 'ai' | 'human'
 }
 
-export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }: TicketQueueProps) {
+export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId, queueFilter = 'all' }: TicketQueueProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [bulkUpdateMessage, setBulkUpdateMessage] = useState<string | null>(null)
   const supabase = createClient()
@@ -85,6 +87,17 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
     retry: 2,
   })
 
+  const queueScopedTickets = useMemo(() => {
+    if (queueFilter === 'all') return tickets
+    return tickets.filter((ticket) => ticket.queue_type === queueFilter)
+  }, [tickets, queueFilter])
+
+  useEffect(() => {
+    if ((queueFilter === 'ai' && activeTab === 'human') || (queueFilter === 'human' && activeTab === 'ai')) {
+      setActiveTab('all')
+    }
+  }, [queueFilter, activeTab])
+
   // Set up real-time subscription (updates React Query cache)
   useEffect(() => {
     const channel = supabase
@@ -143,12 +156,12 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
 
   // Filter tickets based on active tab
   const filteredTickets = useMemo(() => {
-    return tickets.filter((ticket) => {
+    return queueScopedTickets.filter((ticket) => {
       switch (activeTab) {
         case 'attention':
           // Tickets where the last message is from a customer and ticket is not resolved
           return (
-            (ticket as any).last_message_sender === 'customer' &&
+            ticket.last_message_sender === 'customer' &&
             ticket.status !== 'resolved'
           )
         case 'ai':
@@ -161,7 +174,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
           return true
       }
     })
-  }, [tickets, activeTab])
+  }, [queueScopedTickets, activeTab])
 
   // Get IDs of filtered tickets for "Select All" functionality
   const filteredTicketIds = useMemo(
@@ -258,16 +271,27 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
 
   // Count badges
   const counts = {
-    all: tickets.length,
-    attention: tickets.filter((t) => (t as any).last_message_sender === 'customer' && t.status !== 'resolved').length,
-    ai: tickets.filter((t) => t.ai_handled).length,
-    human: tickets.filter((t) => !t.ai_handled).length,
-    escalated: tickets.filter((t) => t.status === 'escalated').length,
+    all: queueScopedTickets.length,
+    attention: queueScopedTickets.filter((t) => t.last_message_sender === 'customer' && t.status !== 'resolved').length,
+    ai: queueScopedTickets.filter((t) => t.ai_handled).length,
+    human: queueScopedTickets.filter((t) => !t.ai_handled).length,
+    escalated: queueScopedTickets.filter((t) => t.status === 'escalated').length,
   }
+
+  const queueMode = queueFilter !== 'all'
+    ? queueFilter
+    : activeTab === 'ai'
+      ? 'ai'
+      : activeTab === 'human'
+        ? 'human'
+        : 'all'
+  const queueTheme = getQueueVisualTheme(queueMode)
+  const queueModeLabel = queueMode === 'ai' ? 'AI queue mode' : queueMode === 'human' ? 'Human queue mode' : 'Unified queue'
 
   return (
     <>
-      <Card className="bg-card border-border/70">
+      <Card className={cn('overflow-hidden border transition-all duration-300', queueTheme.panel)}>
+        <div className={cn('h-1.5 bg-gradient-to-r', queueTheme.accentBar)} />
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -286,7 +310,10 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
                   className="w-4 h-4"
                 />
               </div>
-              <CardTitle className="text-lg">Ticket Queue</CardTitle>
+              <CardTitle className={cn('text-lg', queueTheme.heading)}>Ticket Queue</CardTitle>
+              <span className={cn('rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide', queueTheme.modeBadge)}>
+                {queueModeLabel}
+              </span>
               {hasSelection ? (
                 <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
                   {selectedCount} selected
@@ -300,8 +327,15 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
               onValueChange={(v) => setActiveTab(v as FilterTab)}
               className="w-full sm:w-auto"
             >
-              <TabsList className="h-8 w-full sm:w-auto grid grid-cols-5 sm:flex">
-                <TabsTrigger value="all" className="text-xs px-2 sm:px-3">
+              <TabsList className={cn('h-8 w-full sm:w-auto grid grid-cols-5 sm:flex border transition-colors duration-300', queueTheme.tabsRail)}>
+                <TabsTrigger
+                  value="all"
+                  className={cn(
+                    'text-xs px-2 sm:px-3',
+                    queueTheme.tabInactive,
+                    'data-[state=active]:bg-primary-600 data-[state=active]:text-white data-[state=active]:border-primary-500'
+                  )}
+                >
                   <span className="hidden sm:inline">All</span>
                   <span className="sm:hidden">All</span>
                   {counts.all > 0 && (
@@ -310,7 +344,14 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
                     </span>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="attention" className="text-xs px-2 sm:px-3">
+                <TabsTrigger
+                  value="attention"
+                  className={cn(
+                    'text-xs px-2 sm:px-3',
+                    queueTheme.tabInactive,
+                    'data-[state=active]:bg-teal-600 data-[state=active]:text-white data-[state=active]:border-teal-500'
+                  )}
+                >
                   <span className="hidden sm:inline">Needs Attention</span>
                   <span className="sm:hidden">Inbox</span>
                   {counts.attention > 0 && (
@@ -319,25 +360,46 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
                     </span>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="ai" className="text-xs px-2 sm:px-3">
+                <TabsTrigger
+                  value="ai"
+                  className={cn(
+                    'text-xs px-2 sm:px-3',
+                    queueTheme.tabInactive,
+                    'data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:border-emerald-500'
+                  )}
+                >
                   <span className="hidden sm:inline">AI Handled</span>
                   <span className="sm:hidden">AI</span>
                   {counts.ai > 0 && (
-                    <span className="ml-1 sm:ml-1.5 text-[10px] bg-primary-200 dark:bg-primary-800 text-primary-700 dark:text-primary-300 px-1 sm:px-1.5 py-0.5 rounded-full">
+                    <span className="ml-1 sm:ml-1.5 text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-200 px-1 sm:px-1.5 py-0.5 rounded-full">
                       {counts.ai}
                     </span>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="human" className="text-xs px-2 sm:px-3">
+                <TabsTrigger
+                  value="human"
+                  className={cn(
+                    'text-xs px-2 sm:px-3',
+                    queueTheme.tabInactive,
+                    'data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:border-violet-500'
+                  )}
+                >
                   <span className="hidden sm:inline">Needs Human</span>
                   <span className="sm:hidden">Human</span>
                   {counts.human > 0 && (
-                    <span className="ml-1 sm:ml-1.5 text-[10px] bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300 px-1 sm:px-1.5 py-0.5 rounded-full">
+                    <span className="ml-1 sm:ml-1.5 text-[10px] bg-violet-200 dark:bg-violet-800 text-violet-700 dark:text-violet-200 px-1 sm:px-1.5 py-0.5 rounded-full">
                       {counts.human}
                     </span>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="escalated" className="text-xs px-2 sm:px-3">
+                <TabsTrigger
+                  value="escalated"
+                  className={cn(
+                    'text-xs px-2 sm:px-3',
+                    queueTheme.tabInactive,
+                    'data-[state=active]:bg-rose-600 data-[state=active]:text-white data-[state=active]:border-rose-500'
+                  )}
+                >
                   <span className="hidden sm:inline">Escalated</span>
                   <span className="sm:hidden">Esc</span>
                   {counts.escalated > 0 && (
@@ -350,7 +412,7 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId }
             </Tabs>
           </div>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className={cn('pt-0 transition-colors duration-300', queueMode === 'all' ? '' : 'bg-white/25 dark:bg-black/10')}>
           {/* Success/Error Toast */}
           {bulkUpdateMessage && (
             <div

@@ -12,6 +12,8 @@ import type { BulkUpdates } from '@/components/dashboard/BulkActionsBar'
 import { fetchTicketById, fetchTicketMessages } from '@/lib/api/tickets'
 import { useTicketSelection, useViewPreference } from '@/hooks'
 import { useAuth } from '@/components/providers/AuthProvider'
+import { cn } from '@/lib/utils'
+import { getQueueVisualTheme } from '@/lib/queue-theme'
 
 const PAGE_SIZE = 20
 const BOARD_PAGE_SIZE = 200
@@ -195,22 +197,34 @@ export default function TicketsPage() {
       // Rollback
       queryClient.setQueryData(currentQueryKey, previousData)
     }
-  }, [queryClient, filters, currentPage, activeQueue, viewMode, data])
+  }, [queryClient, filters, currentPage, activeQueue, viewMode])
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
   const hasNextPage = currentPage < totalPages - 1
   const hasPrevPage = currentPage > 0
+  const queueTheme = getQueueVisualTheme(activeQueue)
+  const queueModeLabel = activeQueue === 'ai' ? 'AI queue focus' : activeQueue === 'human' ? 'Human queue focus' : 'Unified queue view'
+
+  const activeCountBadgeStyles: Record<QueueTab, string> = {
+    ai: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/45 dark:text-emerald-100',
+    human: 'bg-violet-100 text-violet-800 dark:bg-violet-900/45 dark:text-violet-100',
+    all: 'bg-slate-900 text-white dark:bg-slate-200 dark:text-slate-900',
+  }
 
   return (
-    <div className="space-y-6">
+    <div className={cn('space-y-6 rounded-3xl border p-4 sm:p-6 transition-all duration-300', queueTheme.shell)}>
+      <div className={cn('-mx-4 -mt-4 h-1.5 rounded-t-3xl bg-gradient-to-r sm:-mx-6 sm:-mt-6', queueTheme.accentBar)} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className={cn('text-2xl font-bold', queueTheme.heading)}>
             {activeQueue === 'human' ? 'Human Queue' : activeQueue === 'ai' ? 'AI Queue' : 'All Tickets'}
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className={cn('mt-1', queueTheme.subheading)}>
             {isLoading ? 'Loading...' : activeQueue === 'human' ? `${totalCount} tickets need attention` : `${totalCount} tickets`}
           </p>
+          <span className={cn('mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide', queueTheme.modeBadge)}>
+            {queueModeLabel}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
@@ -225,7 +239,7 @@ export default function TicketsPage() {
       </div>
 
       {/* Queue Tabs */}
-      <div className="flex gap-1 p-1 bg-muted/50 rounded-lg w-fit">
+      <div className={cn('flex w-fit gap-1 rounded-xl border p-1.5 transition-colors duration-300', queueTheme.tabsRail)}>
         {([
           { key: 'human' as QueueTab, label: 'Human Queue', count: queueCounts?.human },
           { key: 'ai' as QueueTab, label: 'AI Queue', count: queueCounts?.ai },
@@ -234,19 +248,19 @@ export default function TicketsPage() {
           <button
             key={tab.key}
             onClick={() => setActiveQueue(tab.key)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeQueue === tab.key
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={cn(
+              'rounded-lg border px-4 py-2 text-sm font-semibold transition-all duration-200',
+              activeQueue === tab.key ? queueTheme.tabActive : queueTheme.tabInactive
+            )}
           >
             {tab.label}
             {tab.count !== undefined && (
-              <span className={`ml-2 px-1.5 py-0.5 text-xs rounded-full ${
+              <span className={cn(
+                'ml-2 rounded-full px-1.5 py-0.5 text-xs',
                 activeQueue === tab.key
-                  ? tab.key === 'human' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                  : 'bg-muted text-muted-foreground'
-              }`}>
+                  ? activeCountBadgeStyles[tab.key]
+                  : 'bg-background/70 text-muted-foreground'
+              )}>
                 {tab.count}
               </span>
             )}
@@ -259,21 +273,23 @@ export default function TicketsPage() {
 
       {/* Content: List or Board */}
       {viewMode === 'board' ? (
-        <KanbanBoard
-          tickets={tickets}
-          filters={filters}
-          isLoading={isLoading}
-          isChecked={isTicketChecked}
-          selectionMode={hasSelection}
-          onTicketClick={handleTicketClick}
-          onTicketCheckboxChange={toggleTicket}
-          onTicketHover={prefetchTicket}
-          onStatusChange={handleStatusChange}
-        />
+        <div className={cn('rounded-2xl border p-3 sm:p-4 transition-colors duration-300', queueTheme.panelFrame)}>
+          <KanbanBoard
+            tickets={tickets}
+            filters={filters}
+            isLoading={isLoading}
+            isChecked={isTicketChecked}
+            selectionMode={hasSelection}
+            onTicketClick={handleTicketClick}
+            onTicketCheckboxChange={toggleTicket}
+            onTicketHover={prefetchTicket}
+            onStatusChange={handleStatusChange}
+          />
+        </div>
       ) : (
         <>
           {/* Ticket List */}
-          <Card className="glass border-0 overflow-hidden">
+          <Card className={cn('glass overflow-hidden border transition-colors duration-300', queueTheme.panel)}>
             <CardContent className="p-0">
               {isLoading ? (
                 <div className="divide-y divide-border/70">

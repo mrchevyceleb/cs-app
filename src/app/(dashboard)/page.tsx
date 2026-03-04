@@ -13,6 +13,10 @@ import { useViewPreference, useTicketSelection } from '@/hooks'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { fetchTicketById, fetchTicketMessages } from '@/lib/api/tickets'
 import type { Customer } from '@/types/database'
+import { cn } from '@/lib/utils'
+import { getQueueVisualTheme } from '@/lib/queue-theme'
+
+type QueueTab = 'all' | 'human' | 'ai'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -20,6 +24,7 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useViewPreference()
   const [filters, setFilters] = useState<FilterOptions>(defaultFilters)
   const [selectedTicketId, setSelectedTicketId] = useState<string>()
+  const [activeQueue, setActiveQueue] = useState<QueueTab>('all')
 
   const { agent } = useAuth()
   const {
@@ -31,17 +36,40 @@ export default function DashboardPage() {
     hasSelection,
   } = useTicketSelection()
   const [bulkMessage, setBulkMessage] = useState<string | null>(null)
+  const queueTheme = getQueueVisualTheme(activeQueue)
 
-  // Fetch tickets for board view (shares cache key with TicketQueue)
+  const { data: queueCounts } = useQuery({
+    queryKey: ['dashboard-queue-counts'],
+    queryFn: async () => {
+      const [humanRes, aiRes] = await Promise.all([
+        fetch('/api/tickets?queue=human&limit=1'),
+        fetch('/api/tickets?queue=ai&limit=1'),
+      ])
+      const [humanData, aiData] = await Promise.all([humanRes.json(), aiRes.json()])
+      return {
+        human: humanData.total || 0,
+        ai: aiData.total || 0,
+      }
+    },
+    refetchInterval: 30000,
+  })
+
+  // Fetch tickets for board view (uses the dashboard-tickets cache prefix)
   const supabase = createClient()
   const { data: boardTickets = [], isPending: isBoardLoading } = useQuery({
-    queryKey: ['dashboard-tickets'],
+    queryKey: ['dashboard-tickets', activeQueue],
     queryFn: async (): Promise<TicketWithCustomer[]> => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('tickets')
         .select(`*, customer:customers(*)`)
         .order('created_at', { ascending: false })
         .limit(50)
+
+      if (activeQueue !== 'all') {
+        query = query.eq('queue_type', activeQueue)
+      }
+
+      const { data, error } = await query
 
       if (error) throw new Error('Unable to load tickets.')
       return (data || []).map((ticket) => ({
@@ -53,6 +81,12 @@ export default function DashboardPage() {
     retry: 2,
     enabled: viewMode === 'board',
   })
+
+  const activeCountBadgeStyles: Record<QueueTab, string> = {
+    ai: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/45 dark:text-emerald-100',
+    human: 'bg-violet-100 text-violet-800 dark:bg-violet-900/45 dark:text-violet-100',
+    all: 'bg-slate-900 text-white dark:bg-slate-200 dark:text-slate-900',
+  }
 
   const handleTicketSelect = (ticket: TicketWithCustomer) => {
     setSelectedTicketId(ticket.id)
@@ -115,8 +149,8 @@ export default function DashboardPage() {
 
   const handleStatusChange = useCallback(async (ticketId: string, newStatus: string) => {
     // Optimistic update
-    const previousTickets = queryClient.getQueryData<TicketWithCustomer[]>(['dashboard-tickets'])
-    queryClient.setQueryData<TicketWithCustomer[]>(['dashboard-tickets'], (old) =>
+    const previousTickets = queryClient.getQueriesData<TicketWithCustomer[]>({ queryKey: ['dashboard-tickets'] })
+    queryClient.setQueriesData<TicketWithCustomer[]>({ queryKey: ['dashboard-tickets'] }, (old) =>
       (old || []).map((t) => t.id === ticketId ? { ...t, status: newStatus as TicketWithCustomer['status'] } : t)
     )
 
@@ -129,7 +163,9 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error('Failed to update')
     } catch {
       // Rollback
-      queryClient.setQueryData(['dashboard-tickets'], previousTickets)
+      previousTickets.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data)
+      })
     }
   }, [queryClient])
 
@@ -160,6 +196,40 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <div className={cn('flex w-fit gap-1 rounded-xl border p-1.5 transition-colors duration-300', queueTheme.tabsRail)}>
+          {([
+            { key: 'human' as QueueTab, label: 'Human Queue', count: queueCounts?.human },
+            { key: 'ai' as QueueTab, label: 'AI Queue', count: queueCounts?.ai },
+            { key: 'all' as QueueTab, label: 'All' },
+          ]).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveQueue(tab.key)}
+              className={cn(
+                'rounded-lg border px-4 py-2 text-sm font-semibold transition-all duration-200',
+                activeQueue === tab.key ? queueTheme.tabActive : queueTheme.tabInactive
+              )}
+            >
+              {tab.label}
+              {tab.count !== undefined && (
+                <span className={cn(
+                  'ml-2 rounded-full px-1.5 py-0.5 text-xs',
+                  activeQueue === tab.key
+                    ? activeCountBadgeStyles[tab.key]
+                    : 'bg-background/70 text-muted-foreground'
+                )}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <span className={cn('inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide', queueTheme.modeBadge)}>
+          {activeQueue === 'ai' ? 'AI queue focus' : activeQueue === 'human' ? 'Human queue focus' : 'Unified queue view'}
+        </span>
+      </div>
+
       {/* Metrics */}
       <MetricsBar />
 
@@ -173,20 +243,23 @@ export default function DashboardPage() {
         <TicketQueue
           onTicketSelect={handleTicketSelect}
           selectedTicketId={selectedTicketId}
+          queueFilter={activeQueue}
         />
       ) : (
         <>
-          <KanbanBoard
-            tickets={boardTickets}
-            filters={filters}
-            isLoading={isBoardLoading}
-            isChecked={isTicketChecked}
-            selectionMode={hasSelection}
-            onTicketClick={handleTicketSelect}
-            onTicketCheckboxChange={toggleTicket}
-            onTicketHover={prefetchTicket}
-            onStatusChange={handleStatusChange}
-          />
+          <div className={cn('rounded-2xl border p-3 sm:p-4 transition-colors duration-300', queueTheme.panelFrame)}>
+            <KanbanBoard
+              tickets={boardTickets}
+              filters={filters}
+              isLoading={isBoardLoading}
+              isChecked={isTicketChecked}
+              selectionMode={hasSelection}
+              onTicketClick={handleTicketSelect}
+              onTicketCheckboxChange={toggleTicket}
+              onTicketHover={prefetchTicket}
+              onStatusChange={handleStatusChange}
+            />
+          </div>
           {bulkMessage && (
             <div className={`px-4 py-2 rounded-md text-sm font-medium ${
               bulkMessage.startsWith('Error')

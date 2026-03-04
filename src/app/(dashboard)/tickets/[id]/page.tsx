@@ -12,6 +12,8 @@ import { useRegisterTicketShortcuts } from '@/contexts/KeyboardShortcutsContext'
 import type { TicketWithCustomer } from '@/components/dashboard'
 import type { Message, MessageWithAttachments } from '@/types/database'
 import { fetchTicketById, fetchTicketEvents, fetchTicketMessages } from '@/lib/api/tickets'
+import { cn } from '@/lib/utils'
+import { getQueueVisualTheme } from '@/lib/queue-theme'
 
 // Priority cycle order
 const PRIORITY_ORDER = ['low', 'normal', 'high', 'urgent'] as const
@@ -473,9 +475,12 @@ export default function TicketDetailPage() {
 
   const ticket = ticketQuery.data
   const messages = messagesQuery.data || []
+  const queueTheme = getQueueVisualTheme(ticket.queue_type)
+  const queueLabel = ticket.queue_type === 'ai' ? 'AI queue ticket' : 'Human queue ticket'
 
   return (
-    <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)]">
+    <div className={cn('h-[calc(100vh-8rem)] rounded-3xl border p-4 transition-all duration-300 lg:h-[calc(100vh-8rem)] sm:p-5', queueTheme.shell)}>
+      <div className={cn('-mx-4 -mt-4 h-1.5 rounded-t-3xl bg-gradient-to-r sm:-mx-5 sm:-mt-5', queueTheme.accentBar)} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
@@ -489,12 +494,17 @@ export default function TicketDetailPage() {
             Back
           </Button>
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-semibold text-foreground truncate">
+            <h1 className={cn('truncate text-lg font-semibold sm:text-xl', queueTheme.heading)}>
               {ticket.subject}
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground truncate">
-              Ticket #{ticket.id.slice(0, 8)} • {ticket.customer?.name || 'Unknown Customer'}
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+              <p className={cn('truncate', queueTheme.subheading)}>
+                Ticket #{ticket.id.slice(0, 8)} • {ticket.customer?.name || 'Unknown Customer'}
+              </p>
+              <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide', queueTheme.modeBadge)}>
+                {queueLabel}
+              </span>
+            </div>
           </div>
         </div>
         <Button
@@ -510,7 +520,7 @@ export default function TicketDetailPage() {
       {/* Split View - stacked on mobile, side by side on desktop */}
       <div className="flex flex-col lg:flex-row gap-4 h-[calc(100%-5rem)] lg:h-[calc(100%-4rem)]">
         {/* Main Chat Area */}
-        <div className={`flex-1 min-h-[400px] lg:min-h-0 ${showCustomerContext ? 'lg:max-w-[calc(100%-320px)]' : ''}`}>
+        <div className={cn(`flex-1 min-h-[400px] rounded-2xl border p-1.5 transition-colors duration-300 lg:min-h-0 ${showCustomerContext ? 'lg:max-w-[calc(100%-320px)]' : ''}`, queueTheme.panelFrame)}>
           <TicketDetail
             ticket={ticket}
             messages={messages}
@@ -528,7 +538,7 @@ export default function TicketDetailPage() {
 
         {/* Customer Context Sidebar */}
         {showCustomerContext && (
-          <div className="w-full lg:w-80 flex-shrink-0 order-first lg:order-last">
+          <div className={cn('order-first w-full flex-shrink-0 rounded-2xl border p-1.5 transition-colors duration-300 lg:order-last lg:w-80', queueTheme.panelFrame)}>
             <CustomerContext
               customer={ticket.customer}
               ticket={ticket}
