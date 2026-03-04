@@ -21,12 +21,28 @@ const AI_EXCHANGE_LIMIT = 3
 function sanitizeEmailContent(raw: string): string {
   let content = raw
 
-  // Strip everything before a "---" separator if the text starts with reasoning
-  // (the AI sometimes outputs "I have enough context..." then "---" then the actual email)
+  // Strip everything before a "---" separator if present in first half
+  // (AI sometimes outputs reasoning, then "---", then the actual email)
   const separatorIndex = content.indexOf('\n---\n')
   if (separatorIndex !== -1 && separatorIndex < content.length / 2) {
     content = content.slice(separatorIndex + 5)
   }
+
+  // Strip leading reasoning paragraph(s) — AI often starts with meta-commentary
+  // like "I have enough context to...", "Let me craft...", "I noticed...", etc.
+  // Split into paragraphs and drop leading ones that are clearly reasoning (first-person
+  // meta-commentary about the task, not addressed to the customer).
+  const paragraphs = content.split(/\n\n+/)
+  while (paragraphs.length > 1) {
+    const first = paragraphs[0].trim()
+    const isReasoning = /^(I\s+(have|need|should|want|can|also|noticed|'ll|'ve|will|now|see|know)|Let me|Now I|Here I|Looking at|Based on|This customer|The issue|His |Her |Their )/i.test(first)
+    if (isReasoning && first.length < 500) {
+      paragraphs.shift()
+    } else {
+      break
+    }
+  }
+  content = paragraphs.join('\n\n')
 
   // Remove "Subject: ..." lines
   content = content.replace(/^\s*\*{0,2}Subject:.*$/gm, '')
@@ -35,9 +51,8 @@ function sanitizeEmailContent(raw: string): string {
   content = content.replace(/^\s*(Hi|Hey|Hello|Dear)\s+[^,\n]*[,!]?\s*\n*/i, '')
 
   // Remove trailing sign-off blocks — template adds "Best, Nova"
-  // Match patterns like "Best,\nNova", "Talk soon,\nNova", "Thanks,\n**Nova**\nR-Link Support", etc.
   content = content.replace(
-    /\n*(Best|Thanks|Thank you|Talk soon|Cheers|Warm regards|Regards|Kind regards|Sincerely)[,!]?\s*\n\s*\*{0,2}Nova\*{0,2}(\s*\n.*R-Link.*)?(\s*\n.*Support.*)?$/i,
+    /\n*(Best|Thanks|Thank you|Talk soon|Cheers|Warm regards|Regards|Kind regards|Sincerely|I'm on this)[,!.]?\s*\n\s*\*{0,2}Nova\*{0,2}(\s*\n.*R-Link.*)?(\s*\n.*Support.*)?(\s*\n.*Team.*)?$/i,
     ''
   )
 
