@@ -13,12 +13,12 @@ if (sendgridApiKey) {
 
 // Email configuration
 export const emailConfig = {
-  from: process.env.EMAIL_FROM || 'R-Link Support <support@nova.r-link.com>',
-  aiFrom: process.env.EMAIL_AI_FROM || 'Nova from R-Link <support@nova.r-link.com>',
-  replyTo: process.env.INBOUND_EMAIL_ADDRESS || process.env.EMAIL_FROM || 'support@nova.r-link.com',
+  from: process.env.EMAIL_FROM || 'R-Link Support <support@c.r-link.com>',
+  aiFrom: process.env.EMAIL_AI_FROM || 'Nova from R-Link <support@c.r-link.com>',
+  replyTo: process.env.INBOUND_EMAIL_ADDRESS || process.env.EMAIL_FROM || 'support@c.r-link.com',
   portalUrl: process.env.PORTAL_URL || 'http://localhost:3000/portal',
   companyName: 'R-Link',
-  supportEmail: 'support@nova.r-link.com',
+  supportEmail: 'support@c.r-link.com',
   provider: 'sendgrid',
 }
 
