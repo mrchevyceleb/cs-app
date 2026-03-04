@@ -53,8 +53,8 @@ Output the cleaned content and NOTHING else. No commentary, no explanation.`,
     )
 
     const text = cleaned.content
-      .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
-      .map(b => b.text)
+      .filter(b => b.type === 'text')
+      .map(b => ('text' in b ? b.text : ''))
       .join('')
       .trim()
 
