@@ -481,6 +481,8 @@ ${emailConfig.companyName}
 export function agentReplyTemplate(data: TicketEmailData): { html: string; text: string } {
   const portalLink = getPortalLink(data.ticketId, data.portalToken)
   const signoff = data.isAI ? 'Nova' : `${emailConfig.companyName} Customer Support`
+  // Use first name for a personal, friendly greeting
+  const firstName = data.customerName?.split(' ')[0] || 'there'
   const messageBodyRaw = data.messagePreview?.trim() || ''
   const messageBody = markdownToEmailHtml(messageBodyRaw)
   const shouldShowPortalFallback = data.hasAttachments || messageBody.length === 0
@@ -511,7 +513,7 @@ ${portalLink}`
 </head>
 <body style="margin: 0; padding: 0; background-color: #ffffff;">
   <div style="max-width: 600px; margin: 0 auto; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #1E293B;">
-    <p style="margin: 0 0 16px 0;">Hi ${data.customerName || 'there'},</p>
+    <p style="margin: 0 0 16px 0;">Hi ${firstName},</p>
     <div style="margin: 0 0 16px 0;">${messageBody}</div>
     ${portalFallbackHtml}
     <p style="margin: 0 0 4px 0;">Best,</p>
@@ -521,7 +523,7 @@ ${portalLink}`
 </html>
   `.trim()
 
-  const text = `Hi ${data.customerName || 'there'},
+  const text = `Hi ${firstName},
 
 ${messageBodyRaw}
 
