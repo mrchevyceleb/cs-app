@@ -10,59 +10,64 @@ import { agenticSolve } from '@/lib/ai-agent/engine'
 import { sendAgentReplyEmail } from './send'
 import { emailConfig } from './client'
 import { notifyAgentsOfCustomerReply } from '@/lib/notifications/customer-reply'
+import { withFallback } from '@/lib/claude/client'
 
 const AI_EXCHANGE_LIMIT = 3
 
 /**
- * Sanitize AI-generated email content.
- * Strips reasoning preamble, duplicate greetings, Subject lines, and sign-offs
- * that the email template already provides.
+ * Extract clean email body from AI output.
+ *
+ * Two-layer approach:
+ * 1. Try to extract content from <email_body> XML tags (fast, deterministic)
+ * 2. Run Haiku sanity check to strip any remaining reasoning, greetings,
+ *    sign-offs, or artifacts the template already provides.
+ *
+ * Haiku is ~200ms and very cheap — reliable safety net.
  */
-function sanitizeEmailContent(raw: string): string {
-  let content = raw
+async function extractEmailBody(raw: string): Promise<string> {
+  // Layer 1: XML tag extraction
+  const tagMatch = raw.match(/<email_body>([\s\S]*?)<\/email_body>/)
+  const extracted = tagMatch ? tagMatch[1].trim() : raw.trim()
 
-  // Strip everything before a "---" separator if present in first half
-  // (AI sometimes outputs reasoning, then "---", then the actual email)
-  const separatorIndex = content.indexOf('\n---\n')
-  if (separatorIndex !== -1 && separatorIndex < content.length / 2) {
-    content = content.slice(separatorIndex + 5)
-  }
+  // Layer 2: Haiku sanity check — clean any remaining artifacts
+  try {
+    const cleaned = await withFallback(client =>
+      client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2048,
+        temperature: 0,
+        system: `You are an email content cleaner. You receive raw AI-generated email content that may contain artifacts. Your job is to output ONLY the clean customer-facing email body.
 
-  // Strip leading reasoning paragraph(s) — AI often starts with meta-commentary
-  // like "I have enough context to...", "Let me craft...", "I noticed...", etc.
-  // Split into paragraphs and drop leading ones that are clearly reasoning (first-person
-  // meta-commentary about the task, not addressed to the customer).
-  const paragraphs = content.split(/\n\n+/)
-  while (paragraphs.length > 1) {
-    const first = paragraphs[0].trim()
-    const isReasoning = /^(I\s+(have|need|should|want|can|also|noticed|'ll|'ve|will|now|see|know)|Let me|Now I|Here I|Looking at|Based on|This customer|The issue|His |Her |Their )/i.test(first)
-    if (isReasoning && first.length < 500) {
-      paragraphs.shift()
-    } else {
-      break
+Remove ALL of the following if present:
+- Internal reasoning/thinking (e.g., "I have enough context to...", "Let me craft...")
+- "Subject:" lines
+- Greeting lines like "Hi [Name]," or "Hello [Name]," (the email template adds its own greeting)
+- Sign-off blocks like "Best, Nova", "Talk soon, Nova", "R-Link Support Team" (the template adds its own)
+- Horizontal rules (---) used as separators
+
+Keep ONLY the core message content — the helpful response to the customer.
+
+Output the cleaned content and NOTHING else. No commentary, no explanation.`,
+        messages: [{ role: 'user', content: extracted }],
+      })
+    )
+
+    const text = cleaned.content
+      .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+      .map(b => b.text)
+      .join('')
+      .trim()
+
+    if (text.length > 0) {
+      console.log(`[Email AI] Haiku cleaned content: ${raw.length} → ${text.length} chars`)
+      return text
     }
+  } catch (err) {
+    console.error('[Email AI] Haiku sanity check failed, using extracted content:', err)
   }
-  content = paragraphs.join('\n\n')
 
-  // Remove "Subject: ..." lines
-  content = content.replace(/^\s*\*{0,2}Subject:.*$/gm, '')
-
-  // Remove leading greeting lines (Hi/Hey/Hello + name) — template adds its own
-  content = content.replace(/^\s*(Hi|Hey|Hello|Dear)\s+[^,\n]*[,!]?\s*\n*/i, '')
-
-  // Remove trailing sign-off blocks — template adds "Best, Nova"
-  content = content.replace(
-    /\n*(Best|Thanks|Thank you|Talk soon|Cheers|Warm regards|Regards|Kind regards|Sincerely|I'm on this)[,!.]?\s*\n\s*\*{0,2}Nova\*{0,2}(\s*\n.*R-Link.*)?(\s*\n.*Support.*)?(\s*\n.*Team.*)?$/i,
-    ''
-  )
-
-  // Also catch standalone "Nova" or "**Nova**" at the very end
-  content = content.replace(/\n\s*\*{0,2}Nova\*{0,2}\s*$/i, '')
-
-  // Clean up leading/trailing whitespace and excessive blank lines
-  content = content.replace(/\n{3,}/g, '\n\n').trim()
-
-  return content
+  // Fallback: return tag-extracted content (or raw if no tags)
+  return extracted
 }
 
 let _supabase: SupabaseClient<Database> | null = null
@@ -288,7 +293,7 @@ export async function processEmailWithAI(
     }
 
     // Lock acquired - now safe to save AI message and send email
-    const cleanContent = sanitizeEmailContent(agentResult.content)
+    const cleanContent = await extractEmailBody(agentResult.content)
     const { data: aiMessage } = await supabase
       .from('messages')
       .insert({
