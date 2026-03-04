@@ -4,3 +4,6 @@ it broke: ## Error Type
 ## Error Type
 Parsing ecmascript source code failed
 /push
+/model
+/push
+inside the ticket view, can we make the AI draft button have a bit of a glow in ...

@@ -590,10 +590,10 @@ export function ChatInput({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  'h-8 w-8 shrink-0 transition-colors',
+                  'h-8 w-8 shrink-0 transition-all duration-200',
                   isDrafting
-                    ? 'text-primary-600 animate-pulse'
-                    : 'text-muted-foreground hover:text-primary-600 hover:bg-primary-50'
+                    ? 'text-primary-600 bg-primary-50/80 shadow-[0_0_16px_-6px_rgba(24,195,126,0.9)] animate-pulse'
+                    : 'text-muted-foreground shadow-[0_0_10px_-8px_rgba(24,195,126,0.75)] hover:text-primary-600 hover:bg-primary-50 hover:shadow-[0_0_16px_-6px_rgba(24,195,126,0.75)]'
                 )}
                 disabled={disabled || isSending || isDrafting || !ticketId}
                 onClick={handleAIDraft}
