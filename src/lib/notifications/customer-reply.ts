@@ -73,7 +73,7 @@ export async function notifyAgentsOfCustomerReply(options: NotifyOptions): Promi
 
     const notifications = agentIds.map(agentId => ({
       agent_id: agentId,
-      type: isEscalation ? 'ticket_escalated' as const : 'new_customer_message' as const,
+      type: isEscalation ? 'escalation' as const : 'new_customer_message' as const,
       title: notifTitle,
       message: notifMessage,
       ticket_id: ticketId,
