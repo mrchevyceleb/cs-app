@@ -131,6 +131,80 @@ function getPortalLink(ticketId: string, token: string): string {
 // Re-export getUnsubscribeUrl from the standalone utility
 export { getUnsubscribeUrl } from './unsubscribe'
 
+/**
+ * Convert markdown to email-safe HTML.
+ * Handles: bold, italic, links, unordered/ordered lists, paragraphs.
+ */
+function markdownToEmailHtml(md: string): string {
+  // Escape HTML entities first
+  let html = md
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  // Bold: **text** or __text__
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>')
+
+  // Italic: *text* or _text_ (but not inside bold markers)
+  html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+  html = html.replace(/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/g, '<em>$1</em>')
+
+  // Links: [text](url)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, `<a href="$2" style="color: ${colors.primary}; text-decoration: none;">$1</a>`)
+
+  // Process blocks (paragraphs, lists)
+  const lines = html.split('\n')
+  const blocks: string[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    const line = lines[i]
+
+    // Unordered list: lines starting with - or *
+    if (/^\s*[-*]\s+/.test(line)) {
+      const items: string[] = []
+      while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
+        items.push(lines[i].replace(/^\s*[-*]\s+/, ''))
+        i++
+      }
+      blocks.push('<ul style="margin: 0 0 16px 0; padding-left: 24px;">' +
+        items.map(item => `<li style="margin-bottom: 4px;">${item}</li>`).join('') +
+        '</ul>')
+      continue
+    }
+
+    // Ordered list: lines starting with 1. 2. etc.
+    if (/^\s*\d+[.)]\s+/.test(line)) {
+      const items: string[] = []
+      while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) {
+        items.push(lines[i].replace(/^\s*\d+[.)]\s+/, ''))
+        i++
+      }
+      blocks.push('<ol style="margin: 0 0 16px 0; padding-left: 24px;">' +
+        items.map(item => `<li style="margin-bottom: 4px;">${item}</li>`).join('') +
+        '</ol>')
+      continue
+    }
+
+    // Empty line = paragraph break
+    if (line.trim() === '') {
+      i++
+      continue
+    }
+
+    // Regular paragraph: collect consecutive non-empty, non-list lines
+    const paraLines: string[] = []
+    while (i < lines.length && lines[i].trim() !== '' && !/^\s*[-*]\s+/.test(lines[i]) && !/^\s*\d+[.)]\s+/.test(lines[i])) {
+      paraLines.push(lines[i])
+      i++
+    }
+    blocks.push(`<p style="margin: 0 0 16px 0;">${paraLines.join('<br />')}</p>`)
+  }
+
+  return blocks.join('\n')
+}
+
 // Base HTML template wrapper
 function wrapInLayout(content: string, options?: { unsubscribeUrl?: string }): string {
   const unsubscribeFooter = options?.unsubscribeUrl
@@ -407,7 +481,8 @@ ${emailConfig.companyName}
 export function agentReplyTemplate(data: TicketEmailData): { html: string; text: string } {
   const portalLink = getPortalLink(data.ticketId, data.portalToken)
   const signoff = data.isAI ? 'Nova' : `${emailConfig.companyName} Customer Support`
-  const messageBody = data.messagePreview?.trim() || ''
+  const messageBodyRaw = data.messagePreview?.trim() || ''
+  const messageBody = markdownToEmailHtml(messageBodyRaw)
   const shouldShowPortalFallback = data.hasAttachments || messageBody.length === 0
   const portalFallbackHtml = shouldShowPortalFallback
     ? `<p style="margin: 0 0 16px 0;">
@@ -437,7 +512,7 @@ ${portalLink}`
 <body style="margin: 0; padding: 0; background-color: #ffffff;">
   <div style="max-width: 600px; margin: 0 auto; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #1E293B;">
     <p style="margin: 0 0 16px 0;">Hi ${data.customerName || 'there'},</p>
-    <div style="margin: 0 0 16px 0; white-space: pre-wrap;">${messageBody}</div>
+    <div style="margin: 0 0 16px 0;">${messageBody}</div>
     ${portalFallbackHtml}
     <p style="margin: 0 0 4px 0;">Best,</p>
     <p style="margin: 0; font-weight: 500;">${signoff}</p>
@@ -448,7 +523,7 @@ ${portalLink}`
 
   const text = `Hi ${data.customerName || 'there'},
 
-${messageBody}
+${messageBodyRaw}
 
 ${portalFallbackText}
 
