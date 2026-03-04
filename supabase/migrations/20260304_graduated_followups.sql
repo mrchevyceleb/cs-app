@@ -48,3 +48,22 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Skip post-resolve auto_close_at for tickets that completed graduated follow-ups
+-- (they were already auto-closed by the cron, no need for a post-resolve window)
+CREATE OR REPLACE FUNCTION set_post_resolve_close()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_intervals RECORD;
+BEGIN
+  IF NEW.status = 'resolved' AND OLD.status != 'resolved' AND COALESCE(NEW.follow_up_count, 0) < 3 THEN
+    SELECT * INTO v_intervals
+    FROM get_lifecycle_intervals(NEW.priority);
+
+    NEW.auto_close_at := now() + v_intervals.post_resolve_close_interval;
+    NEW.follow_up_at := NULL;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
