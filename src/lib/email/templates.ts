@@ -135,7 +135,7 @@ export { getUnsubscribeUrl } from './unsubscribe'
  * Convert markdown to email-safe HTML.
  * Handles: bold, italic, links, unordered/ordered lists, paragraphs.
  */
-function markdownToEmailHtml(md: string): string {
+export function markdownToEmailHtml(md: string): string {
   // Escape HTML entities first
   let html = md
     .replace(/&/g, '&amp;')

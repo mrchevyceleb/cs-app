@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient, verifyCronRequest, unauthorizedResponse, logCronExecution } from '@/lib/cron/auth'
 import { withFallback } from '@/lib/claude/client'
 import { sendEmail } from '@/lib/email/client'
-import { getUnsubscribeUrl } from '@/lib/email/templates'
+import { getUnsubscribeUrl, markdownToEmailHtml } from '@/lib/email/templates'
 
 const JOB_NAME = 'lifecycle'
 
@@ -115,12 +115,13 @@ Rules:
         const emailOptOut = customerData?.email_opt_out
 
         if (customerEmail && !emailOptOut) {
-          const emailGreeting = customerName ? `Hey ${customerName}` : 'Hey there'
+          const firstName = customerName?.split(' ')[0] || null
+          const emailGreeting = firstName ? `Hey ${firstName}` : 'Hey there'
           const unsubscribeUrl = getUnsubscribeUrl(ticket.customer_id)
           await sendEmail({
             to: customerEmail,
             subject: `Re: ${ticket.subject || 'Your R-Link support request'}`,
-            html: `<p>${emailGreeting},</p><p>${followUpContent}</p><p>Just reply to this email and I'll pick it right back up.</p><p>- Nova, R-Link Support</p><p style="font-size: 11px; color: #94A3B8; margin-top: 24px;"><a href="${unsubscribeUrl}" style="color: #94A3B8;">Unsubscribe from proactive emails</a></p>`,
+            html: `<p>${emailGreeting},</p>${markdownToEmailHtml(followUpContent)}<p>Just reply to this email and I'll pick it right back up.</p><p>- Nova, R-Link Support</p><p style="font-size: 11px; color: #94A3B8; margin-top: 24px;"><a href="${unsubscribeUrl}" style="color: #94A3B8;">Unsubscribe from proactive emails</a></p>`,
             text: `${emailGreeting},\n\n${followUpContent}\n\nJust reply to this email and I'll pick it right back up.\n\n- Nova, R-Link Support\n\nUnsubscribe: ${unsubscribeUrl}`,
             unsubscribeUrl,
           })
