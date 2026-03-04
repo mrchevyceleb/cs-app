@@ -358,12 +358,13 @@ export async function POST(request: NextRequest) {
                       model: 'claude-haiku-4-5-20251001',
                       max_tokens: 40,
                       temperature: 0.3,
-                      system: `You just helped a customer with their issue. Now ask for their email so the team can follow up. Write ONE casual sentence asking for it. Keep it under 20 words. Don't repeat the issue. Don't say "by the way". Do NOT wrap your response in quotes. Output the sentence directly, no punctuation wrapping.
+                      system: `Write ONE casual sentence asking the customer for their email. The reason is so we have it on file in case the chat gets disconnected or we need to follow up. Keep it under 20 words. Do NOT invent a reason (like "sending resources" or "pulling up your account"). Do NOT wrap your response in quotes. Output the sentence directly.
 
 Good examples:
-Also, drop me your email so we can pull up your account details.
-What email is on your account? Helps us track everything on our end.`,
-                      messages: [{ role: 'user', content: `Customer asked about: ${content.trim().slice(0, 80)}. Your response was about: ${fullContent.slice(0, 80)}` }],
+Mind sharing your email in case we get disconnected or need to follow up?
+What's a good email for you? Just in case we need to continue over email.
+Drop me your email so we have it on file in case we get cut off.`,
+                      messages: [{ role: 'user', content: 'Ask for their email now.' }],
                     })
                   ),
                   new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
@@ -371,7 +372,7 @@ What email is on your account? Helps us track everything on our end.`,
 
                 let emailPrompt = emailAsk
                   ? emailAsk.content.filter(b => b.type === 'text').map(b => ('text' in b ? b.text : '')).join('').trim()
-                  : "What email is on your account? Helps us keep track of everything on our end."
+                  : "Mind sharing your email in case we get disconnected or need to follow up?"
 
                 // Strip wrapping quotes the model sometimes adds
                 if (emailPrompt.length > 2 && emailPrompt.startsWith('"') && emailPrompt.endsWith('"')) {
