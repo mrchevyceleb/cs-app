@@ -12,7 +12,9 @@ import {
 import { searchKnowledgeHybrid, formatKBResultsForPrompt } from '@/lib/knowledge/search'
 import { getAgentConfig } from '@/lib/ai-agent/config'
 import { agenticSolveStreaming } from '@/lib/ai-agent/engine'
+import { sendTicketResolvedEmail } from '@/lib/email'
 import type { AgentStreamEvent, AgentResult } from '@/lib/ai-agent/types'
+import type { Customer, Ticket } from '@/types/database'
 
 export async function POST(request: NextRequest) {
   try {
@@ -128,6 +130,12 @@ export async function POST(request: NextRequest) {
 
                 case 'complete':
                   agentResult = event.result
+                  if (!fullContent.trim() && event.result.content.trim()) {
+                    fullContent = event.result.content
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({ content: event.result.content, type: 'chunk' })}\n\n`)
+                    )
+                  }
                   break
 
                 case 'error':
@@ -210,6 +218,13 @@ export async function POST(request: NextRequest) {
                     updated_at: new Date().toISOString(),
                   })
                   .eq('id', ticketId)
+
+                if (ticket.status !== 'resolved' && ticket.customer?.email) {
+                  sendTicketResolvedEmail(ticket as Ticket, ticket.customer as Customer)
+                    .catch((err) => {
+                      console.error('[Chat Stream] Failed to send ticket resolved email:', err)
+                    })
+                }
               } else {
                 await supabase
                   .from('tickets')

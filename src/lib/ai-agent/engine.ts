@@ -445,11 +445,15 @@ export async function* agenticSolveStreaming(
         try {
           const parsed = JSON.parse(result)
           if (parsed.resolved) {
+            const resolutionContent = typeof parsed.resolution_note === 'string' && parsed.resolution_note.trim()
+              ? parsed.resolution_note
+              : "I've marked this as resolved. If you need anything else, just let us know."
+            yield { type: 'text_delta', content: resolutionContent }
             yield {
               type: 'complete',
               result: {
                 type: 'resolution',
-                content: parsed.resolution_note,
+                content: resolutionContent,
                 confidence: 0.9,
                 kbArticleIds,
                 webSearchCount,

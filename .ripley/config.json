@@ -7,7 +7,7 @@
   "autoSaveHistory": true,
   "historyLimit": 50,
   "agenticMode": true,
-  "activeModel": "coder",
+  "activeModel": "glm",
   "activePrompt": "base",
   "mcpUrl": null,
   "geminiApiKey": null,

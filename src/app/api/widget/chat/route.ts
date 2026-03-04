@@ -5,7 +5,9 @@ import { getAgentConfig } from '@/lib/ai-agent/config'
 import { agenticSolveStreaming } from '@/lib/ai-agent/engine'
 import { classifyTicketPriority, generateTicketSubject } from '@/lib/ai-agent/classify'
 import { withFallback } from '@/lib/claude/client'
+import { sendTicketResolvedEmail } from '@/lib/email'
 import type { AgentResult } from '@/lib/ai-agent/types'
+import type { Customer, Ticket } from '@/types/database'
 
 function getServiceClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SB_URL
@@ -322,6 +324,12 @@ export async function POST(request: NextRequest) {
 
                 case 'complete':
                   agentResult = event.result
+                  if (!fullContent.trim() && event.result.content.trim()) {
+                    fullContent = event.result.content
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: fullContent })}\n\n`)
+                    )
+                  }
                   break
 
                 case 'error':
@@ -452,6 +460,13 @@ What email is on your account? Helps us track everything on our end.`,
                     updated_at: new Date().toISOString(),
                   })
                   .eq('id', ticketId)
+
+                if (ticket.status !== 'resolved' && ticket.customer?.email) {
+                  sendTicketResolvedEmail(ticket as Ticket, ticket.customer as Customer)
+                    .catch((err) => {
+                      console.error('[Widget] Failed to send ticket resolved email:', err)
+                    })
+                }
               } else {
                 // Mark ticket as AI-handled on successful response
                 await supabase
