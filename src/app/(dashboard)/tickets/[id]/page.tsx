@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { TicketDetail } from '@/components/dashboard/TicketDetail'
 import { CustomerContext } from '@/components/dashboard/CustomerContext'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/toast'
 import { ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react'
 import { useRegisterTicketShortcuts } from '@/contexts/KeyboardShortcutsContext'
 import type { TicketWithCustomer } from '@/components/dashboard'
@@ -46,6 +47,7 @@ export default function TicketDetailPage() {
   const ticketId = params.id as string
   const queryClient = useQueryClient()
   const supabase = useMemo(() => createClient(), [])
+  const { toast } = useToast()
 
   const [showCustomerContext, setShowCustomerContext] = useState(true)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -249,9 +251,9 @@ export default function TicketDetailPage() {
       const response = await fetch(`/api/tickets/${ticketId}`, {
         method: 'DELETE',
       })
-      const data = await response.json()
+      const data = await response.json().catch(() => ({} as { error?: string }))
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete ticket')
+        throw new Error(data.error || `Failed to delete ticket (${response.status})`)
       }
       return data as { success: boolean }
     },
@@ -274,10 +276,18 @@ export default function TicketDetailPage() {
       queryClient.removeQueries({ queryKey: ['ticket-messages', ticketId] })
       queryClient.removeQueries({ queryKey: ['ticket-events', ticketId] })
       await queryClient.invalidateQueries({ queryKey: ['queue-counts'] })
+      toast({
+        type: 'success',
+        title: 'Ticket deleted',
+      })
       router.push('/')
     },
     onError: (error) => {
-      setSendError(error instanceof Error ? error.message : 'Failed to delete ticket')
+      toast({
+        type: 'error',
+        title: 'Failed to delete ticket',
+        description: error instanceof Error ? error.message : 'Failed to delete ticket',
+      })
     },
   })
 
@@ -527,6 +537,7 @@ export default function TicketDetailPage() {
             onSendMessage={handleSendMessage}
             onUpdateTicket={handleUpdateTicket}
             onDeleteTicket={handleDeleteTicket}
+            isDeletingTicket={deleteTicketMutation.isPending}
             currentAgentId={currentAgentQuery.data}
             isSending={sendMessageMutation.isPending}
             sendError={sendError}

@@ -68,6 +68,7 @@ interface TicketDetailProps {
   onClearError?: () => void
   isMessagesLoading?: boolean
   onDeleteTicket?: () => void
+  isDeletingTicket?: boolean
 }
 
 const statusOptions = [
@@ -105,6 +106,7 @@ export function TicketDetail({
   onClearError,
   isMessagesLoading = false,
   onDeleteTicket,
+  isDeletingTicket = false,
 }: TicketDetailProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isAiTyping] = useState(false)
@@ -353,12 +355,14 @@ export function TicketDetail({
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault()
+                  if (isDeletingTicket) return
                   setShowDeleteConfirm(true)
                 }}
+                disabled={isDeletingTicket}
                 className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Delete Ticket
+                {isDeletingTicket ? 'Deleting Ticket...' : 'Delete Ticket'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -465,9 +469,10 @@ export function TicketDetail({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => onDeleteTicket?.()}
+              disabled={isDeletingTicket || !onDeleteTicket}
               className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
             >
-              Delete Ticket
+              {isDeletingTicket ? 'Deleting...' : 'Delete Ticket'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

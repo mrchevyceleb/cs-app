@@ -25,6 +25,18 @@ async function getSupabaseClient() {
   return await createClient()
 }
 
+// Service role client for admin operations (bypasses RLS)
+function getServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SB_URL!
+  const serviceKey = process.env.SB_SERVICE_ROLE_KEY
+
+  if (!serviceKey) {
+    throw new Error('SB_SERVICE_ROLE_KEY is required')
+  }
+
+  return createAdminClient(supabaseUrl, serviceKey)
+}
+
 // GET /api/tickets/[id] - Get a single ticket
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -169,15 +181,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/tickets/[id] - Delete a ticket
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
     const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
-    const supabase = await getSupabaseClient()
 
-    // Check auth status (skip in dev bypass mode)
+    // Verify the caller is authenticated (unless dev bypass)
     if (!isDevBypass) {
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      const userClient = await createClient()
+      const { data: { user }, error: authError } = await userClient.auth.getUser()
       if (authError || !user) {
         console.error('Auth error:', authError || 'No user session')
         return NextResponse.json(
@@ -187,7 +199,31 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // First delete all messages associated with the ticket
+    // Use service role for delete operations (tickets/messages do not have DELETE RLS policies)
+    const supabase = getServiceClient()
+
+    // Clear references for environments that may still have restrictive FKs.
+    const { error: outreachError } = await supabase
+      .from('proactive_outreach_log')
+      .update({ response_ticket_id: null })
+      .eq('response_ticket_id', id)
+
+    if (outreachError) {
+      console.error('Error clearing outreach log reference:', outreachError)
+      // Non-fatal: table/column may not exist in all environments
+    }
+
+    const { error: kbLogsError } = await supabase
+      .from('kb_search_logs')
+      .update({ ticket_id: null })
+      .eq('ticket_id', id)
+
+    if (kbLogsError) {
+      console.error('Error clearing kb_search_logs reference:', kbLogsError)
+      // Non-fatal: table/column may not exist in all environments
+    }
+
+    // Delete related messages first (also covered by CASCADE in newer schemas).
     const { error: messagesError } = await supabase
       .from('messages')
       .delete()
@@ -195,19 +231,31 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     if (messagesError) {
       console.error('Error deleting messages:', messagesError)
+      return NextResponse.json(
+        { error: 'Failed to delete ticket messages' },
+        { status: 500 }
+      )
     }
 
-    // Then delete the ticket
-    const { error } = await supabase
+    // Delete the ticket and verify a row was actually deleted.
+    const { data: deletedTickets, error } = await supabase
       .from('tickets')
       .delete()
       .eq('id', id)
+      .select('id')
 
     if (error) {
       console.error('Error deleting ticket:', error)
       return NextResponse.json(
         { error: 'Failed to delete ticket' },
         { status: 500 }
+      )
+    }
+
+    if (!deletedTickets || deletedTickets.length === 0) {
+      return NextResponse.json(
+        { error: 'Ticket not found or could not be deleted' },
+        { status: 404 }
       )
     }
 
