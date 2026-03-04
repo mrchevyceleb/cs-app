@@ -257,6 +257,7 @@ export type Database = {
           // Lifecycle fields
           follow_up_at: string | null
           auto_close_at: string | null
+          follow_up_count: number
            // Channel field
           source_channel: ChannelType
           // Needs attention tracking
@@ -280,6 +281,7 @@ export type Database = {
           // Lifecycle fields
           follow_up_at?: string | null
           auto_close_at?: string | null
+          follow_up_count?: number
            // Channel field
           source_channel?: ChannelType
           // Needs attention tracking

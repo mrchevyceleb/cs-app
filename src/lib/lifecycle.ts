@@ -1,11 +1,19 @@
 // Ticket lifecycle constants and utilities
 // Simple system: follow-ups and auto-closing based on priority
 
+/**
+ * Graduated follow-up lifecycle:
+ * - followUpHours: time until first follow-up (priority-based)
+ * - Follow-up 2: 48h after first follow-up
+ * - Follow-up 3: 48h after second follow-up (warns about closing)
+ * - Auto-close: 24h after third follow-up
+ * - postResolveCloseHours: auto-close window after manual resolution
+ */
 export const LIFECYCLE_TIMELINES = {
-  urgent:  { followUpHours: 4,  autoCloseHours: 48,   postResolveCloseHours: 24  },
-  high:    { followUpHours: 8,  autoCloseHours: 72,   postResolveCloseHours: 48  },
-  normal:  { followUpHours: 24, autoCloseHours: 168,  postResolveCloseHours: 72  },
-  low:     { followUpHours: 48, autoCloseHours: 336,  postResolveCloseHours: 120 },
+  urgent:  { followUpHours: 4,  postResolveCloseHours: 24  },
+  high:    { followUpHours: 8,  postResolveCloseHours: 48  },
+  normal:  { followUpHours: 24, postResolveCloseHours: 72  },
+  low:     { followUpHours: 48, postResolveCloseHours: 120 },
 } as const
 
 export type LifecycleStatus = 'ok' | 'soon' | 'overdue'

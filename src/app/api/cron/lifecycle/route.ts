@@ -14,8 +14,55 @@ const FOLLOW_UP_MESSAGE_MAX_CHARS = 300
 const FOLLOW_UP_PROMPT_MAX_CHARS = 4000
 
 /**
+ * Graduated follow-up intervals (hours after previous follow-up):
+ * Follow-up 1: set on ticket creation (priority-based: 4h/8h/24h/48h)
+ * Follow-up 2: 48h after follow-up 1
+ * Follow-up 3: 48h after follow-up 2 (warns about closing)
+ * Auto-close:  24h after follow-up 3
+ */
+const FOLLOW_UP_2_HOURS = 48
+const FOLLOW_UP_3_HOURS = 48
+const AUTO_CLOSE_AFTER_FINAL_HOURS = 24
+
+/** AI prompts for each follow-up stage */
+const FOLLOW_UP_PROMPTS: Record<number, string> = {
+  0: `You are Nova, a support agent following up with a customer who hasn't replied. Analyze the conversation to determine if the issue was resolved.
+
+Rules:
+- If the issue looks unresolved, provide specific next troubleshooting steps or information
+- If you need more info to help, ask a targeted question
+- If it looks resolved but unconfirmed, ask if everything is working
+- Be concise but substantive (2-4 sentences)
+- Reference the specific issue, not generic platitudes
+- Don't say "just checking in" or "wanted to circle back"
+- NEVER use em dashes`,
+
+  1: `You are Nova, a support agent sending a second follow-up to a customer who hasn't replied to your previous messages. Keep it brief and casual.
+
+Rules:
+- Acknowledge this is a second follow-up without being pushy
+- Ask if they got the issue figured out or if they still need help
+- Keep it to 1-2 sentences max
+- Casual, friendly tone
+- NEVER use em dashes
+
+Good example: "Hey, just seeing if you got this sorted out! If you're still stuck on [specific issue], happy to dig in further."`,
+
+  2: `You are Nova, a support agent sending a final follow-up to a customer. This is the third message without a reply, so you're letting them know the ticket will be closed soon.
+
+Rules:
+- Let them know you'll be closing the ticket soon if you don't hear back
+- Make it clear they can always open a new ticket or reply to reopen
+- Keep it to 2-3 sentences
+- Friendly, not guilt-trippy
+- NEVER use em dashes
+
+Good example: "Looks like you might be all set! I'm going to go ahead and close this ticket out, but if anything comes up with [specific issue], just reply here or reach out anytime and we'll pick right back up."`,
+}
+
+/**
  * GET /api/cron/lifecycle
- * Process scheduled follow-ups and auto-closes based on ticket lifecycle timestamps.
+ * Graduated follow-ups (3 stages) then auto-close.
  */
 export async function GET(request: NextRequest) {
   if (!verifyCronRequest(request)) {
@@ -28,15 +75,16 @@ export async function GET(request: NextRequest) {
     const supabase = getServiceClient()
     const now = new Date().toISOString()
 
-    // ── Part 1: Process Follow-ups ──────────────────────────────
+    // ── Part 1: Process Follow-ups (3 graduated stages) ──────────
     let followUpsSent = 0
     let followUpErrors = 0
 
     const { data: followUpTickets, error: followUpQueryError } = await supabase
       .from('tickets')
-      .select('id, customer_id, subject, customers:customer_id(email, name, email_opt_out)')
+      .select('id, customer_id, subject, follow_up_count, customers:customer_id(email, name, email_opt_out)')
       .lt('follow_up_at', now)
       .in('status', ['open', 'pending'])
+      .lt('follow_up_count', 3)
       .limit(FOLLOW_UP_BATCH_SIZE)
 
     if (followUpQueryError) {
@@ -45,6 +93,8 @@ export async function GET(request: NextRequest) {
 
     for (const ticket of followUpTickets || []) {
       try {
+        const stage = (ticket as any).follow_up_count ?? 0
+
         // Fetch recent messages for conversation context
         const { data: recentMessages } = await supabase
           .from('messages')
@@ -64,25 +114,18 @@ export async function GET(request: NextRequest) {
 
         const conversationSummary = truncatedConversation.slice(0, FOLLOW_UP_PROMPT_MAX_CHARS)
 
-        // Generate substantive follow-up with troubleshooting analysis
+        // Generate follow-up with stage-appropriate prompt
         let followUpContent: string
         try {
+          const systemPrompt = FOLLOW_UP_PROMPTS[stage] || FOLLOW_UP_PROMPTS[0]
           const aiResponse = await Promise.race([
             withFallback(client =>
               client.messages.create({
-                model: 'claude-sonnet-4-6',
+                model: 'claude-haiku-4-5-20251001',
                 max_tokens: 300,
                 temperature: 0.3,
-                system: `You are Nova, a support agent following up with a customer who hasn't replied. Analyze the conversation to determine if the issue was resolved.
-
-Rules:
-- If the issue looks unresolved, provide specific next troubleshooting steps or information
-- If you need more info to help, ask a targeted question
-- If it looks resolved but unconfirmed, ask if everything is working
-- Be concise but substantive (2-4 sentences)
-- Reference the specific issue, not generic platitudes
-- Don't say "just checking in" or "wanted to circle back"`,
-                messages: [{ role: 'user', content: `Ticket subject: ${ticket.subject}\n\nFull conversation:\n${conversationSummary}` }],
+                system: systemPrompt,
+                messages: [{ role: 'user', content: `Ticket subject: ${ticket.subject}\nFollow-up stage: ${stage + 1} of 3\n\nFull conversation:\n${conversationSummary}` }],
               })
             ),
             new Promise<null>(resolve => setTimeout(() => resolve(null), FOLLOW_UP_AI_TIMEOUT_MS)),
@@ -95,17 +138,23 @@ Rules:
           followUpContent = ''
         }
 
-        // Fallback if AI generation failed
+        // Fallback messages per stage
         if (!followUpContent) {
-          followUpContent = `I wanted to follow up on your ${ticket.subject?.slice(0, 50) || 'issue'}. If you're still experiencing this, could you let me know what's happening now so I can suggest specific next steps?`
+          if (stage === 0) {
+            followUpContent = `I wanted to follow up on your ${ticket.subject?.slice(0, 50) || 'issue'}. If you're still experiencing this, could you let me know what's happening now so I can suggest specific next steps?`
+          } else if (stage === 1) {
+            followUpContent = `Just seeing if you got this figured out! If you're still stuck, happy to dig in further.`
+          } else {
+            followUpContent = `Looks like you might be all set! I'm going to close this ticket out soon, but if anything comes up, just reply here or reach out anytime.`
+          }
         }
 
-        // Insert follow-up message in widget
+        // Insert follow-up message
         await supabase.from('messages').insert({
           ticket_id: ticket.id,
           sender_type: 'ai',
           content: followUpContent,
-          metadata: { type: 'follow_up' },
+          metadata: { type: 'follow_up', follow_up_stage: stage + 1 },
         })
 
         // Send email follow-up if customer has email and hasn't opted out
@@ -134,18 +183,41 @@ Rules:
           outreach_type: 'stalled_revival',
           channel: (customerEmail && !emailOptOut) ? 'email' : 'internal',
           message_content: followUpContent,
-          trigger_reason: 'Scheduled follow-up reached',
+          trigger_reason: `Follow-up ${stage + 1} of 3`,
           delivery_status: 'sent',
           delivered_at: now,
         })
 
-        // Clear follow_up_at so we don't repeat
+        // Advance to next stage
+        const newCount = stage + 1
+        const nextFollowUpHours = newCount === 1 ? FOLLOW_UP_2_HOURS
+          : newCount === 2 ? FOLLOW_UP_3_HOURS
+          : 0 // stage 3 = no more follow-ups
+
+        const updateData: Record<string, unknown> = {
+          follow_up_count: newCount,
+        }
+
+        if (newCount < 3) {
+          // Schedule next follow-up
+          const nextDate = new Date()
+          nextDate.setHours(nextDate.getHours() + nextFollowUpHours)
+          updateData.follow_up_at = nextDate.toISOString()
+        } else {
+          // Final follow-up sent — schedule auto-close
+          const closeDate = new Date()
+          closeDate.setHours(closeDate.getHours() + AUTO_CLOSE_AFTER_FINAL_HOURS)
+          updateData.follow_up_at = null
+          updateData.auto_close_at = closeDate.toISOString()
+        }
+
         await supabase
           .from('tickets')
-          .update({ follow_up_at: null })
+          .update(updateData)
           .eq('id', ticket.id)
 
         followUpsSent++
+        console.log(`[${JOB_NAME}] Sent follow-up ${newCount}/3 for ticket ${ticket.id}`)
       } catch (err) {
         console.error(`[${JOB_NAME}] Error processing follow-up for ticket ${ticket.id}:`, err)
         followUpErrors++
