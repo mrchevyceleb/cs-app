@@ -170,14 +170,15 @@ export default function DashboardPage() {
   }, [queryClient])
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className={cn('space-y-4 rounded-3xl border p-4 transition-all duration-300 sm:space-y-6 sm:p-6', queueTheme.shell)}>
+      <div className={cn('-mx-4 -mt-4 h-1.5 rounded-t-3xl bg-gradient-to-r sm:-mx-6 sm:-mt-6', queueTheme.accentBar)} />
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">
+          <h1 className={cn('text-xl font-bold sm:text-2xl', queueTheme.heading)}>
             Support Dashboard
           </h1>
-          <p className="text-sm mt-1 text-muted-foreground">
+          <p className={cn('mt-1 text-sm', queueTheme.subheading)}>
             Manage customer tickets with AI-powered assistance
           </p>
         </div>
