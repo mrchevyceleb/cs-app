@@ -113,10 +113,11 @@ export async function processEmailWithAI(
       return { action: 'error', error: 'Ticket not found' }
     }
 
-    // Check if ticket is already escalated or resolved
-    if (ticket.status === 'escalated' || ticket.status === 'resolved') {
-      console.log(`[Email AI] Skipping - ticket ${ticketId} is ${ticket.status}`)
-      return { action: 'error', error: `Ticket is ${ticket.status}` }
+    // Check if ticket is already escalated, resolved, or in human queue
+    // Once a human agent is handling a ticket, AI should never intervene
+    if (ticket.status === 'escalated' || ticket.status === 'resolved' || ticket.queue_type === 'human') {
+      console.log(`[Email AI] Skipping - ticket ${ticketId} is ${ticket.status} (queue: ${ticket.queue_type})`)
+      return { action: 'error', error: `Ticket is in ${ticket.queue_type} queue` }
     }
 
     // Check exchange count - escalate after limit
