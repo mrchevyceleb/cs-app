@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
@@ -42,8 +42,8 @@ export default function DashboardPage() {
     queryKey: ['dashboard-queue-counts'],
     queryFn: async () => {
       const [humanRes, aiRes] = await Promise.all([
-        fetch('/api/tickets?queue=human&limit=1'),
-        fetch('/api/tickets?queue=ai&limit=1'),
+        fetch('/api/tickets?queue=human&limit=1', { cache: 'no-store' }),
+        fetch('/api/tickets?queue=ai&limit=1', { cache: 'no-store' }),
       ])
       const [humanData, aiData] = await Promise.all([humanRes.json(), aiRes.json()])
       return {

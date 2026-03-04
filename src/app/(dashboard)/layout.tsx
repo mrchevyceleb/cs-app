@@ -10,6 +10,7 @@ import { ToastProvider } from '@/components/ui/toast'
 import { NovaCopilotProvider } from '@/contexts/NovaCopilotContext'
 import { NovaCopilot } from '@/components/dashboard/NovaCopilot'
 import { RealtimeProvider } from '@/contexts/RealtimeContext'
+import { TicketRealtimeSync } from '@/components/dashboard/TicketRealtimeSync'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 export default function DashboardLayout({
@@ -25,45 +26,46 @@ export default function DashboardLayout({
   return (
     <ToastProvider>
       <TooltipProvider>
-      <KeyboardShortcutsProvider>
-        <CommandPaletteProvider>
-          <RealtimeProvider>
-          <NovaCopilotProvider>
-            <div className="flex h-screen overflow-hidden bg-transparent">
+        <KeyboardShortcutsProvider>
+          <CommandPaletteProvider>
+            <RealtimeProvider>
+              <TicketRealtimeSync />
+              <NovaCopilotProvider>
+                <div className="flex h-screen overflow-hidden bg-transparent">
 
-              {/* Mobile header */}
-              <MobileHeader
-                onMenuClick={toggleMobileMenu}
-                isMenuOpen={isMobileMenuOpen}
-              />
+                  {/* Mobile header */}
+                  <MobileHeader
+                    onMenuClick={toggleMobileMenu}
+                    isMenuOpen={isMobileMenuOpen}
+                  />
 
-              {/* Desktop sidebar - hidden on mobile */}
-              <div className="hidden lg:block">
-                <Sidebar />
-              </div>
+                  {/* Desktop sidebar - hidden on mobile */}
+                  <div className="hidden lg:block">
+                    <Sidebar />
+                  </div>
 
-              {/* Mobile sidebar overlay */}
-              <MobileSidebarOverlay isOpen={isMobileMenuOpen} onClose={closeMobileMenu}>
-                <Sidebar className="h-full" onNavigate={closeMobileMenu} />
-              </MobileSidebarOverlay>
+                  {/* Mobile sidebar overlay */}
+                  <MobileSidebarOverlay isOpen={isMobileMenuOpen} onClose={closeMobileMenu}>
+                    <Sidebar className="h-full" onNavigate={closeMobileMenu} />
+                  </MobileSidebarOverlay>
 
-              {/* Main content area */}
-            <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 bg-transparent">
-              <div className="p-4 lg:p-6">
-                {children}
-              </div>
-            </main>
+                  {/* Main content area */}
+                  <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 bg-transparent">
+                    <div className="p-4 lg:p-6">
+                      {children}
+                    </div>
+                  </main>
 
-              {/* Keyboard Shortcuts Manager - handles global shortcuts and help modal */}
-              <KeyboardShortcutsManager />
+                  {/* Keyboard Shortcuts Manager - handles global shortcuts and help modal */}
+                  <KeyboardShortcutsManager />
 
-              {/* Nova Copilot UI */}
-              <NovaCopilot />
-            </div>
-          </NovaCopilotProvider>
-          </RealtimeProvider>
-        </CommandPaletteProvider>
-      </KeyboardShortcutsProvider>
+                  {/* Nova Copilot UI */}
+                  <NovaCopilot />
+                </div>
+              </NovaCopilotProvider>
+            </RealtimeProvider>
+          </CommandPaletteProvider>
+        </KeyboardShortcutsProvider>
       </TooltipProvider>
     </ToastProvider>
   )

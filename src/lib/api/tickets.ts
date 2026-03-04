@@ -19,6 +19,7 @@ interface FetchEventsOptions extends FetchJsonOptions {
 async function fetchJson<T>(url: string, options: FetchJsonOptions = {}): Promise<T> {
   const response = await fetch(url, {
     signal: options.signal,
+    cache: 'no-store',
   })
 
   if (!response.ok) {

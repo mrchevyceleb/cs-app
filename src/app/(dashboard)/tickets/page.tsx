@@ -49,8 +49,8 @@ export default function TicketsPage() {
     queryKey: ['queue-counts'],
     queryFn: async () => {
       const [humanRes, aiRes] = await Promise.all([
-        fetch('/api/tickets?queue=human&limit=1'),
-        fetch('/api/tickets?queue=ai&limit=1'),
+        fetch('/api/tickets?queue=human&limit=1', { cache: 'no-store' }),
+        fetch('/api/tickets?queue=ai&limit=1', { cache: 'no-store' }),
       ])
       const [humanData, aiData] = await Promise.all([humanRes.json(), aiRes.json()])
       return {
@@ -96,6 +96,7 @@ export default function TicketsPage() {
 
       const response = await fetch(`/api/tickets?${params.toString()}`, {
         signal,
+        cache: 'no-store',
       })
       if (!response.ok) {
         throw new Error('Failed to fetch tickets')

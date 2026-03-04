@@ -183,9 +183,16 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
         try {
           const parsed = JSON.parse(result)
           if (parsed.resolved) {
+            // Extract any customer-facing text Claude produced alongside the tool call
+            const textBlocks = response.content.filter(
+              (block): block is Anthropic.TextBlock => block.type === 'text'
+            )
+            const customerFacingText = textBlocks.map(b => b.text).join('').trim()
+
             return {
               type: 'resolution',
-              content: parsed.resolution_note,
+              content: customerFacingText || "Glad I could help! If anything else comes up, don't hesitate to reach out.",
+              resolutionNote: parsed.resolution_note,
               confidence: 0.9,
               kbArticleIds,
               webSearchCount,

@@ -34,6 +34,8 @@ export interface AgentResult {
   /** Token usage */
   inputTokens: number
   outputTokens: number
+  /** Internal resolution note (only if type === 'resolution') */
+  resolutionNote?: string
   /** Escalation info (only if type === 'escalation') */
   escalationReason?: string
   escalationSummary?: string

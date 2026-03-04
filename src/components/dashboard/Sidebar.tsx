@@ -105,7 +105,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
   const ticketCountQuery = useQuery({
     queryKey: ['ticket-count'],
     queryFn: async () => {
-      const response = await fetch('/api/tickets?limit=1')
+      const response = await fetch('/api/tickets?limit=1', { cache: 'no-store' })
       if (!response.ok) {
         throw new Error('Failed to fetch ticket count')
       }

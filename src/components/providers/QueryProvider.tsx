@@ -9,10 +9,10 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 2 * 60 * 1000, // 2 minutes
+            staleTime: 30 * 1000, // Keep cache warm but refresh faster for ticket updates
             gcTime: 15 * 60 * 1000, // keep cache warm during navigation
-            refetchOnWindowFocus: false,
-            refetchOnMount: false,
+            refetchOnWindowFocus: true,
+            refetchOnMount: true,
             retry: (failureCount, error) => {
               // Don't retry on AbortError (user cancelled)
               if (error instanceof Error && error.name === 'AbortError') {
