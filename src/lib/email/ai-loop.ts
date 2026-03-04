@@ -7,7 +7,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { agenticSolve } from '@/lib/ai-agent/engine'
-import { sendAgentReplyEmail } from './send'
+import { sendAgentReplyEmail, sendTicketResolvedEmail } from './send'
 import { emailConfig } from './client'
 import { notifyAgentsOfCustomerReply } from '@/lib/notifications/customer-reply'
 import { withFallback } from '@/lib/claude/client'
@@ -82,7 +82,7 @@ function getSupabase(): SupabaseClient<Database> {
 }
 
 interface EmailAIResult {
-  action: 'responded' | 'escalated' | 'error'
+  action: 'responded' | 'escalated' | 'resolved' | 'error'
   error?: string
 }
 
@@ -337,6 +337,46 @@ export async function processEmailWithAI(
       }).catch(err => console.error('[Email AI] Escalation notification error:', err))
 
       return { action: 'escalated' }
+    }
+
+    // Handle resolution from agent (customer confirmed issue is fixed)
+    if (agentResult.type === 'resolution') {
+      console.log(`[Email AI] Agent resolved ticket ${ticketId}: ${agentResult.content}`)
+
+      await supabase
+        .from('tickets')
+        .update({
+          status: 'resolved',
+          ai_handled: true,
+          ai_confidence: agentResult.confidence,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', ticketId)
+
+      // Save resolution note as internal message
+      await supabase
+        .from('messages')
+        .insert({
+          ticket_id: ticketId,
+          sender_type: 'ai',
+          content: agentResult.content,
+          metadata: {
+            is_internal: true,
+            resolution_note: true,
+            agent_result_type: 'resolution',
+          } as any,
+        })
+
+      // Send resolution email with feedback link
+      await sendTicketResolvedEmail(
+        ticket as any,
+        customer as any,
+      ).catch(err => console.error('[Email AI] Failed to send resolution email:', err))
+
+      // Log agent session
+      await logAgentSession(ticketId, agentResult)
+
+      return { action: 'resolved' }
     }
 
     // Increment exchange count (optimistic lock to prevent race condition)

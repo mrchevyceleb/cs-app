@@ -178,6 +178,29 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
         }
       }
 
+      // Check for resolution
+      if (toolUse.name === 'resolve_ticket') {
+        try {
+          const parsed = JSON.parse(result)
+          if (parsed.resolved) {
+            return {
+              type: 'resolution',
+              content: parsed.resolution_note,
+              confidence: 0.9,
+              kbArticleIds,
+              webSearchCount,
+              totalToolCalls,
+              toolCallsDetail,
+              durationMs: Date.now() - startTime,
+              inputTokens: totalInputTokens,
+              outputTokens: totalOutputTokens,
+            }
+          }
+        } catch {
+          // Continue
+        }
+      }
+
       // Check for escalation
       if (toolUse.name === 'escalate_to_human') {
         try {
@@ -416,6 +439,33 @@ export async function* agenticSolveStreaming(
 
       toolCallsDetail.push(log)
       yield { type: 'tool_result', tool: toolUse.name, success: !result.startsWith('No ') }
+
+      // Check resolution
+      if (toolUse.name === 'resolve_ticket') {
+        try {
+          const parsed = JSON.parse(result)
+          if (parsed.resolved) {
+            yield {
+              type: 'complete',
+              result: {
+                type: 'resolution',
+                content: parsed.resolution_note,
+                confidence: 0.9,
+                kbArticleIds,
+                webSearchCount,
+                totalToolCalls,
+                toolCallsDetail,
+                durationMs: Date.now() - startTime,
+                inputTokens: totalInputTokens,
+                outputTokens: totalOutputTokens,
+              },
+            }
+            return
+          }
+        } catch {
+          // Continue
+        }
+      }
 
       // Check escalation
       if (toolUse.name === 'escalate_to_human') {

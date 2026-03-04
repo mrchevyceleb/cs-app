@@ -200,6 +200,16 @@ export async function POST(request: NextRequest) {
                     updated_at: new Date().toISOString(),
                   })
                   .eq('id', ticketId)
+              } else if (agentResult.type === 'resolution') {
+                await supabase
+                  .from('tickets')
+                  .update({
+                    status: 'resolved',
+                    ai_handled: true,
+                    ai_confidence: agentResult.confidence,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', ticketId)
               } else {
                 await supabase
                   .from('tickets')

@@ -18,7 +18,7 @@ export interface AgentInput {
 
 /** Result from the agent */
 export interface AgentResult {
-  type: 'response' | 'escalation' | 'timeout' | 'error'
+  type: 'response' | 'escalation' | 'resolution' | 'timeout' | 'error'
   content: string
   confidence: number
   /** KB article IDs referenced during tool use */

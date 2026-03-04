@@ -442,6 +442,16 @@ What email is on your account? Helps us track everything on our end.`,
                     updated_at: new Date().toISOString(),
                   })
                   .eq('id', ticketId)
+              } else if (agentResult.type === 'resolution') {
+                await supabase
+                  .from('tickets')
+                  .update({
+                    status: 'resolved',
+                    ai_handled: true,
+                    ai_confidence: agentResult.confidence,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', ticketId)
               } else {
                 // Mark ticket as AI-handled on successful response
                 await supabase

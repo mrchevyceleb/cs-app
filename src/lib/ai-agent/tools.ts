@@ -87,6 +87,21 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'resolve_ticket',
+    description:
+      'Mark the ticket as resolved when the customer confirms their issue is fixed or they are satisfied. Use when the customer says something like "thanks, that worked", "all set", "problem solved", etc. Do NOT use this if the customer is still asking questions or has unresolved issues.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        resolution_note: {
+          type: 'string',
+          description: 'Brief internal note about how the issue was resolved (e.g., "Customer confirmed branding settings were found after guidance").',
+        },
+      },
+      required: ['resolution_note'],
+    },
+  },
+  {
     name: 'escalate_to_human',
     description:
       'Create an email follow-up ticket for the human support team. There are NO human agents in chat -- this triggers an EMAIL to the support team, not a live transfer. Only use after the customer has confirmed they want email follow-up. Your response to the customer should say the team will email them, never say you are "connecting" or "transferring" them.',
@@ -239,6 +254,16 @@ ${tickets.length > 0
           .join('\n\n')
         outputSummary = `${messages.length} messages retrieved`
       }
+      break
+    }
+
+    case 'resolve_ticket': {
+      const resolutionNote = toolInput.resolution_note as string
+      result = JSON.stringify({
+        resolved: true,
+        resolution_note: resolutionNote,
+      })
+      outputSummary = `Resolved: ${resolutionNote.slice(0, 80)}`
       break
     }
 
