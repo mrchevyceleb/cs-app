@@ -143,14 +143,79 @@ export async function processEmailWithAI(
           metadata: { is_internal: true, escalation_reason: 'exchange_limit_reached' } as any,
         })
 
-      // Now that it's in human queue, notify agents
+      // Send contextual acknowledgment email to customer
+      // Use Haiku to generate a brief, contextual message based on the conversation
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', customerId)
+        .single()
+
+      if (customer?.email) {
+        let ackContent = "I've been working on this with you and I want to make sure you get the best help possible. I'm bringing in a senior team member who can take a closer look. They'll follow up with you by email shortly."
+        try {
+          const ackResult = await withFallback(client =>
+            client.messages.create({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 300,
+              temperature: 0.3,
+              system: `You are Nova, a support specialist. The customer's issue could not be resolved after ${AI_EXCHANGE_LIMIT} email exchanges and is being escalated to a human agent. Write a brief, warm acknowledgment (2-3 sentences max) that:
+- References their specific issue naturally (don't just repeat the subject line)
+- Lets them know you're bringing in a senior team member to help
+- Assures them someone will follow up shortly by email
+- Does NOT include a greeting or sign-off (template adds those)
+- Does NOT use em dashes`,
+              messages: [{ role: 'user', content: `Ticket subject: ${ticket.subject}\nCustomer's latest message: ${messageContent.slice(0, 300)}\nConversation summary: Customer had ${AI_EXCHANGE_LIMIT} exchanges with AI about this issue without resolution.` }],
+            })
+          )
+          const ackText = ackResult.content
+            .filter(b => b.type === 'text')
+            .map(b => ('text' in b ? b.text : ''))
+            .join('')
+            .trim()
+          if (ackText.length > 0) ackContent = ackText
+        } catch (err) {
+          console.error('[Email AI] Haiku ack generation failed, using default:', err)
+        }
+
+        const { data: ackMessage } = await supabase
+          .from('messages')
+          .insert({
+            ticket_id: ticketId,
+            sender_type: 'ai',
+            content: ackContent,
+            source: 'email',
+            metadata: { escalation_ack: true } as any,
+          })
+          .select('*')
+          .single()
+
+        if (ackMessage) {
+          try {
+            await sendAgentReplyEmail(
+              ticket as any,
+              ackMessage as any,
+              customer as any,
+              undefined,
+              emailConfig.aiFrom,
+              { isAI: true }
+            )
+          } catch (emailErr) {
+            console.error('[Email AI] Failed to send escalation ack email:', emailErr)
+          }
+        }
+      }
+
+      // Notify agents with escalation styling
       await notifyAgentsOfCustomerReply({
         ticketId,
         ticketSubject: ticket.subject,
         customerName,
         customerEmail,
-        messagePreview: `[Escalated] AI could not resolve after ${AI_EXCHANGE_LIMIT} exchanges. Latest: ${messageContent.slice(0, 100)}`,
+        messagePreview: messageContent.slice(0, 150),
         channel: 'email',
+        isEscalation: true,
+        escalationReason: `Nova could not resolve after ${AI_EXCHANGE_LIMIT} email exchanges.`,
       }).catch(err => console.error('[Email AI] Escalation notification error:', err))
 
       return { action: 'escalated' }
@@ -258,14 +323,16 @@ export async function processEmailWithAI(
       // Log agent session
       await logAgentSession(ticketId, agentResult)
 
-      // Now that it's in human queue, notify agents
+      // Now that it's in human queue, notify agents with escalation styling
       await notifyAgentsOfCustomerReply({
         ticketId,
         ticketSubject: ticket.subject,
         customerName,
         customerEmail,
-        messagePreview: `[Escalated] ${agentResult.escalationReason || 'AI escalated'}. Latest: ${messageContent.slice(0, 100)}`,
+        messagePreview: messageContent.slice(0, 150),
         channel: 'email',
+        isEscalation: true,
+        escalationReason: agentResult.escalationReason || 'Nova determined this needs human attention.',
       }).catch(err => console.error('[Email AI] Escalation notification error:', err))
 
       return { action: 'escalated' }
