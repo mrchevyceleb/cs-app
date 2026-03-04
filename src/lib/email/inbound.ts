@@ -163,11 +163,24 @@ export async function processInboundEmail(
     throw new Error(`Failed to create message: ${msgError.message}`);
   }
 
-  // Update ticket updated_at
-  await getSupabase()
-    .from('tickets')
-    .update({ updated_at: new Date().toISOString() })
-    .eq('id', ticket.id);
+  // Reopen ticket if it was resolved/closed and customer is replying back
+  if (!isNewTicket && ticket.status === 'resolved') {
+    await getSupabase()
+      .from('tickets')
+      .update({
+        status: 'open',
+        queue_type: 'ai',
+        ai_exchange_count: 0,
+        follow_up_count: 0,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', ticket.id);
+  } else {
+    await getSupabase()
+      .from('tickets')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', ticket.id);
+  }
 
   // Handle attachments if present
   if (email.attachments && email.attachments.length > 0) {
