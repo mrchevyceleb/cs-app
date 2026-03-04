@@ -341,7 +341,8 @@ export async function processEmailWithAI(
 
     // Handle resolution from agent (customer confirmed issue is fixed)
     if (agentResult.type === 'resolution') {
-      console.log(`[Email AI] Agent resolved ticket ${ticketId}: ${agentResult.content}`)
+      const resolutionNote = agentResult.resolutionNote || agentResult.content
+      console.log(`[Email AI] Agent resolved ticket ${ticketId}: ${resolutionNote}`)
 
       await supabase
         .from('tickets')
@@ -359,7 +360,7 @@ export async function processEmailWithAI(
         .insert({
           ticket_id: ticketId,
           sender_type: 'ai',
-          content: agentResult.content,
+          content: resolutionNote,
           metadata: {
             is_internal: true,
             resolution_note: true,

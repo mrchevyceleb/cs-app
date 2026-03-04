@@ -452,15 +452,20 @@ export async function* agenticSolveStreaming(
         try {
           const parsed = JSON.parse(result)
           if (parsed.resolved) {
-            const resolutionContent = typeof parsed.resolution_note === 'string' && parsed.resolution_note.trim()
-              ? parsed.resolution_note
-              : "I've marked this as resolved. If you need anything else, just let us know."
-            yield { type: 'text_delta', content: resolutionContent }
+            // Extract any customer-facing text Claude produced alongside the tool call
+            const textBlocks = response.content.filter(
+              (block): block is Anthropic.TextBlock => block.type === 'text'
+            )
+            const customerFacingText = textBlocks.map(b => b.text).join('').trim()
+            const closingMessage = customerFacingText || "Glad I could help! If anything else comes up, don't hesitate to reach out."
+
+            yield { type: 'text_delta', content: closingMessage }
             yield {
               type: 'complete',
               result: {
                 type: 'resolution',
-                content: resolutionContent,
+                content: closingMessage,
+                resolutionNote: parsed.resolution_note,
                 confidence: 0.9,
                 kbArticleIds,
                 webSearchCount,
@@ -634,6 +639,8 @@ function getToolDescription(toolName: string): string {
       return 'Looking up customer info...'
     case 'get_ticket_messages':
       return 'Reviewing conversation history...'
+    case 'resolve_ticket':
+      return 'Wrapping up...'
     case 'escalate_to_human':
       return 'Connecting to support team...'
     default:

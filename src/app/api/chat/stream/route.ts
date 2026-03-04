@@ -219,6 +219,24 @@ export async function POST(request: NextRequest) {
                   })
                   .eq('id', ticketId)
 
+                // Save internal resolution note (not visible to customer)
+                if (agentResult.resolutionNote) {
+                  await supabase
+                    .from('messages')
+                    .insert({
+                      ticket_id: ticketId,
+                      sender_type: 'ai',
+                      content: agentResult.resolutionNote,
+                      source: 'widget',
+                      metadata: {
+                        is_internal: true,
+                        resolution_note: true,
+                        agent_result_type: 'resolution',
+                      },
+                    })
+                }
+
+                // Send resolution email with feedback link (if customer has email)
                 if (ticket.status !== 'resolved' && ticket.customer?.email) {
                   sendTicketResolvedEmail(ticket as Ticket, ticket.customer as Customer)
                     .catch((err) => {
@@ -246,6 +264,7 @@ export async function POST(request: NextRequest) {
                   content: fullContent,
                   translatedContent,
                   originalLanguage: detectedLanguage !== 'en' ? detectedLanguage : undefined,
+                  ...(agentResult?.type === 'resolution' ? { resolved: true } : {}),
                 })}\n\n`
               )
             )
