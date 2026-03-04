@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
@@ -77,7 +77,8 @@ export default function DashboardPage() {
         customer: ticket.customer as Customer,
       })) as TicketWithCustomer[]
     },
-    staleTime: 30 * 1000,
+    staleTime: 5 * 1000, // Reduced from 30s to 5s for more responsive updates
+    refetchInterval: 10000, // Auto-refetch every 10 seconds for near real-time updates
     retry: 2,
     enabled: viewMode === 'board',
   })
@@ -262,11 +263,13 @@ export default function DashboardPage() {
             />
           </div>
           {bulkMessage && (
-            <div className={`px-4 py-2 rounded-md text-sm font-medium ${
-              bulkMessage.startsWith('Error')
-                ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-                : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
-            }`}>
+            <div
+              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                bulkMessage.startsWith('Error')
+                  ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                  : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+              }`}
+            >
               {bulkMessage}
             </div>
           )}
