@@ -247,7 +247,7 @@ export async function POST(request: NextRequest) {
             )
           }
 
-          if (agentConfig.enabled && ticket) {
+          if (agentConfig.enabled && ticket && !emailLinked) {
             // Generate contextual acknowledgment (fast Haiku call, ~300ms)
             // Runs before the main agent so the user sees it quickly
             try {
