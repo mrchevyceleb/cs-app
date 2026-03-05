@@ -39,11 +39,11 @@ export default function DashboardPage() {
   const queueTheme = getQueueVisualTheme(activeQueue)
 
   const { data: queueCounts } = useQuery({
-    queryKey: ['dashboard-queue-counts'],
+    queryKey: ['queue-counts'],
     queryFn: async () => {
       const [humanRes, aiRes] = await Promise.all([
-        fetch('/api/tickets?queue=human&limit=1', { cache: 'no-store' }),
-        fetch('/api/tickets?queue=ai&limit=1', { cache: 'no-store' }),
+        fetch('/api/tickets?queue=human&countOnly=true'),
+        fetch('/api/tickets?queue=ai&countOnly=true'),
       ])
       const [humanData, aiData] = await Promise.all([humanRes.json(), aiRes.json()])
       return {
@@ -51,6 +51,7 @@ export default function DashboardPage() {
         ai: aiData.total || 0,
       }
     },
+    staleTime: 30 * 1000,
     refetchInterval: 30000,
   })
 

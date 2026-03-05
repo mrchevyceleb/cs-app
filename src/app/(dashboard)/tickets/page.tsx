@@ -49,8 +49,8 @@ export default function TicketsPage() {
     queryKey: ['queue-counts'],
     queryFn: async () => {
       const [humanRes, aiRes] = await Promise.all([
-        fetch('/api/tickets?queue=human&limit=1', { cache: 'no-store' }),
-        fetch('/api/tickets?queue=ai&limit=1', { cache: 'no-store' }),
+        fetch('/api/tickets?queue=human&countOnly=true'),
+        fetch('/api/tickets?queue=ai&countOnly=true'),
       ])
       const [humanData, aiData] = await Promise.all([humanRes.json(), aiRes.json()])
       return {
@@ -58,6 +58,7 @@ export default function TicketsPage() {
         ai: aiData.total || 0,
       }
     },
+    staleTime: 30 * 1000,
     refetchInterval: 30000,
   })
 
@@ -96,7 +97,6 @@ export default function TicketsPage() {
 
       const response = await fetch(`/api/tickets?${params.toString()}`, {
         signal,
-        cache: 'no-store',
       })
       if (!response.ok) {
         throw new Error('Failed to fetch tickets')
@@ -104,8 +104,57 @@ export default function TicketsPage() {
       return response.json()
     },
     placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
     retry: 2,
   })
+
+  useEffect(() => {
+    const sharedParams = new URLSearchParams()
+    sharedParams.set('limit', String(pageSize))
+    sharedParams.set('offset', viewMode === 'board' ? '0' : String(currentPage * PAGE_SIZE))
+
+    if (filters.search) {
+      sharedParams.set('search', filters.search)
+    }
+
+    if (filters.status.length === 1) {
+      sharedParams.set('status', filters.status[0])
+    }
+
+    if (filters.priority.length === 1) {
+      sharedParams.set('priority', filters.priority[0])
+    }
+
+    if (filters.aiHandled !== 'all') {
+      sharedParams.set('aiHandled', filters.aiHandled === 'ai' ? 'true' : 'false')
+    }
+
+    const prefetchQueue = (queue: QueueTab) => {
+      const params = new URLSearchParams(sharedParams)
+      if (queue !== 'all') {
+        params.set('queue', queue)
+      }
+
+      queryClient.prefetchQuery({
+        queryKey: ['tickets', filters, viewMode === 'board' ? 0 : currentPage, queue, viewMode],
+        queryFn: async ({ signal }) => {
+          const response = await fetch(`/api/tickets?${params.toString()}`, { signal })
+          if (!response.ok) {
+            throw new Error('Failed to fetch tickets')
+          }
+          return response.json()
+        },
+        staleTime: 60 * 1000,
+      })
+    }
+
+    if (activeQueue === 'all') {
+      prefetchQueue('human')
+      prefetchQueue('ai')
+    } else {
+      prefetchQueue('all')
+    }
+  }, [queryClient, filters, currentPage, pageSize, viewMode, activeQueue])
 
   const tickets: TicketWithCustomer[] = data?.tickets || []
   const totalCount = data?.total || 0

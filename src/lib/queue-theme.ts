@@ -15,7 +15,7 @@ type QueueVisualTheme = {
 
 const QUEUE_VISUAL_THEMES: Record<QueueVisualMode, QueueVisualTheme> = {
   all: {
-    shell: 'border-border/70 bg-gradient-to-br from-background/95 via-card/95 to-muted/70 shadow-[var(--shadow-sm)]',
+    shell: 'border-border/70 bg-gradient-to-br from-background/95 via-card/95 to-muted/70 shadow-[var(--shadow-md)]',
     modeBadge: 'bg-muted text-muted-foreground border-border/70',
     heading: 'text-foreground',
     subheading: 'text-muted-foreground',

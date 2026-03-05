@@ -4,13 +4,12 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 
-const INVALIDATION_DELAY_MS = 150
+const INVALIDATION_DELAY_MS = 400
 
 const QUERY_KEYS_TO_INVALIDATE = [
   ['tickets'],
   ['dashboard-tickets'],
   ['queue-counts'],
-  ['dashboard-queue-counts'],
   ['ticket-count'],
   ['metrics-bar'],
 ] as const
@@ -28,7 +27,7 @@ export function TicketRealtimeSync() {
     invalidateTimerRef.current = null
 
     QUERY_KEYS_TO_INVALIDATE.forEach((queryKey) => {
-      queryClient.invalidateQueries({ queryKey })
+      queryClient.invalidateQueries({ queryKey, refetchType: 'active' })
     })
   }, [queryClient])
 

@@ -345,7 +345,6 @@ export function TicketTimeline({ ticketId, className }: TicketTimelineProps) {
     placeholderData: keepPreviousData,
     staleTime: 30 * 1000,
     enabled: Boolean(ticketId),
-    refetchOnMount: true,
   })
 
   const events = timelineQuery.data?.events ?? []

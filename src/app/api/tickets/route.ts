@@ -16,18 +16,19 @@ export async function GET(request: NextRequest) {
     const aiHandled = searchParams.get('aiHandled')
     const queue = searchParams.get('queue') // 'ai' | 'human' | null
     const search = searchParams.get('search')
+    const countOnly = searchParams.get('countOnly') === 'true'
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
+    const safeLimit = Math.max(1, Math.min(limit, 200))
+    const safeOffset = Math.max(0, offset)
 
     // Build query
     let query = supabase
       .from('tickets')
-      .select(`
+      .select(countOnly ? 'id' : `
         *,
         customer:customers(*)
-      `, { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
+      `, { count: 'exact', head: countOnly })
 
     // Apply filters
     if (status && status !== 'all') {
@@ -50,6 +51,12 @@ export async function GET(request: NextRequest) {
       query = query.ilike('subject', `%${search}%`)
     }
 
+    if (!countOnly) {
+      query = query
+        .order('created_at', { ascending: false })
+        .range(safeOffset, safeOffset + safeLimit - 1)
+    }
+
     const { data: tickets, error, count } = await query
 
     if (error) {
@@ -61,10 +68,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      tickets,
+      tickets: tickets || [],
       total: count,
-      limit,
-      offset,
+      limit: safeLimit,
+      offset: safeOffset,
     })
   } catch (error) {
     console.error('Tickets API error:', error)

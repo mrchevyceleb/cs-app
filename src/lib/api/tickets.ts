@@ -19,7 +19,6 @@ interface FetchEventsOptions extends FetchJsonOptions {
 async function fetchJson<T>(url: string, options: FetchJsonOptions = {}): Promise<T> {
   const response = await fetch(url, {
     signal: options.signal,
-    cache: 'no-store',
   })
 
   if (!response.ok) {
@@ -50,7 +49,7 @@ export async function fetchTicketMessages(
   options: FetchMessagesOptions = {}
 ): Promise<MessageWithAttachments[]> {
   const params = new URLSearchParams()
-  params.set('limit', String(options.limit ?? 100))
+  params.set('limit', String(options.limit ?? 50))
   params.set('offset', String(options.offset ?? 0))
   params.set('includeAttachments', options.includeAttachments === false ? 'false' : 'true')
 

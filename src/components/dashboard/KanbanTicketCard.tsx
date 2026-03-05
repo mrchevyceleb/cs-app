@@ -82,10 +82,11 @@ export function KanbanTicketCard({
       onMouseEnter={onHover}
       onFocus={onHover}
       className={cn(
-        'p-3 rounded-lg border bg-card hover:bg-muted/40 cursor-pointer transition-all duration-200 group',
+        'p-3 rounded-lg border bg-card hover:bg-muted/30 cursor-pointer transition-all duration-200 group',
+        'shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5',
         isChecked
           ? 'border-primary-200 dark:border-primary-700 bg-primary-50/50 dark:bg-primary-900/20'
-          : 'border-border'
+          : 'border-border/70'
       )}
     >
       {/* Top row: checkbox + priority dot + time */}

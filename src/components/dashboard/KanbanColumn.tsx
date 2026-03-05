@@ -54,7 +54,7 @@ export function KanbanColumn({
   return (
     <div
       className={cn(
-        'flex flex-col w-72 min-w-[288px] flex-shrink-0 rounded-lg border',
+        'flex flex-col w-72 min-w-[288px] flex-shrink-0 rounded-lg border shadow-[var(--shadow-sm)]',
         config.borderColor,
         isDropTarget && 'ring-2 ring-primary/50'
       )}
