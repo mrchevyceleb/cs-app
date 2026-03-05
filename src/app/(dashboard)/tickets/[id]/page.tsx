@@ -27,18 +27,35 @@ type PendingMessage = {
   attachmentIds?: string[]
 }
 
-function getCachedTicket(queryClient: ReturnType<typeof useQueryClient>, ticketId: string) {
-  const dashboardTickets = queryClient.getQueryData<TicketWithCustomer[]>(['dashboard-tickets'])
-  const dashboardMatch = dashboardTickets?.find((ticket) => ticket.id === ticketId)
-  if (dashboardMatch) return dashboardMatch
-
-  const listQueries = queryClient.getQueriesData<{ tickets: TicketWithCustomer[] }>({ queryKey: ['tickets'] })
-  for (const [, data] of listQueries) {
-    const match = data?.tickets?.find((ticket) => ticket.id === ticketId)
-    if (match) return match
+function getCachedTicketState(queryClient: ReturnType<typeof useQueryClient>, ticketId: string) {
+  const dashboardQueries = queryClient.getQueriesData<TicketWithCustomer[]>({ queryKey: ['dashboard-tickets'] })
+  for (const [key, data] of dashboardQueries) {
+    const dashboardMatch = data?.find((ticket) => ticket.id === ticketId)
+    if (dashboardMatch) {
+      const updatedAt = queryClient.getQueryState(key)?.dataUpdatedAt
+      return {
+        ticket: dashboardMatch,
+        updatedAt,
+      }
+    }
   }
 
-  return undefined
+  const listQueries = queryClient.getQueriesData<{ tickets: TicketWithCustomer[] }>({ queryKey: ['tickets'] })
+  for (const [key, data] of listQueries) {
+    const match = data?.tickets?.find((ticket) => ticket.id === ticketId)
+    if (match) {
+      const updatedAt = queryClient.getQueryState(key)?.dataUpdatedAt
+      return {
+        ticket: match,
+        updatedAt,
+      }
+    }
+  }
+
+  return {
+    ticket: undefined,
+    updatedAt: undefined,
+  }
 }
 
 export default function TicketDetailPage() {
@@ -52,11 +69,13 @@ export default function TicketDetailPage() {
   const [showCustomerContext, setShowCustomerContext] = useState(true)
   const [sendError, setSendError] = useState<string | null>(null)
   const [pendingMessage, setPendingMessage] = useState<PendingMessage | null>(null)
+  const cachedTicket = useMemo(() => getCachedTicketState(queryClient, ticketId), [queryClient, ticketId])
 
   const ticketQuery = useQuery({
     queryKey: ['ticket', ticketId],
     queryFn: () => fetchTicketById(ticketId),
-    initialData: () => getCachedTicket(queryClient, ticketId),
+    initialData: cachedTicket.ticket,
+    initialDataUpdatedAt: cachedTicket.updatedAt,
     staleTime: 60 * 1000,
     enabled: Boolean(ticketId),
     refetchOnMount: true,
@@ -89,7 +108,7 @@ export default function TicketDetailPage() {
       return next
     })
 
-    queryClient.setQueryData<TicketWithCustomer[] | undefined>(['dashboard-tickets'], (old) => {
+    queryClient.setQueriesData<TicketWithCustomer[] | undefined>({ queryKey: ['dashboard-tickets'] }, (old) => {
       if (!old) return old
       return old.map((ticket) =>
         ticket.id === ticketId ? { ...ticket, ...updates } : ticket
@@ -113,7 +132,7 @@ export default function TicketDetailPage() {
   const replaceTicketInCaches = useCallback((updatedTicket: TicketWithCustomer) => {
     queryClient.setQueryData(['ticket', ticketId], updatedTicket)
 
-    queryClient.setQueryData<TicketWithCustomer[] | undefined>(['dashboard-tickets'], (old) => {
+    queryClient.setQueriesData<TicketWithCustomer[] | undefined>({ queryKey: ['dashboard-tickets'] }, (old) => {
       if (!old) return old
       return old.map((ticket) => (ticket.id === ticketId ? updatedTicket : ticket))
     })
@@ -148,7 +167,7 @@ export default function TicketDetailPage() {
     onMutate: async (updates) => {
       setSendError(null)
       const previousTicket = queryClient.getQueryData<TicketWithCustomer>(['ticket', ticketId])
-      const previousDashboard = queryClient.getQueryData<TicketWithCustomer[]>(['dashboard-tickets'])
+      const previousDashboard = queryClient.getQueriesData<TicketWithCustomer[]>({ queryKey: ['dashboard-tickets'] })
       const previousLists = queryClient.getQueriesData<{ tickets: TicketWithCustomer[]; total: number }>({
         queryKey: ['tickets'],
       })
@@ -163,7 +182,9 @@ export default function TicketDetailPage() {
         queryClient.setQueryData(['ticket', ticketId], context.previousTicket)
       }
       if (context?.previousDashboard) {
-        queryClient.setQueryData(['dashboard-tickets'], context.previousDashboard)
+        context.previousDashboard.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data)
+        })
       }
       if (context?.previousLists) {
         context.previousLists.forEach(([key, data]) => {
@@ -258,7 +279,7 @@ export default function TicketDetailPage() {
       return data as { success: boolean }
     },
     onSuccess: async () => {
-      queryClient.setQueryData<TicketWithCustomer[] | undefined>(['dashboard-tickets'], (old) =>
+      queryClient.setQueriesData<TicketWithCustomer[] | undefined>({ queryKey: ['dashboard-tickets'] }, (old) =>
         (old || []).filter((ticket) => ticket.id !== ticketId)
       )
       queryClient.setQueriesData<{ tickets: TicketWithCustomer[]; total: number } | undefined>(

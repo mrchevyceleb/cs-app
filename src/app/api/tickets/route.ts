@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
     const queue = searchParams.get('queue') // 'ai' | 'human' | null
     const search = searchParams.get('search')
     const countOnly = searchParams.get('countOnly') === 'true'
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const offset = parseInt(searchParams.get('offset') || '0')
-    const safeLimit = Math.max(1, Math.min(limit, 200))
-    const safeOffset = Math.max(0, offset)
+    const parsedLimit = Number.parseInt(searchParams.get('limit') || '50', 10)
+    const parsedOffset = Number.parseInt(searchParams.get('offset') || '0', 10)
+    const safeLimit = Number.isFinite(parsedLimit) ? Math.max(1, Math.min(parsedLimit, 200)) : 50
+    const safeOffset = Number.isFinite(parsedOffset) ? Math.max(0, parsedOffset) : 0
 
     // Build query
     let query = supabase

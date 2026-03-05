@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { fetchTicketById, fetchTicketMessages } from '@/lib/api/tickets'
+import { fetchTicketById } from '@/lib/api/tickets'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -51,12 +51,6 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId, 
       })
     }
 
-    if (!queryClient.getQueryData(['ticket-messages', ticketId])) {
-      queryClient.prefetchQuery({
-        queryKey: ['ticket-messages', ticketId],
-        queryFn: () => fetchTicketMessages(ticketId),
-      })
-    }
   }, [queryClient])
 
   // Fetch tickets with React Query for caching across navigation

@@ -37,6 +37,13 @@ function isEscalationAckMessage(content: string): boolean {
   return ESCALATION_ACK_PATTERNS.some(pattern => pattern.test(content))
 }
 
+function hasEscalationAckInThread(messages: Message[]): boolean {
+  return messages.some((message: Message) => {
+    if (message.sender_type === 'customer') return false
+    return isEscalationAckMessage(message.content || '')
+  })
+}
+
 /** Standard (non-escalated) system prompt */
 function getStandardSystemPrompt(): string {
   return `You are a support agent drafting a reply to a customer. Write a helpful, warm, professional response based on the conversation history.
@@ -75,9 +82,11 @@ Rules:
 - READ THE FULL CONVERSATION CAREFULLY. Understand what the customer originally asked, what the AI already tried, and where it fell short.
 - DO NOT repeat or paraphrase the AI's escalation acknowledgment message ("flagged for our team", "team will follow up", etc.). That message is just a handoff notice and has zero value. Ignore it entirely.
 - DO NOT say things like "I see this was escalated" or "I'm taking over from our AI". The customer does not care about internal routing. Just help them.
+- DO NOT ask whether someone already reached out ("did anyone reach out?", "did you get our email?", "have you heard back?"). Those handoff check-ins are low-value and should not be your first human reply.
 - Start with a brief, genuine acknowledgment of the situation (1 sentence max), then move directly into solving the problem.
 - If you can provide a concrete answer or solution based on the conversation, do it. Be specific.
 - If you need more information to solve the problem, ask targeted diagnostic questions. Be specific about what you need and why.
+- If the customer asked for a human but did not provide issue details, ask one concise question to capture the core problem you need to solve.
 - If the customer expressed frustration, acknowledge it briefly and naturally, then pivot to action. Do not over-apologize.
 - Don't include a greeting line (no "Hi [name]") -- the agent can add their own.
 - Don't sign off with a name -- the agent will handle that.
@@ -118,8 +127,25 @@ export async function POST(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
 
-    // Detect escalated ticket
-    const isEscalated = ticket.status === 'escalated' || ticket.queue_type === 'human'
+    // Fetch conversation history (exclude internal notes)
+    const { data: messages } = await supabase
+      .from('messages')
+      .select('sender_type, content, metadata, created_at')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: true })
+      .limit(30)
+
+    const visibleMessages = ((messages || []) as Message[])
+      .filter((m: Message) => {
+        const meta = m.metadata as Record<string, unknown> | null
+        return !meta?.is_internal
+      })
+
+    // Detect escalated intent from ticket state and/or handoff language in thread.
+    // Some threads contain escalation acknowledgments before status/queue are updated.
+    const isEscalatedByState = ticket.status === 'escalated' || ticket.queue_type === 'human'
+    const isEscalatedByConversation = hasEscalationAckInThread(visibleMessages)
+    const isEscalated = isEscalatedByState || isEscalatedByConversation
 
     // Fetch escalation context from ai_agent_sessions if ticket is escalated
     let escalationReason: string | null = null
@@ -147,20 +173,6 @@ export async function POST(
       }
     }
 
-    // Fetch conversation history (exclude internal notes)
-    const { data: messages } = await supabase
-      .from('messages')
-      .select('sender_type, content, metadata, created_at')
-      .eq('ticket_id', ticketId)
-      .order('created_at', { ascending: true })
-      .limit(30)
-
-    const visibleMessages = ((messages || []) as Message[])
-      .filter((m: Message) => {
-        const meta = m.metadata as Record<string, unknown> | null
-        return !meta?.is_internal
-      })
-
     // For escalated tickets, filter out the AI's escalation acknowledgment messages
     // so the draft model focuses on the real problem, not the handoff boilerplate
     const messagesForDraft = isEscalated
@@ -177,8 +189,9 @@ export async function POST(
       })
       .join('\n\n')
 
-    // Determine who sent the last message to give the AI critical context
-    const lastMessage = visibleMessages[visibleMessages.length - 1]
+    // Determine who sent the last relevant message to give the AI critical context.
+    // For escalations we intentionally ignore handoff boilerplate.
+    const lastMessage = messagesForDraft[messagesForDraft.length - 1] || visibleMessages[visibleMessages.length - 1]
     const lastSender = lastMessage?.sender_type === 'customer' ? 'customer' : 'support'
     const waitingOnCustomer = lastSender !== 'customer'
 
@@ -198,6 +211,7 @@ Status: ${ticket.status}
 Customer: ${customerName}
 
 This ticket was escalated from the AI queue to the human queue. The AI (Nova) could not resolve it. You are drafting the first human agent response.
+Last relevant message was from: ${lastSender}${waitingOnCustomer ? ' (customer has NOT replied yet)' : ''}
 
 Full conversation (AI escalation ack messages removed):
 ${conversationHistory}
@@ -214,9 +228,13 @@ ${conversationHistory}
 
 Draft a reply for the support agent to send:`
 
+    const draftModel = isEscalated
+      ? 'claude-sonnet-4-6'
+      : 'claude-haiku-4-5-20251001'
+
     const response = await withFallback(client =>
       client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: draftModel,
         max_tokens: 600,
         system: systemPrompt,
         messages: [{

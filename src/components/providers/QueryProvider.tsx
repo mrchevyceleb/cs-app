@@ -12,7 +12,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             staleTime: 60 * 1000, // Keep data warm during tab/page navigation
             gcTime: 15 * 60 * 1000, // keep cache warm during navigation
             refetchOnWindowFocus: false,
-            refetchOnMount: false,
+            refetchOnMount: true,
             retry: (failureCount, error) => {
               // Don't retry on AbortError (user cancelled)
               if (error instanceof Error && error.name === 'AbortError') {

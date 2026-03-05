@@ -329,8 +329,8 @@ export function TicketTimeline({ ticketId, className }: TicketTimelineProps) {
 
   const timelineQuery = useQuery({
     queryKey: ['ticket-events', ticketId, limit],
-    queryFn: async () => {
-      const response = await fetch(`/api/tickets/${ticketId}/events?limit=${limit}&offset=0`)
+    queryFn: async ({ signal }) => {
+      const response = await fetch(`/api/tickets/${ticketId}/events?limit=${limit}&offset=0`, { signal })
 
       if (!response.ok) {
         throw new Error('Failed to fetch events')

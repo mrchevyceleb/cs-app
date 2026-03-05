@@ -9,7 +9,7 @@ import { FilterBar, defaultFilters, TicketCard, TicketCardSkeleton, GetNextTicke
 import type { FilterOptions, TicketWithCustomer } from '@/components/dashboard'
 import { BulkActionsBar } from '@/components/dashboard/BulkActionsBar'
 import type { BulkUpdates } from '@/components/dashboard/BulkActionsBar'
-import { fetchTicketById, fetchTicketMessages } from '@/lib/api/tickets'
+import { fetchTicketById } from '@/lib/api/tickets'
 import { useTicketSelection, useViewPreference } from '@/hooks'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { cn } from '@/lib/utils'
@@ -52,6 +52,11 @@ export default function TicketsPage() {
         fetch('/api/tickets?queue=human&countOnly=true'),
         fetch('/api/tickets?queue=ai&countOnly=true'),
       ])
+
+      if (!humanRes.ok || !aiRes.ok) {
+        throw new Error('Failed to fetch queue counts')
+      }
+
       const [humanData, aiData] = await Promise.all([humanRes.json(), aiRes.json()])
       return {
         human: humanData.total || 0,
@@ -59,7 +64,6 @@ export default function TicketsPage() {
       }
     },
     staleTime: 30 * 1000,
-    refetchInterval: 30000,
   })
 
   const pageSize = viewMode === 'board' ? BOARD_PAGE_SIZE : PAGE_SIZE
@@ -172,12 +176,6 @@ export default function TicketsPage() {
       })
     }
 
-    if (!queryClient.getQueryData(['ticket-messages', ticketId])) {
-      queryClient.prefetchQuery({
-        queryKey: ['ticket-messages', ticketId],
-        queryFn: () => fetchTicketMessages(ticketId),
-      })
-    }
   }, [queryClient])
 
   const handleBulkUpdate = useCallback(async (updates: BulkUpdates) => {

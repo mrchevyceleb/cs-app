@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
@@ -11,7 +11,7 @@ import type { BulkUpdates } from '@/components/dashboard/BulkActionsBar'
 import { Button } from '@/components/ui/button'
 import { useViewPreference, useTicketSelection } from '@/hooks'
 import { useAuth } from '@/components/providers/AuthProvider'
-import { fetchTicketById, fetchTicketMessages } from '@/lib/api/tickets'
+import { fetchTicketById } from '@/lib/api/tickets'
 import type { Customer } from '@/types/database'
 import { cn } from '@/lib/utils'
 import { getQueueVisualTheme } from '@/lib/queue-theme'
@@ -45,6 +45,11 @@ export default function DashboardPage() {
         fetch('/api/tickets?queue=human&countOnly=true'),
         fetch('/api/tickets?queue=ai&countOnly=true'),
       ])
+
+      if (!humanRes.ok || !aiRes.ok) {
+        throw new Error('Failed to fetch queue counts')
+      }
+
       const [humanData, aiData] = await Promise.all([humanRes.json(), aiRes.json()])
       return {
         human: humanData.total || 0,
@@ -52,23 +57,18 @@ export default function DashboardPage() {
       }
     },
     staleTime: 30 * 1000,
-    refetchInterval: 30000,
   })
 
   // Fetch tickets for board view (uses the dashboard-tickets cache prefix)
   const supabase = createClient()
   const { data: boardTickets = [], isPending: isBoardLoading } = useQuery({
-    queryKey: ['dashboard-tickets', activeQueue],
+    queryKey: ['dashboard-tickets'],
     queryFn: async (): Promise<TicketWithCustomer[]> => {
-      let query = supabase
+      const query = supabase
         .from('tickets')
         .select(`*, customer:customers(*)`)
         .order('created_at', { ascending: false })
         .limit(50)
-
-      if (activeQueue !== 'all') {
-        query = query.eq('queue_type', activeQueue)
-      }
 
       const { data, error } = await query
 
@@ -78,11 +78,15 @@ export default function DashboardPage() {
         customer: ticket.customer as Customer,
       })) as TicketWithCustomer[]
     },
-    staleTime: 5 * 1000, // Reduced from 30s to 5s for more responsive updates
-    refetchInterval: 10000, // Auto-refetch every 10 seconds for near real-time updates
+    staleTime: 30 * 1000,
     retry: 2,
     enabled: viewMode === 'board',
   })
+
+  const queueScopedBoardTickets = useMemo(() => {
+    if (activeQueue === 'all') return boardTickets
+    return boardTickets.filter((ticket) => ticket.queue_type === activeQueue)
+  }, [boardTickets, activeQueue])
 
   const activeCountBadgeStyles: Record<QueueTab, string> = {
     ai: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/45 dark:text-emerald-100',
@@ -100,12 +104,6 @@ export default function DashboardPage() {
       queryClient.prefetchQuery({
         queryKey: ['ticket', ticketId],
         queryFn: () => fetchTicketById(ticketId),
-      })
-    }
-    if (!queryClient.getQueryData(['ticket-messages', ticketId])) {
-      queryClient.prefetchQuery({
-        queryKey: ['ticket-messages', ticketId],
-        queryFn: () => fetchTicketMessages(ticketId),
       })
     }
   }, [queryClient])
@@ -252,7 +250,7 @@ export default function DashboardPage() {
         <>
           <div className={cn('rounded-2xl border p-3 sm:p-4 transition-colors duration-300', queueTheme.panelFrame)}>
             <KanbanBoard
-              tickets={boardTickets}
+              tickets={queueScopedBoardTickets}
               filters={filters}
               isLoading={isBoardLoading}
               isChecked={isTicketChecked}
