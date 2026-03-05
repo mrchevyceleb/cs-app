@@ -217,7 +217,7 @@ export async function agenticSolve(input: AgentInput): Promise<AgentResult> {
             escalationSummary = parsed.summary
             return {
               type: 'escalation',
-              content: `I've flagged this for our team to review and follow up. ${parsed.summary}`,
+              content: `I've flagged this for our team and someone will follow up with you via email.`,
               confidence: 0.2,
               kbArticleIds,
               webSearchCount,
@@ -488,7 +488,7 @@ export async function* agenticSolveStreaming(
         try {
           const parsed = JSON.parse(result)
           if (parsed.escalated) {
-            const content = `I've flagged this for our team to review and follow up. ${parsed.summary}`
+            const content = `I've flagged this for our team and someone will follow up with you via email.`
             yield { type: 'text_delta', content }
             yield {
               type: 'complete',

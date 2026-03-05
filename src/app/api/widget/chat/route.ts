@@ -6,6 +6,7 @@ import { agenticSolveStreaming } from '@/lib/ai-agent/engine'
 import { classifyTicketPriority, generateTicketSubject } from '@/lib/ai-agent/classify'
 import { withFallback } from '@/lib/claude/client'
 import { sendTicketResolvedEmail } from '@/lib/email'
+import { notifyAgentsOfCustomerReply } from '@/lib/notifications/customer-reply'
 import type { AgentResult } from '@/lib/ai-agent/types'
 import type { Customer, Ticket } from '@/types/database'
 
@@ -451,6 +452,18 @@ Drop me your email so we have it on file in case we get cut off.`,
                     updated_at: new Date().toISOString(),
                   })
                   .eq('id', ticketId)
+
+                const customerName = (ticket?.customer as any)?.name || (ticket?.customer as any)?.email || 'Widget user'
+                notifyAgentsOfCustomerReply({
+                  ticketId,
+                  ticketSubject: ticket?.subject || 'Widget conversation',
+                  customerName,
+                  customerEmail: (ticket?.customer as any)?.email,
+                  messagePreview: content.trim().slice(0, 150),
+                  channel: 'widget',
+                  isEscalation: true,
+                  escalationReason: agentResult.escalationReason || 'Customer requested human support.',
+                }).catch(err => console.error('[Widget] Escalation notification error:', err))
               } else if (agentResult.type === 'resolution') {
                 await supabase
                   .from('tickets')

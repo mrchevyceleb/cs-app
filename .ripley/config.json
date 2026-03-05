@@ -7,7 +7,7 @@
   "autoSaveHistory": true,
   "historyLimit": 50,
   "agenticMode": true,
-  "activeModel": "glm",
+  "activeModel": "openai:codex-5.3-medium",
   "activePrompt": "base",
   "mcpUrl": null,
   "geminiApiKey": null,
