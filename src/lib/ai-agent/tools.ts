@@ -121,6 +121,68 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
       required: ['reason', 'summary'],
     },
   },
+  {
+    name: 'update_ticket',
+    description:
+      'Update the current ticket\'s priority and/or tags. Use when the customer describes urgency or to categorize the issue before resolving.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        priority: {
+          type: 'string',
+          enum: ['low', 'normal', 'high', 'urgent'],
+          description: 'New priority level for the ticket.',
+        },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Tags to set on the ticket (replaces existing tags). E.g. ["billing", "urgent"].',
+        },
+      },
+    },
+  },
+  {
+    name: 'add_internal_note',
+    description:
+      'Add an internal note visible only to human agents (not the customer). Use to leave context for the support team, especially before escalating.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        content: {
+          type: 'string',
+          description: 'The internal note content.',
+        },
+      },
+      required: ['content'],
+    },
+  },
+  {
+    name: 'update_customer',
+    description:
+      'Update the customer\'s profile with information they have explicitly provided. Only use when the customer directly gives you corrected contact info. Email cannot be changed here.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Customer\'s full name.',
+        },
+        phone_number: {
+          type: 'string',
+          description: 'Customer\'s phone number.',
+        },
+        preferred_language: {
+          type: 'string',
+          description: 'Customer\'s preferred language (e.g. "en", "es", "fr").',
+        },
+        preferred_channel: {
+          type: 'string',
+          enum: ['email', 'sms', 'widget', 'portal', 'slack'],
+          description: 'Customer\'s preferred contact channel.',
+        },
+      },
+    },
+  },
 ]
 
 /** Context passed to tool executor for data access */
@@ -293,6 +355,93 @@ ${tickets.length > 0
         summary,
       })
       outputSummary = `Escalated: ${reason.slice(0, 80)}`
+      break
+    }
+
+    case 'update_ticket': {
+      const priority = toolInput.priority as string | undefined
+      const tags = toolInput.tags as string[] | undefined
+      if (!priority && !tags) {
+        result = 'Please provide at least one field to update (priority or tags).'
+        outputSummary = 'No fields provided'
+        break
+      }
+
+      const updateData: Record<string, unknown> = {}
+      if (priority) updateData.priority = priority
+      if (tags) updateData.tags = tags
+
+      const { error } = await getSupabase()
+        .from('tickets')
+        .update(updateData)
+        .eq('id', context.ticketId)
+
+      if (error) {
+        result = `Failed to update ticket: ${error.message}`
+        outputSummary = 'Ticket update failed'
+      } else {
+        const parts = []
+        if (priority) parts.push(`priority=${priority}`)
+        if (tags) parts.push(`tags=[${tags.join(', ')}]`)
+        result = `Ticket updated: ${parts.join(', ')}.`
+        outputSummary = `Updated ticket: ${parts.join(', ')}`
+      }
+      break
+    }
+
+    case 'add_internal_note': {
+      const content = toolInput.content as string
+      const { error } = await getSupabase()
+        .from('messages')
+        .insert({
+          ticket_id: context.ticketId,
+          sender_type: 'ai',
+          content,
+          metadata: { is_internal: true },
+        })
+
+      if (error) {
+        result = `Failed to add internal note: ${error.message}`
+        outputSummary = 'Internal note failed'
+      } else {
+        result = 'Internal note added successfully.'
+        outputSummary = 'Internal note added'
+      }
+      break
+    }
+
+    case 'update_customer': {
+      const { name, phone_number, preferred_language, preferred_channel } = toolInput as {
+        name?: string
+        phone_number?: string
+        preferred_language?: string
+        preferred_channel?: string
+      }
+      const updateData: Record<string, unknown> = {}
+      if (name) updateData.name = name
+      if (phone_number) updateData.phone_number = phone_number
+      if (preferred_language) updateData.preferred_language = preferred_language
+      if (preferred_channel) updateData.preferred_channel = preferred_channel
+
+      if (Object.keys(updateData).length === 0) {
+        result = 'Please provide at least one field to update.'
+        outputSummary = 'No fields provided'
+        break
+      }
+
+      const { error } = await getSupabase()
+        .from('customers')
+        .update(updateData)
+        .eq('id', context.customerId)
+
+      if (error) {
+        result = `Failed to update customer: ${error.message}`
+        outputSummary = 'Customer update failed'
+      } else {
+        const fields = Object.keys(updateData).join(', ')
+        result = `Customer profile updated: ${fields}.`
+        outputSummary = `Updated customer: ${fields}`
+      }
       break
     }
 
