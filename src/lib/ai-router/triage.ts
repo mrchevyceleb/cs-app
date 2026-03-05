@@ -77,7 +77,7 @@ export async function triageMessage(input: TriageInput): Promise<RoutingDecision
   try {
     const response = await withFallback(client =>
       client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         system: TRIAGE_PROMPT,
         messages: [
@@ -122,7 +122,7 @@ export async function triageMessage(input: TriageInput): Promise<RoutingDecision
     }
 
     decision.processing_time_ms = Date.now() - startTime;
-    decision.model_used = 'claude-sonnet-4-20250514';
+    decision.model_used = 'claude-sonnet-4-6';
 
     return decision;
   } catch (error) {
@@ -164,7 +164,7 @@ export async function generateResponse(
 
     const response = await withFallback(client =>
       client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         system: RESPONSE_PROMPT,
         messages: [

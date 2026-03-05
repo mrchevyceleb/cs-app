@@ -53,4 +53,4 @@ export async function withFallback<T>(fn: (client: Anthropic) => Promise<T>): Pr
 }
 
 // Model for agent copilot
-export const COPILOT_MODEL = 'claude-sonnet-4-20250514'
+export const COPILOT_MODEL = 'claude-sonnet-4-6'
