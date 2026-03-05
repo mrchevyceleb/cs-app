@@ -455,7 +455,7 @@ Drop me your email so we have it on file in case we get cut off.`,
 
                 const customerName = (ticket?.customer as any)?.name || (ticket?.customer as any)?.email || 'Widget user'
                 notifyAgentsOfCustomerReply({
-                  ticketId,
+                  ticketId: ticketId!,
                   ticketSubject: ticket?.subject || 'Widget conversation',
                   customerName,
                   customerEmail: (ticket?.customer as any)?.email,

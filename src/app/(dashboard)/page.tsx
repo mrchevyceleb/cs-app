@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
@@ -62,11 +62,17 @@ export default function DashboardPage() {
   // Fetch tickets for board view (uses the dashboard-tickets cache prefix)
   const supabase = createClient()
   const { data: boardTickets = [], isPending: isBoardLoading } = useQuery({
-    queryKey: ['dashboard-tickets'],
+    queryKey: ['dashboard-tickets', 'board', activeQueue],
     queryFn: async (): Promise<TicketWithCustomer[]> => {
-      const query = supabase
+      let query = supabase
         .from('tickets')
         .select(`*, customer:customers(*)`)
+
+      if (activeQueue !== 'all') {
+        query = query.eq('queue_type', activeQueue)
+      }
+
+      query = query
         .order('created_at', { ascending: false })
         .limit(50)
 
@@ -82,11 +88,6 @@ export default function DashboardPage() {
     retry: 2,
     enabled: viewMode === 'board',
   })
-
-  const queueScopedBoardTickets = useMemo(() => {
-    if (activeQueue === 'all') return boardTickets
-    return boardTickets.filter((ticket) => ticket.queue_type === activeQueue)
-  }, [boardTickets, activeQueue])
 
   const activeCountBadgeStyles: Record<QueueTab, string> = {
     ai: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/45 dark:text-emerald-100',
@@ -250,7 +251,7 @@ export default function DashboardPage() {
         <>
           <div className={cn('rounded-2xl border p-3 sm:p-4 transition-colors duration-300', queueTheme.panelFrame)}>
             <KanbanBoard
-              tickets={queueScopedBoardTickets}
+              tickets={boardTickets}
               filters={filters}
               isLoading={isBoardLoading}
               isChecked={isTicketChecked}
