@@ -177,7 +177,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         },
         preferred_channel: {
           type: 'string',
-          enum: ['email', 'sms', 'widget', 'portal', 'slack'],
+          enum: ['email', 'widget'],
           description: 'Customer\'s preferred contact channel.',
         },
       },
