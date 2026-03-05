@@ -39,6 +39,37 @@ export default function TicketsPage() {
     hasSelection,
   } = useTicketSelection()
 
+  // Load saved filters and queue from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedFilters = localStorage.getItem('cs-app-ticket-filters')
+      if (savedFilters) {
+        const parsed = JSON.parse(savedFilters)
+        setFilters((prev) => ({ ...prev, ...parsed }))
+      }
+      const savedQueue = localStorage.getItem('cs-app-active-queue') as QueueTab | null
+      if (savedQueue === 'human' || savedQueue === 'ai' || savedQueue === 'all') {
+        setActiveQueue(savedQueue)
+      }
+    } catch {}
+  }, [])
+
+  // Persist filters and active queue to localStorage
+  useEffect(() => {
+    try {
+      // Only persist non-search filter state (search is transient)
+      const { search: _search, ...persistable } = filters
+      localStorage.setItem('cs-app-ticket-filters', JSON.stringify(persistable))
+    } catch {}
+  }, [filters])
+
+  const handleSetActiveQueue = useCallback((queue: QueueTab) => {
+    setActiveQueue(queue)
+    try {
+      localStorage.setItem('cs-app-active-queue', queue)
+    } catch {}
+  }, [])
+
   // Reset to first page when filters or queue tab change
   useEffect(() => {
     setCurrentPage(0)
@@ -99,6 +130,11 @@ export default function TicketsPage() {
         params.set('aiHandled', filters.aiHandled === 'ai' ? 'true' : 'false')
       }
 
+      // Apply assigned-to-me filter
+      if (filters.assignedToMe) {
+        params.set('assignedAgent', 'me')
+      }
+
       const response = await fetch(`/api/tickets?${params.toString()}`, {
         signal,
       })
@@ -113,6 +149,13 @@ export default function TicketsPage() {
   })
 
   useEffect(() => {
+    // Let the active query settle first; avoid competing prefetch requests
+    // that can make tab switches feel like an endless loading loop.
+    if (isPending) return
+
+    // Queue prefetch is most useful for broad browsing, not active search.
+    if (filters.search.trim().length > 0) return
+
     const sharedParams = new URLSearchParams()
     sharedParams.set('limit', String(pageSize))
     sharedParams.set('offset', viewMode === 'board' ? '0' : String(currentPage * PAGE_SIZE))
@@ -131,6 +174,10 @@ export default function TicketsPage() {
 
     if (filters.aiHandled !== 'all') {
       sharedParams.set('aiHandled', filters.aiHandled === 'ai' ? 'true' : 'false')
+    }
+
+    if (filters.assignedToMe) {
+      sharedParams.set('assignedAgent', 'me')
     }
 
     const prefetchQueue = (queue: QueueTab) => {
@@ -158,7 +205,7 @@ export default function TicketsPage() {
     } else {
       prefetchQueue('all')
     }
-  }, [queryClient, filters, currentPage, pageSize, viewMode, activeQueue])
+  }, [queryClient, filters, currentPage, pageSize, viewMode, activeQueue, isPending])
 
   const tickets: TicketWithCustomer[] = data?.tickets || []
   const totalCount = data?.total || 0
@@ -295,7 +342,7 @@ export default function TicketsPage() {
         ]).map(tab => (
           <button
             key={tab.key}
-            onClick={() => setActiveQueue(tab.key)}
+            onClick={() => handleSetActiveQueue(tab.key)}
             className={cn(
               'rounded-lg border px-4 py-2 text-sm font-semibold transition-all duration-200',
               activeQueue === tab.key ? queueTheme.tabActive : queueTheme.tabInactive
@@ -365,7 +412,7 @@ export default function TicketsPage() {
                     No tickets found
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    {filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.aiHandled !== 'all'
+                    {filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.aiHandled !== 'all' || filters.assignedToMe
                       ? 'Try adjusting your filters'
                       : 'No tickets have been created yet'}
                   </p>

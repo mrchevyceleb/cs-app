@@ -6,6 +6,7 @@ import type {
 } from '../types'
 import { withFallback, COPILOT_MODEL } from '../client'
 import { SENTIMENT_ANALYSIS_PROMPT } from '../prompts'
+import { resolveTicketId } from './ticket-id'
 
 /**
  * Analyze customer sentiment from ticket messages
@@ -24,11 +25,20 @@ export async function analyzeSentiment(
   }
 
   try {
+    const resolvedTicket = await resolveTicketId(input.ticket_id, context)
+    if (!resolvedTicket.success || !resolvedTicket.ticketId) {
+      return {
+        success: false,
+        error: resolvedTicket.error || `Ticket not found: ${input.ticket_id}`,
+      }
+    }
+    const ticketId = resolvedTicket.ticketId
+
     // Fetch customer messages from the ticket
     const { data: messages, error: messagesError } = await supabase
       .from('messages')
       .select('sender_type, content, created_at')
-      .eq('ticket_id', input.ticket_id)
+      .eq('ticket_id', ticketId)
       .eq('sender_type', 'customer')
       .order('created_at', { ascending: true })
 
@@ -108,7 +118,7 @@ export async function analyzeSentiment(
       data: {
         ...analysis,
         message_count: messages.length,
-        ticket_id: input.ticket_id,
+        ticket_id: ticketId,
       },
     }
   } catch (error) {

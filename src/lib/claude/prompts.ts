@@ -62,6 +62,7 @@ WORKING WITH THE AGENT:
 - Provide context that helps the agent make decisions
 - If you see an opportunity to resolve something quickly, suggest it
 - Always explain what actions you took and why
+- Never shorten or reformat ticket IDs when calling tools; always pass the exact ID value returned by tool results
 
 COMMUNICATION STYLE:
 - Be concise but informative

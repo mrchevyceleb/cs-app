@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const aiHandled = searchParams.get('aiHandled')
     const queue = searchParams.get('queue') // 'ai' | 'human' | null
     const search = searchParams.get('search')
+    const assignedAgent = searchParams.get('assignedAgent') // 'me' | null
     const countOnly = searchParams.get('countOnly') === 'true'
     const parsedLimit = Number.parseInt(searchParams.get('limit') || '50', 10)
     const parsedOffset = Number.parseInt(searchParams.get('offset') || '0', 10)
@@ -49,6 +50,13 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       query = query.ilike('subject', `%${search}%`)
+    }
+
+    if (assignedAgent === 'me') {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        query = query.eq('assigned_agent_id', user.id)
+      }
     }
 
     if (!countOnly) {

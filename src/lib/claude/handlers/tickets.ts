@@ -13,6 +13,7 @@ import type { ChannelType } from '@/types/channels'
 import { classifyTicketPriority } from '@/lib/ai-agent/classify'
 import { withFallback, COPILOT_MODEL } from '../client'
 import { TICKET_SUMMARY_PROMPT } from '../prompts'
+import { resolveTicketId } from './ticket-id'
 
 /**
  * Search through support tickets
@@ -115,11 +116,20 @@ export async function updateTicket(
   }
 
   try {
+    const resolvedTicket = await resolveTicketId(input.ticket_id, context)
+    if (!resolvedTicket.success || !resolvedTicket.ticketId) {
+      return {
+        success: false,
+        error: resolvedTicket.error || `Ticket not found: ${input.ticket_id}`,
+      }
+    }
+    const ticketId = resolvedTicket.ticketId
+
     // Fetch current ticket state
     const { data: currentTicket, error: fetchError } = await supabase
       .from('tickets')
       .select('*')
-      .eq('id', input.ticket_id)
+      .eq('id', ticketId)
       .single()
 
     if (fetchError || !currentTicket) {
@@ -183,7 +193,7 @@ export async function updateTicket(
     const { data: ticket, error: updateError } = await supabase
       .from('tickets')
       .update(updates)
-      .eq('id', input.ticket_id)
+      .eq('id', ticketId)
       .select()
       .single()
 
@@ -197,7 +207,7 @@ export async function updateTicket(
     // Log events
     for (const event of events) {
       await supabase.from('ticket_events').insert({
-        ticket_id: input.ticket_id,
+        ticket_id: ticketId,
         agent_id: agentId || null,
         event_type: event.event_type,
         old_value: event.old_value,
@@ -242,6 +252,15 @@ export async function escalateTicket(
   }
 
   try {
+    const resolvedTicket = await resolveTicketId(input.ticket_id, context)
+    if (!resolvedTicket.success || !resolvedTicket.ticketId) {
+      return {
+        success: false,
+        error: resolvedTicket.error || `Ticket not found: ${input.ticket_id}`,
+      }
+    }
+    const ticketId = resolvedTicket.ticketId
+
     // Update ticket status to escalated and move to human queue
     const { data: ticket, error: updateError } = await supabase
       .from('tickets')
@@ -250,7 +269,7 @@ export async function escalateTicket(
         queue_type: 'human',
         updated_at: new Date().toISOString(),
       })
-      .eq('id', input.ticket_id)
+      .eq('id', ticketId)
       .select(`
         id,
         subject,
@@ -269,7 +288,7 @@ export async function escalateTicket(
 
     // Log escalation event with notes in metadata
     await supabase.from('ticket_events').insert({
-      ticket_id: input.ticket_id,
+      ticket_id: ticketId,
       agent_id: agentId || null,
       event_type: 'escalated',
       old_value: null,
@@ -318,6 +337,15 @@ export async function getTicketSummary(
   }
 
   try {
+    const resolvedTicket = await resolveTicketId(input.ticket_id, context)
+    if (!resolvedTicket.success || !resolvedTicket.ticketId) {
+      return {
+        success: false,
+        error: resolvedTicket.error || `Ticket not found: ${input.ticket_id}`,
+      }
+    }
+    const ticketId = resolvedTicket.ticketId
+
     // Fetch ticket with messages
     const { data: ticket, error: ticketError } = await supabase
       .from('tickets')
@@ -329,7 +357,7 @@ export async function getTicketSummary(
         created_at,
         customer:customers(name, email)
       `)
-      .eq('id', input.ticket_id)
+      .eq('id', ticketId)
       .single()
 
     if (ticketError || !ticket) {
@@ -343,7 +371,7 @@ export async function getTicketSummary(
     const { data: messages, error: messagesError } = await supabase
       .from('messages')
       .select('*')
-      .eq('ticket_id', input.ticket_id)
+      .eq('ticket_id', ticketId)
       .order('created_at', { ascending: true })
 
     if (messagesError) {

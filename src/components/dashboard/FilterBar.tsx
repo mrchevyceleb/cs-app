@@ -27,6 +27,7 @@ export interface FilterOptions {
   priority: string[]
   tags: string[]
   aiHandled: 'all' | 'ai' | 'human'
+  assignedToMe: boolean
   sortBy: 'created_at' | 'updated_at' | 'priority' | 'ai_confidence'
   sortOrder: 'asc' | 'desc'
 }
@@ -135,7 +136,8 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
     filters.status.length +
     filters.priority.length +
     (filters.tags?.length || 0) +
-    (filters.aiHandled !== 'all' ? 1 : 0)
+    (filters.aiHandled !== 'all' ? 1 : 0) +
+    (filters.assignedToMe ? 1 : 0)
 
   const updateFilter = <K extends keyof FilterOptions>(
     key: K,
@@ -162,6 +164,7 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
       priority: [],
       tags: [],
       aiHandled: 'all',
+      assignedToMe: false,
     })
   }
 
@@ -186,6 +189,33 @@ export function FilterBar({ filters, onFiltersChange, className }: FilterBarProp
           </button>
         )}
       </div>
+
+      {/* My Tickets Toggle */}
+      <Button
+        variant={filters.assignedToMe ? 'default' : 'outline'}
+        className={cn(
+          'gap-2 shrink-0',
+          filters.assignedToMe
+            ? 'bg-primary-600 hover:bg-primary-700 text-white border-primary-600'
+            : ''
+        )}
+        onClick={() => updateFilter('assignedToMe', !filters.assignedToMe)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="w-4 h-4"
+        >
+          <circle cx="12" cy="8" r="4" />
+          <path d="M20 21a8 8 0 1 0-16 0" />
+        </svg>
+        My Tickets
+      </Button>
 
       {/* Filter Popover */}
       <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
@@ -409,6 +439,7 @@ export const defaultFilters: FilterOptions = {
   priority: [],
   tags: [],
   aiHandled: 'all',
+  assignedToMe: false,
   sortBy: 'created_at',
   sortOrder: 'desc',
 }

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 
-const INVALIDATION_DELAY_MS = 400
+const INVALIDATION_DELAY_MS = 500
+const MIN_ACTIVE_REFETCH_INTERVAL_MS = 2500
 
 const ALWAYS_INVALIDATE_KEYS = [
   ['tickets'],
@@ -32,15 +33,32 @@ export function TicketRealtimeSync() {
   const queryClient = useQueryClient()
   const supabase = useMemo(() => createClient(), [])
   const invalidateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastFlushAtRef = useRef(0)
   const pendingInvalidationKeysRef = useRef<Set<string>>(new Set())
 
-  const flushInvalidations = useCallback(() => {
+  const flushInvalidations = useCallback(function flushInvalidations() {
     invalidateTimerRef.current = null
+    const now = Date.now()
+    const elapsedSinceLastFlush = now - lastFlushAtRef.current
+
+    if (elapsedSinceLastFlush < MIN_ACTIVE_REFETCH_INTERVAL_MS) {
+      invalidateTimerRef.current = setTimeout(() => {
+        flushInvalidations()
+      }, MIN_ACTIVE_REFETCH_INTERVAL_MS - elapsedSinceLastFlush)
+      return
+    }
+
     const keysToFlush = Array.from(pendingInvalidationKeysRef.current)
     pendingInvalidationKeysRef.current.clear()
+    lastFlushAtRef.current = now
 
     keysToFlush.forEach((key) => {
-      queryClient.invalidateQueries({ queryKey: [key], refetchType: 'active' })
+      queryClient.invalidateQueries(
+        { queryKey: [key], refetchType: 'active' },
+        // Avoid cancelling in-flight requests; repeated realtime events can otherwise
+        // starve the initial load and keep the UI in a permanent loading state.
+        { cancelRefetch: false }
+      )
     })
   }, [queryClient])
 

@@ -7,6 +7,7 @@ import type {
 import { withFallback, COPILOT_MODEL } from '../client'
 import { RESPONSE_GENERATION_PROMPT } from '../prompts'
 import { searchKnowledgeBase } from './knowledge'
+import { resolveTicketId } from './ticket-id'
 
 /**
  * Generate draft response options for a ticket
@@ -27,6 +28,15 @@ export async function generateResponse(
   }
 
   try {
+    const resolvedTicket = await resolveTicketId(input.ticket_id, context)
+    if (!resolvedTicket.success || !resolvedTicket.ticketId) {
+      return {
+        success: false,
+        error: resolvedTicket.error || `Ticket not found: ${input.ticket_id}`,
+      }
+    }
+    const ticketId = resolvedTicket.ticketId
+
     // Fetch ticket with customer info
     const { data: ticket, error: ticketError } = await supabase
       .from('tickets')
@@ -37,7 +47,7 @@ export async function generateResponse(
         priority,
         customer:customers(id, name, email, preferred_language)
       `)
-      .eq('id', input.ticket_id)
+      .eq('id', ticketId)
       .single()
 
     if (ticketError || !ticket) {
@@ -51,7 +61,7 @@ export async function generateResponse(
     const { data: messages, error: messagesError } = await supabase
       .from('messages')
       .select('sender_type, content, created_at')
-      .eq('ticket_id', input.ticket_id)
+      .eq('ticket_id', ticketId)
       .order('created_at', { ascending: false })
       .limit(10)
 
