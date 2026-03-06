@@ -24,7 +24,14 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useViewPreference()
   const [filters, setFilters] = useState<FilterOptions>(defaultFilters)
   const [selectedTicketId, setSelectedTicketId] = useState<string>()
-  const [activeQueue, setActiveQueue] = useState<QueueTab>('all')
+  const [activeQueue, setActiveQueue] = useState<QueueTab>(() => {
+    if (typeof window === 'undefined') return 'all'
+    try {
+      const saved = localStorage.getItem('cs-app-active-queue')
+      if (saved === 'human' || saved === 'ai' || saved === 'all') return saved
+    } catch {}
+    return 'all'
+  })
 
   const { agent } = useAuth()
   const {
@@ -37,6 +44,11 @@ export default function DashboardPage() {
   } = useTicketSelection()
   const [bulkMessage, setBulkMessage] = useState<string | null>(null)
   const queueTheme = getQueueVisualTheme(activeQueue)
+
+  const handleSetActiveQueue = useCallback((queue: QueueTab) => {
+    setActiveQueue(queue)
+    try { localStorage.setItem('cs-app-active-queue', queue) } catch {}
+  }, [])
 
   const { data: queueCounts } = useQuery({
     queryKey: ['queue-counts'],
@@ -207,7 +219,7 @@ export default function DashboardPage() {
           ]).map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveQueue(tab.key)}
+              onClick={() => handleSetActiveQueue(tab.key)}
               className={cn(
                 'rounded-lg border px-4 py-2 text-sm font-semibold transition-all duration-200',
                 activeQueue === tab.key ? queueTheme.tabActive : queueTheme.tabInactive

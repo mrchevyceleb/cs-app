@@ -25,9 +25,23 @@ export default function TicketsPage() {
   const queryClient = useQueryClient()
   const { agent } = useAuth()
   const [viewMode, setViewMode] = useViewPreference()
-  const [filters, setFilters] = useState<FilterOptions>(defaultFilters)
+  const [filters, setFilters] = useState<FilterOptions>(() => {
+    if (typeof window === 'undefined') return defaultFilters
+    try {
+      const saved = localStorage.getItem('cs-app-ticket-filters')
+      if (saved) return { ...defaultFilters, ...JSON.parse(saved) }
+    } catch {}
+    return defaultFilters
+  })
   const [currentPage, setCurrentPage] = useState(0)
-  const [activeQueue, setActiveQueue] = useState<QueueTab>('all')
+  const [activeQueue, setActiveQueue] = useState<QueueTab>(() => {
+    if (typeof window === 'undefined') return 'all'
+    try {
+      const saved = localStorage.getItem('cs-app-active-queue')
+      if (saved === 'human' || saved === 'ai' || saved === 'all') return saved
+    } catch {}
+    return 'all'
+  })
   const [bulkMessage, setBulkMessage] = useState<string | null>(null)
 
   const {
@@ -38,21 +52,6 @@ export default function TicketsPage() {
     selectedCount,
     hasSelection,
   } = useTicketSelection()
-
-  // Load saved filters and queue from localStorage on mount
-  useEffect(() => {
-    try {
-      const savedFilters = localStorage.getItem('cs-app-ticket-filters')
-      if (savedFilters) {
-        const parsed = JSON.parse(savedFilters)
-        setFilters((prev) => ({ ...prev, ...parsed }))
-      }
-      const savedQueue = localStorage.getItem('cs-app-active-queue') as QueueTab | null
-      if (savedQueue === 'human' || savedQueue === 'ai' || savedQueue === 'all') {
-        setActiveQueue(savedQueue)
-      }
-    } catch {}
-  }, [])
 
   // Persist filters and active queue to localStorage
   useEffect(() => {

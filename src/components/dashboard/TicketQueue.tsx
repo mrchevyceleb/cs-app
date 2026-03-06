@@ -15,7 +15,7 @@ import { useTicketSelection } from '@/hooks'
 import { RefreshCw, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getQueueVisualTheme } from '@/lib/queue-theme'
-import type { Ticket, Customer } from '@/types/database'
+import type { Customer } from '@/types/database'
 
 type FilterTab = 'all' | 'attention' | 'ai' | 'human' | 'escalated'
 
@@ -91,62 +91,6 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId, 
       setActiveTab('all')
     }
   }, [queueFilter, activeTab])
-
-  // Set up real-time subscription (updates React Query cache)
-  useEffect(() => {
-    const channel = supabase
-      .channel('tickets-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tickets',
-        },
-        async (payload) => {
-          console.log('Ticket change received:', payload)
-
-          if (payload.eventType === 'INSERT') {
-            // Fetch the new ticket with customer data
-            const { data: newTicket } = await supabase
-              .from('tickets')
-              .select(`
-                *,
-                customer:customers(*)
-              `)
-              .eq('id', payload.new.id)
-              .single()
-
-            if (newTicket) {
-              queryClient.setQueryData(['dashboard-tickets'], (old: TicketWithCustomer[] | undefined) => [
-                {
-                  ...newTicket,
-                  customer: newTicket.customer as Customer,
-                } as TicketWithCustomer,
-                ...(old || []),
-              ])
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            queryClient.setQueryData(['dashboard-tickets'], (old: TicketWithCustomer[] | undefined) =>
-              (old || []).map((ticket) =>
-                ticket.id === payload.new.id
-                  ? { ...ticket, ...(payload.new as Ticket) }
-                  : ticket
-              )
-            )
-          } else if (payload.eventType === 'DELETE') {
-            queryClient.setQueryData(['dashboard-tickets'], (old: TicketWithCustomer[] | undefined) =>
-              (old || []).filter((ticket) => ticket.id !== payload.old.id)
-            )
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [supabase, queryClient])
 
   // Filter tickets based on active tab
   const filteredTickets = useMemo(() => {

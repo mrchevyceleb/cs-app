@@ -36,18 +36,16 @@ async function hasExistingCheckin(
  * Generate a friendly check-in message
  */
 function generateCheckinMessage(ticket: Ticket, customerName: string | null): string {
-  const name = customerName || 'there'
+  const firstName = customerName?.split(' ')[0] || 'there'
 
-  return `Hi ${name},
+  // No greeting or sign-off here - the HTML template and text body add those separately.
+  // The HTML builder splits this string on newlines and wraps each line in <p> tags,
+  // so starting with a greeting would produce a double greeting in the rendered email.
+  return `We recently helped you with "${ticket.subject}" and wanted to check in.
 
-We recently helped you with "${ticket.subject}" and wanted to check in.
+Is everything still working well? If you've encountered any new issues or have questions, please don't hesitate to reach out.
 
-Is everything still working well? If you've encountered any new issues or have questions, please don't hesitate to reach out - we're here to help!
-
-If everything is going smoothly, no need to reply. We're just making sure you're taken care of.
-
-Best regards,
-Support Team`
+If everything is going smoothly, no need to reply. We're just making sure you're taken care of.`
 }
 
 /**
@@ -191,6 +189,7 @@ export async function POST(request: NextRequest) {
 
           const unsubscribeUrl = getUnsubscribeUrl(customer.id)
 
+          const firstName = customer.name?.split(' ')[0] || 'there'
           const emailContent = portalUrl
             ? `${checkinMessage}\n\nYou can also view your ticket history here: ${portalUrl}`
             : checkinMessage
@@ -198,10 +197,13 @@ export async function POST(request: NextRequest) {
           const result = await sendEmail({
             to: customer.email,
             subject: `Following up on your support request - #${ticket.id.slice(0, 8).toUpperCase()}`,
-            text: `${emailContent}\n\nUnsubscribe from proactive emails: ${unsubscribeUrl}`,
+            // Greeting prepended here (not in generateCheckinMessage) to avoid double greeting
+            text: `Hi ${firstName},\n\n${emailContent}\n\nBest,\nNova, R-Link Support\n\nUnsubscribe from proactive emails: ${unsubscribeUrl}`,
             html: `<div style="font-family: sans-serif; line-height: 1.6;">
+              <p>Hi ${firstName},</p>
               ${checkinMessage.split('\n').map(line => `<p>${line || '&nbsp;'}</p>`).join('')}
               ${portalUrl ? `<p><a href="${portalUrl}" style="color: #3B82F6;">View your ticket history</a></p>` : ''}
+              <p>Best,<br />Nova, R-Link Support</p>
               <p style="font-size: 11px; color: #94A3B8; margin-top: 24px;"><a href="${unsubscribeUrl}" style="color: #94A3B8;">Unsubscribe from proactive emails</a></p>
             </div>`,
             tags: [
