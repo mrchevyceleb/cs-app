@@ -108,6 +108,7 @@
     iframe.title = 'Customer Support Widget';
     iframe.allow = 'clipboard-read; clipboard-write';
     iframe.setAttribute('loading', 'lazy');
+    iframe.setAttribute('allowTransparency', 'true');
     iframe.style.cssText = [
       'width: 100%',
       'height: 100%',

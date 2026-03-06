@@ -21,8 +21,13 @@ export default function WidgetPage() {
   useEffect(() => {
     document.body.style.margin = '0'
     document.body.style.padding = '0'
-    document.body.style.background = 'transparent'
     document.body.style.overflow = 'hidden'
+    document.documentElement.classList.add('widget-transparent')
+    document.body.classList.add('widget-transparent')
+    return () => {
+      document.documentElement.classList.remove('widget-transparent')
+      document.body.classList.remove('widget-transparent')
+    }
   }, [])
 
   // Create anonymous session
