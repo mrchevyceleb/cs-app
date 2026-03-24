@@ -117,11 +117,20 @@ export interface WidgetTicket {
   last_message_at?: string
 }
 
+export interface WidgetAttachment {
+  id: string
+  url: string
+  fileName: string
+  fileType: string
+  fileSize: number
+}
+
 export interface WidgetMessage_DB {
   id: string
   sender_type: 'customer' | 'agent' | 'ai'
   content: string
   created_at: string
+  attachments?: WidgetAttachment[]
 }
 
 export interface StreamingMessage extends WidgetMessage_DB {

@@ -86,9 +86,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { content, ticketId: existingTicketId } = body as {
+    const { content, ticketId: existingTicketId, attachmentIds } = body as {
       content: string
       ticketId?: string
+      attachmentIds?: string[]
     }
 
     if (!content || typeof content !== 'string' || !content.trim()) {
@@ -155,6 +156,32 @@ export async function POST(request: NextRequest) {
     if (msgError) {
       console.error('Failed to save message:', msgError)
       return NextResponse.json({ error: 'Failed to save message' }, { status: 500 })
+    }
+
+    // Link uploaded attachments to the saved message (verify ownership via storage path)
+    if (attachmentIds && attachmentIds.length > 0) {
+      // Only link attachments that belong to this customer or ticket
+      const ownershipPrefixes = [
+        `widget/${session.customerId}/`,
+        ...(ticketId ? [`tickets/${ticketId}/`] : []),
+      ]
+
+      const { data: ownedAttachments } = await supabase
+        .from('message_attachments')
+        .select('id, storage_path')
+        .in('id', attachmentIds.slice(0, 4)) // Max 4 attachments
+        .is('message_id', null)
+
+      const validIds = (ownedAttachments || [])
+        .filter(a => ownershipPrefixes.some(prefix => a.storage_path.startsWith(prefix)))
+        .map(a => a.id)
+
+      if (validIds.length > 0) {
+        await supabase
+          .from('message_attachments')
+          .update({ message_id: savedCustomerMsg.id })
+          .in('id', validIds)
+      }
     }
 
     // Detect email in message from anonymous users and link to their account

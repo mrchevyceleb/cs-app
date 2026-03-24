@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getWidgetSession } from '@/lib/widget/auth'
-import type { WidgetMessage_DB, WidgetSendMessageRequest } from '@/types/widget'
+import type { WidgetMessage_DB, WidgetAttachment, WidgetSendMessageRequest } from '@/types/widget'
 import type { MessageMetadata } from '@/types/database'
 
 interface RouteParams {
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // Fetch messages (excluding internal notes)
+    // Fetch messages with attachments (excluding internal notes)
     const { data: rawMessages, error: messagesError } = await supabase
       .from('messages')
       .select(`
@@ -85,7 +85,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         sender_type,
         content,
         created_at,
-        metadata
+        metadata,
+        message_attachments (
+          id,
+          file_name,
+          file_type,
+          file_size,
+          public_url
+        )
       `)
       .eq('ticket_id', id)
       .order('created_at', { ascending: true })
@@ -98,18 +105,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // Filter out internal notes
+    // Filter out internal notes, include attachments
     const messages: WidgetMessage_DB[] = (rawMessages || [])
       .filter((msg) => {
         const metadata = msg.metadata as MessageMetadata | null
         return !metadata?.is_internal
       })
-      .map((msg) => ({
-        id: msg.id,
-        sender_type: msg.sender_type as 'customer' | 'agent' | 'ai',
-        content: msg.content,
-        created_at: msg.created_at,
-      }))
+      .map((msg) => {
+        const attachments: WidgetAttachment[] = ((msg as any).message_attachments || [])
+          .filter((a: any) => a.public_url)
+          .map((a: any) => ({
+            id: a.id,
+            url: a.public_url,
+            fileName: a.file_name,
+            fileType: a.file_type,
+            fileSize: a.file_size,
+          }))
+
+        return {
+          id: msg.id,
+          sender_type: msg.sender_type as 'customer' | 'agent' | 'ai',
+          content: msg.content,
+          created_at: msg.created_at,
+          ...(attachments.length > 0 ? { attachments } : {}),
+        }
+      })
 
     return NextResponse.json({
       ticket: {
