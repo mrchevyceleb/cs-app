@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
@@ -24,14 +24,18 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useViewPreference()
   const [filters, setFilters] = useState<FilterOptions>(defaultFilters)
   const [selectedTicketId, setSelectedTicketId] = useState<string>()
-  const [activeQueue, setActiveQueue] = useState<QueueTab>(() => {
-    if (typeof window === 'undefined') return 'all'
+  // Initialize with default and hydrate from localStorage after mount so the
+  // server-rendered HTML matches the first client render (avoids React error #418).
+  const [activeQueue, setActiveQueue] = useState<QueueTab>('all')
+
+  useEffect(() => {
     try {
       const saved = localStorage.getItem('cs-app-active-queue')
-      if (saved === 'human' || saved === 'ai' || saved === 'all') return saved
+      if (saved === 'human' || saved === 'ai' || saved === 'all') {
+        setActiveQueue(saved)
+      }
     } catch {}
-    return 'all'
-  })
+  }, [])
 
   const { agent } = useAuth()
   const {
@@ -63,9 +67,12 @@ export default function DashboardPage() {
       }
 
       const [humanData, aiData] = await Promise.all([humanRes.json(), aiRes.json()])
+      const human = humanData.total || 0
+      const ai = aiData.total || 0
       return {
-        human: humanData.total || 0,
-        ai: aiData.total || 0,
+        human,
+        ai,
+        all: human + ai,
       }
     },
     staleTime: 30 * 1000,
@@ -215,7 +222,7 @@ export default function DashboardPage() {
           {([
             { key: 'human' as QueueTab, label: 'Human Queue', count: queueCounts?.human },
             { key: 'ai' as QueueTab, label: 'AI Queue', count: queueCounts?.ai },
-            { key: 'all' as QueueTab, label: 'All' },
+            { key: 'all' as QueueTab, label: 'All', count: queueCounts?.all },
           ]).map((tab) => (
             <button
               key={tab.key}
@@ -228,10 +235,12 @@ export default function DashboardPage() {
               {tab.label}
               {tab.count !== undefined && (
                 <span className={cn(
-                  'ml-2 rounded-full px-1.5 py-0.5 text-xs',
+                  'ml-2 rounded-full px-1.5 py-0.5 text-xs font-semibold',
                   activeQueue === tab.key
                     ? activeCountBadgeStyles[tab.key]
-                    : 'bg-background/70 text-muted-foreground'
+                    // Inactive badge: needs visible contrast in BOTH light and dark themes.
+                    // Previous bg-background/70 + muted-foreground was effectively white-on-white in light mode.
+                    : 'bg-slate-200 text-slate-700 dark:bg-slate-700/60 dark:text-slate-100'
                 )}>
                   {tab.count}
                 </span>
@@ -247,10 +256,8 @@ export default function DashboardPage() {
       {/* Metrics */}
       <MetricsBar />
 
-      {/* Filter Bar (board view uses it for filtering columns) */}
-      {viewMode === 'board' && (
-        <FilterBar filters={filters} onFiltersChange={setFilters} />
-      )}
+      {/* Filter Bar (search, My Tickets, filters, sort) — shared across list and board views */}
+      <FilterBar filters={filters} onFiltersChange={setFilters} />
 
       {/* Content: List or Board */}
       {viewMode === 'list' ? (
@@ -258,6 +265,8 @@ export default function DashboardPage() {
           onTicketSelect={handleTicketSelect}
           selectedTicketId={selectedTicketId}
           queueFilter={activeQueue}
+          filters={filters}
+          currentAgentId={agent?.id}
         />
       ) : (
         <>

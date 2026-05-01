@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { sendTicketCreatedEmail } from '@/lib/email'
 import { generatePortalToken } from '@/lib/portal/auth'
 import type { Customer } from '@/types/database'
+
+function getServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SB_URL!
+  const serviceKey = process.env.SB_SERVICE_ROLE_KEY
+  if (!serviceKey) {
+    throw new Error('SB_SERVICE_ROLE_KEY is required')
+  }
+  return createAdminClient(supabaseUrl, serviceKey)
+}
 
 // GET /api/tickets - List tickets with filters
 export async function GET(request: NextRequest) {
@@ -93,19 +103,106 @@ export async function GET(request: NextRequest) {
 // POST /api/tickets - Create a new ticket
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const authClient = await createClient()
+    const { data: { user }, error: authError } = await authClient.auth.getUser()
+    const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
+
+    if (!isDevBypass && (authError || !user)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const supabase = getServiceClient()
     const body = await request.json()
 
-    const {
-      customerId,
-      subject,
-      initialMessage,
-      priority = 'normal',
-    } = body
+    let customerId: string | undefined = body.customerId
+    const customerEmail: string | undefined = body.customerEmail
+    const customerName: string | undefined = body.customerName
+    const subject: string | undefined = body.subject
+    const initialMessage: string | undefined = body.initialMessage
+    const priority: string = body.priority || 'normal'
 
-    if (!customerId || !subject) {
+    if (!subject || typeof subject !== 'string' || !subject.trim()) {
       return NextResponse.json(
-        { error: 'Missing customerId or subject' },
+        { error: 'Subject is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!customerId && !customerEmail) {
+      return NextResponse.json(
+        { error: 'Either customerId or customerEmail is required' },
+        { status: 400 }
+      )
+    }
+
+    // Resolve or create customer if only an email was provided
+    if (!customerId && customerEmail) {
+      const normalizedEmail = customerEmail.trim().toLowerCase()
+      const trimmedName = customerName?.trim() || null
+
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('id, name')
+        .eq('email', normalizedEmail)
+        .maybeSingle()
+
+      if (existingCustomer) {
+        customerId = existingCustomer.id
+        if (trimmedName && trimmedName !== existingCustomer.name) {
+          await supabase
+            .from('customers')
+            .update({ name: trimmedName })
+            .eq('id', existingCustomer.id)
+        }
+      } else {
+        const { data: createdCustomer, error: createError } = await supabase
+          .from('customers')
+          .insert({
+            email: normalizedEmail,
+            name: trimmedName,
+            metadata: { source: 'dashboard' },
+          })
+          .select('id')
+          .single()
+
+        if (createError || !createdCustomer) {
+          // Concurrent ticket creation for the same new email can hit the
+          // customers.email unique constraint (Postgres 23505); recover by
+          // refetching the row that the other request just inserted.
+          const isDuplicate = createError?.code === '23505' || createError?.message?.includes('duplicate')
+          if (isDuplicate) {
+            const { data: fallbackCustomer, error: fallbackError } = await supabase
+              .from('customers')
+              .select('id')
+              .eq('email', normalizedEmail)
+              .maybeSingle()
+            if (fallbackError || !fallbackCustomer) {
+              console.error('Error resolving duplicate customer:', fallbackError || createError)
+              return NextResponse.json(
+                { error: 'Failed to create customer' },
+                { status: 500 }
+              )
+            }
+            customerId = fallbackCustomer.id
+          } else {
+            console.error('Error creating customer:', createError)
+            return NextResponse.json(
+              { error: 'Failed to create customer' },
+              { status: 500 }
+            )
+          }
+        } else {
+          customerId = createdCustomer.id
+        }
+      }
+    }
+
+    if (!customerId) {
+      return NextResponse.json(
+        { error: 'Could not resolve customer' },
         { status: 400 }
       )
     }
@@ -115,7 +212,7 @@ export async function POST(request: NextRequest) {
       .from('tickets')
       .insert({
         customer_id: customerId,
-        subject,
+        subject: subject.trim(),
         priority,
         status: 'open',
         ai_handled: true,

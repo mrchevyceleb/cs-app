@@ -133,6 +133,10 @@ export default function KnowledgePage() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
+  // True only for the very first search this session — every subsequent search
+  // keeps the previous results visible while loading instead of flashing skeletons,
+  // so a "0 results" empty state no longer reverts to skeleton rows.
+  const [hasSearched, setHasSearched] = useState(false)
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -222,6 +226,7 @@ export default function KnowledgePage() {
       setSearchResults([])
     } finally {
       setIsSearching(false)
+      setHasSearched(true)
     }
   }, [])
 
@@ -710,7 +715,10 @@ export default function KnowledgePage() {
 
       {/* Search Results (ranked list) */}
       {isSearchMode ? (
-        isSearching ? (
+        // Only show skeletons before the first search completes. Otherwise keep the
+        // last results (or empty state) visible while a new query is in flight so we
+        // never replace a "No results" message with skeletons.
+        isSearching && !hasSearched ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
               <Card key={i} className="glass border-0">

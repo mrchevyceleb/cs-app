@@ -64,8 +64,12 @@ export async function GET(request: NextRequest) {
     const { start, end } = getDateRange(period)
     const prevPeriod = getPreviousPeriodRange(period)
 
-    // Run all independent queries in parallel for speed
-    const [ticketsResult, feedbackResult, prevFeedbackResult, agentsResult] = await Promise.all([
+    // Run all independent queries in parallel for speed.
+    // resolvedEventsResult finds the actual "resolved" audit events emitted within
+    // the period (by the log_ticket_changes trigger). This is more accurate than
+    // filtering tickets by updated_at, which would also count any later edit (tag,
+    // assignment, etc.) of an already-resolved ticket and skew the rate.
+    const [ticketsResult, resolvedEventsResult, feedbackResult, prevFeedbackResult, agentsResult] = await Promise.all([
       supabase
         .from('tickets')
         .select(`
@@ -78,6 +82,12 @@ export async function GET(request: NextRequest) {
           assigned_agent_id,
           customer:customers(id, name, email)
         `)
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString()),
+      supabase
+        .from('ticket_events')
+        .select('ticket_id')
+        .eq('event_type', 'resolved')
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString()),
       supabase
@@ -134,12 +144,24 @@ export async function GET(request: NextRequest) {
     const aiHandledCount = ticketList.filter((t) => t.ai_handled).length
     const humanHandledCount = ticketList.filter((t) => !t.ai_handled).length
 
-    // Calculate AI resolution rate (% of resolved tickets where ai_handled=true)
-    const resolvedTickets = ticketList.filter((t) => t.status === 'resolved')
+    // Calculate AI resolution rate (% of resolved tickets where ai_handled=true).
+    // resolvedEventsResult is keyed off the audit trail, so we need to fetch the
+    // ai_handled flag for the underlying tickets in a small follow-up query.
     let aiResolutionRate: number | null = null
-    if (resolvedTickets.length > 0) {
-      const aiResolvedCount = resolvedTickets.filter((t) => t.ai_handled).length
-      aiResolutionRate = Math.round((aiResolvedCount / resolvedTickets.length) * 100)
+    const resolvedTicketIds = Array.from(
+      new Set((resolvedEventsResult.data || []).map((e) => e.ticket_id).filter(Boolean))
+    )
+    if (resolvedTicketIds.length > 0) {
+      const { data: resolvedTickets, error: resolvedTicketsError } = await supabase
+        .from('tickets')
+        .select('id, ai_handled')
+        .in('id', resolvedTicketIds)
+      if (resolvedTicketsError) {
+        console.error('Error fetching tickets for AI resolution rate:', resolvedTicketsError)
+      } else if (resolvedTickets && resolvedTickets.length > 0) {
+        const aiResolvedCount = resolvedTickets.filter((t) => t.ai_handled).length
+        aiResolutionRate = Math.round((aiResolvedCount / resolvedTickets.length) * 100)
+      }
     }
 
     // Calculate average response time (messages query depends on ticket IDs)

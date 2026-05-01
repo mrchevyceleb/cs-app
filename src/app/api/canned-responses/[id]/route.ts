@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+
+// Service role client for admin operations (bypasses RLS).
+// Required because the canned_responses UPDATE/DELETE policies require
+// agent_id = auth.uid(), which blocks edits to shared responses (agent_id IS NULL)
+// even when the API has already verified the caller's permission.
+function getServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SB_URL!
+  const serviceKey = process.env.SB_SERVICE_ROLE_KEY
+  if (!serviceKey) {
+    throw new Error('SB_SERVICE_ROLE_KEY is required')
+  }
+  return createAdminClient(supabaseUrl, serviceKey)
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -58,7 +72,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // First check if user owns this response (can't edit shared responses unless you created them)
+    // Only the creator can edit a canned response. Shared rows (agent_id IS NULL)
+    // are read-only — the service-role writer below bypasses RLS, so this check is
+    // the only gate stopping any agent from modifying seeded team templates.
     const { data: existing } = await supabase
       .from('canned_responses')
       .select('agent_id')
@@ -72,8 +88,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // Only allow editing your own responses (agent_id matches or is null - shared but you check ownership)
-    if (existing.agent_id !== null && existing.agent_id !== user.id) {
+    if (existing.agent_id === null) {
+      return NextResponse.json(
+        { error: 'Shared canned responses cannot be edited. Duplicate it to make a personal copy.' },
+        { status: 403 }
+      )
+    }
+
+    if (existing.agent_id !== user.id) {
       return NextResponse.json(
         { error: 'You can only edit your own canned responses' },
         { status: 403 }
@@ -83,10 +105,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const body = await request.json()
     const { title, content, shortcut, category, tags, incrementUsage } = body
 
+    // Use service role for the actual write so shared responses (agent_id IS NULL)
+    // are not blocked by RLS even though the caller has permission.
+    const writer = getServiceClient()
+
     // Handle usage count increment separately
     if (incrementUsage) {
       // First get the current usage count
-      const currentResponse = await supabase
+      const currentResponse = await writer
         .from('canned_responses')
         .select('usage_count')
         .eq('id', id)
@@ -94,7 +120,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       const currentCount = currentResponse.data?.usage_count ?? 0
 
-      const { data: response, error } = await supabase
+      const { data: response, error } = await writer
         .from('canned_responses')
         .update({
           usage_count: currentCount + 1,
@@ -143,7 +169,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const { data: response, error } = await supabase
+    const { data: response, error } = await writer
       .from('canned_responses')
       .update(updates)
       .eq('id', id)
@@ -182,7 +208,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // First check if user owns this response
+    // Only the creator can delete a canned response. Shared rows (agent_id IS NULL)
+    // are protected — the service-role writer below bypasses RLS, so this check is
+    // the only gate stopping any agent from deleting seeded team templates.
     const { data: existing } = await supabase
       .from('canned_responses')
       .select('agent_id')
@@ -196,15 +224,21 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // Only allow deleting your own responses
-    if (existing.agent_id !== null && existing.agent_id !== user.id) {
+    if (existing.agent_id === null) {
+      return NextResponse.json(
+        { error: 'Shared canned responses cannot be deleted.' },
+        { status: 403 }
+      )
+    }
+
+    if (existing.agent_id !== user.id) {
       return NextResponse.json(
         { error: 'You can only delete your own canned responses' },
         { status: 403 }
       )
     }
 
-    const { error } = await supabase
+    const { error } = await getServiceClient()
       .from('canned_responses')
       .delete()
       .eq('id', id)

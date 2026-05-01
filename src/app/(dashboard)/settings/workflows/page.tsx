@@ -43,8 +43,10 @@ import {
   TRIGGER_EVENT_DISPLAY_NAMES,
   ACTION_TYPE_DISPLAY_NAMES,
 } from '@/lib/workflow/constants'
+import { useToast } from '@/components/ui/toast'
 
 export default function WorkflowsSettingsPage() {
+  const { toast } = useToast()
   const [rules, setRules] = useState<WorkflowRule[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -109,33 +111,56 @@ export default function WorkflowsSettingsPage() {
     )
 
     if (!response.ok) {
-      const data = await response.json()
-      throw new Error(data.error || 'Failed to save workflow rule')
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error || (isUpdate ? 'Failed to update workflow rule' : 'Failed to create workflow rule'))
     }
 
     // Refresh the list
     await fetchRules()
+
+    toast({
+      type: 'success',
+      title: isUpdate ? 'Rule updated' : 'Rule created',
+      description: ruleData.name ? `"${ruleData.name}" was saved.` : undefined,
+    })
   }
 
   // Handle toggle active state
   const handleToggleActive = async (rule: WorkflowRule) => {
+    const nextActive = !rule.is_active
+    // Optimistic update so the toggle feels instant
+    setRules((prev) =>
+      prev.map((r) => (r.id === rule.id ? { ...r, is_active: nextActive } : r))
+    )
+
     try {
       const response = await fetch(`/api/workflows/${rule.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !rule.is_active }),
+        body: JSON.stringify({ is_active: nextActive }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update workflow rule')
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || `Failed to ${nextActive ? 'enable' : 'disable'} rule`)
       }
 
-      // Update local state
-      setRules(rules.map(r =>
-        r.id === rule.id ? { ...r, is_active: !r.is_active } : r
-      ))
+      toast({
+        type: 'success',
+        title: nextActive ? 'Rule enabled' : 'Rule disabled',
+        description: `"${rule.name}" is now ${nextActive ? 'active' : 'inactive'}.`,
+      })
     } catch (err) {
       console.error('Failed to toggle rule:', err)
+      // Roll back the optimistic update so the UI matches reality
+      setRules((prev) =>
+        prev.map((r) => (r.id === rule.id ? { ...r, is_active: rule.is_active } : r))
+      )
+      toast({
+        type: 'error',
+        title: `Failed to ${nextActive ? 'enable' : 'disable'} rule`,
+        description: err instanceof Error ? err.message : 'Please try again.',
+      })
     }
   }
 

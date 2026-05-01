@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('agents')
       .select('*')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
 
     if (data) {
       setAgent(data as Agent)

@@ -16,6 +16,7 @@ import { RefreshCw, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getQueueVisualTheme } from '@/lib/queue-theme'
 import type { Customer } from '@/types/database'
+import type { FilterOptions } from './FilterBar'
 
 type FilterTab = 'all' | 'attention' | 'ai' | 'human' | 'escalated'
 
@@ -24,9 +25,10 @@ interface TicketQueueProps {
   selectedTicketId?: string
   currentAgentId?: string
   queueFilter?: 'all' | 'ai' | 'human'
+  filters?: FilterOptions
 }
 
-export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId, queueFilter = 'all' }: TicketQueueProps) {
+export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId, queueFilter = 'all', filters }: TicketQueueProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [bulkUpdateMessage, setBulkUpdateMessage] = useState<string | null>(null)
   const supabase = createClient()
@@ -82,9 +84,66 @@ export function TicketQueue({ onTicketSelect, selectedTicketId, currentAgentId, 
   })
 
   const queueScopedTickets = useMemo(() => {
-    if (queueFilter === 'all') return tickets
-    return tickets.filter((ticket) => ticket.queue_type === queueFilter)
-  }, [tickets, queueFilter])
+    let scoped = queueFilter === 'all'
+      ? tickets
+      : tickets.filter((ticket) => ticket.queue_type === queueFilter)
+
+    if (!filters) return scoped
+
+    // Apply FilterBar filters (search / status / priority / tags / handler / mine)
+    if (filters.search) {
+      const needle = filters.search.toLowerCase()
+      scoped = scoped.filter((t) =>
+        (t.subject?.toLowerCase().includes(needle) ?? false) ||
+        (t.customer?.name?.toLowerCase().includes(needle) ?? false) ||
+        (t.customer?.email?.toLowerCase().includes(needle) ?? false)
+      )
+    }
+
+    if (filters.status.length > 0) {
+      scoped = scoped.filter((t) => filters.status.includes(t.status ?? ''))
+    }
+
+    if (filters.priority.length > 0) {
+      scoped = scoped.filter((t) => filters.priority.includes(t.priority ?? ''))
+    }
+
+    if (filters.tags && filters.tags.length > 0) {
+      scoped = scoped.filter((t) => {
+        const ticketTags = (t.tags as string[]) ?? []
+        return filters.tags.some((tag) => ticketTags.includes(tag))
+      })
+    }
+
+    if (filters.aiHandled === 'ai') {
+      scoped = scoped.filter((t) => t.ai_handled)
+    } else if (filters.aiHandled === 'human') {
+      scoped = scoped.filter((t) => !t.ai_handled)
+    }
+
+    if (filters.assignedToMe && currentAgentId) {
+      scoped = scoped.filter((t) => t.assigned_agent_id === currentAgentId)
+    }
+
+    // Sorting
+    const direction = filters.sortOrder === 'asc' ? 1 : -1
+    const priorityRank: Record<string, number> = { urgent: 4, high: 3, normal: 2, low: 1 }
+    scoped = [...scoped].sort((a, b) => {
+      switch (filters.sortBy) {
+        case 'priority':
+          return ((priorityRank[a.priority ?? ''] ?? 0) - (priorityRank[b.priority ?? ''] ?? 0)) * direction
+        case 'ai_confidence':
+          return ((a.ai_confidence ?? 0) - (b.ai_confidence ?? 0)) * direction
+        case 'updated_at':
+          return (new Date(a.updated_at ?? a.created_at).getTime() - new Date(b.updated_at ?? b.created_at).getTime()) * direction
+        case 'created_at':
+        default:
+          return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * direction
+      }
+    })
+
+    return scoped
+  }, [tickets, queueFilter, filters, currentAgentId])
 
   useEffect(() => {
     if ((queueFilter === 'ai' && activeTab === 'human') || (queueFilter === 'human' && activeTab === 'ai')) {

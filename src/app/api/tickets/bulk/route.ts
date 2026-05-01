@@ -17,22 +17,6 @@ interface BulkDeleteRequest {
   ticketIds: string[]
 }
 
-// Helper to get appropriate client based on auth mode
-async function getSupabaseClient() {
-  const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
-
-  if (isDevBypass && process.env.SB_SERVICE_ROLE_KEY) {
-    // Use service role in dev mode with auth bypass
-    return createAdminClient(
-      process.env.NEXT_PUBLIC_SB_URL!,
-      process.env.SB_SERVICE_ROLE_KEY!
-    )
-  }
-
-  // Use normal authenticated client
-  return await createClient()
-}
-
 // Service role client for admin operations (bypasses RLS)
 function getServiceClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SB_URL!
@@ -49,11 +33,14 @@ function getServiceClient() {
 export async function PATCH(request: NextRequest) {
   try {
     const isDevBypass = process.env.NODE_ENV === 'development' && process.env.DEV_SKIP_AUTH === 'true'
-    const supabase = await getSupabaseClient()
 
-    // Check auth status (skip in dev bypass mode)
+    // Verify the caller is authenticated (unless dev bypass) and remember who they
+    // are so we can attribute audit events back to them after the service-role write
+    // (which otherwise records `auth.uid() = NULL` in the ticket_events trigger).
+    let actingUserId: string | null = null
     if (!isDevBypass) {
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      const userClient = await createClient()
+      const { data: { user }, error: authError } = await userClient.auth.getUser()
       if (authError || !user) {
         console.error('Auth error:', authError || 'No user session')
         return NextResponse.json(
@@ -61,7 +48,12 @@ export async function PATCH(request: NextRequest) {
           { status: 401 }
         )
       }
+      actingUserId = user.id
     }
+
+    // Use service role client for write operations (bypasses RLS row-by-row checks
+    // that can fail when status triggers reference columns the user role can't touch).
+    const supabase = getServiceClient()
 
     const body: BulkUpdateRequest = await request.json()
     const { ticketIds, updates } = body
@@ -126,6 +118,10 @@ export async function PATCH(request: NextRequest) {
     // Always update the timestamp
     filteredUpdates.updated_at = new Date().toISOString()
 
+    // Capture the boundary just before the update so we can identify only the
+    // ticket_events rows the trigger inserts for THIS write when patching the actor.
+    const eventCutoff = new Date(Date.now() - 1000).toISOString()
+
     // Perform the bulk update
     const { data: updatedTickets, error: updateError } = await supabase
       .from('tickets')
@@ -139,6 +135,21 @@ export async function PATCH(request: NextRequest) {
         { error: 'Failed to update tickets' },
         { status: 500 }
       )
+    }
+
+    // Attribute the trigger-emitted audit events to the verified user. Service-role
+    // calls leave auth.uid() NULL, so log_ticket_changes() falls back to
+    // assigned_agent_id, which incorrectly credits the assignee for changes the
+    // bulk actor made. Re-stamp the rows the trigger just wrote.
+    if (actingUserId) {
+      const { error: attributionError } = await supabase
+        .from('ticket_events')
+        .update({ agent_id: actingUserId })
+        .in('ticket_id', ticketIds)
+        .gte('created_at', eventCutoff)
+      if (attributionError) {
+        console.error('Failed to attribute bulk update audit events:', attributionError)
+      }
     }
 
     return NextResponse.json({

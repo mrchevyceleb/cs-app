@@ -1,11 +1,17 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { Loader2, ArrowRight, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+// Cooldown after an empty-queue response so rapid clicks don't stack toasts.
+// The /api/queue/next 204 returns in under 100ms, so the disabled-while-loading
+// guard alone doesn't prevent repeats — without this cooldown the user gets one
+// toast per click.
+const EMPTY_QUEUE_COOLDOWN_MS = 3000
 
 interface GetNextTicketButtonProps {
   className?: string
@@ -23,11 +29,25 @@ export function GetNextTicketButton({
   showText = true,
 }: GetNextTicketButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [isCoolingDown, setIsCoolingDown] = useState(false)
+  const cooldownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const router = useRouter()
   const { toast } = useToast()
 
+  useEffect(() => {
+    return () => {
+      if (cooldownTimer.current) clearTimeout(cooldownTimer.current)
+    }
+  }, [])
+
+  const startEmptyQueueCooldown = useCallback(() => {
+    setIsCoolingDown(true)
+    if (cooldownTimer.current) clearTimeout(cooldownTimer.current)
+    cooldownTimer.current = setTimeout(() => setIsCoolingDown(false), EMPTY_QUEUE_COOLDOWN_MS)
+  }, [])
+
   const handleGetNext = useCallback(async () => {
-    if (isLoading) return
+    if (isLoading || isCoolingDown) return
 
     setIsLoading(true)
 
@@ -46,6 +66,7 @@ export function GetNextTicketButton({
           title: 'No tickets in queue',
           description: 'All tickets are assigned or resolved. Great job!',
         })
+        startEmptyQueueCooldown()
         return
       }
 
@@ -119,14 +140,14 @@ export function GetNextTicketButton({
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, router, toast])
+  }, [isLoading, isCoolingDown, router, toast, startEmptyQueueCooldown])
 
   return (
     <Button
       variant={variant}
       size={size}
       onClick={handleGetNext}
-      disabled={isLoading}
+      disabled={isLoading || isCoolingDown}
       className={cn(
         variant === 'default' && 'bg-primary-600 hover:bg-primary-700 text-white',
         className

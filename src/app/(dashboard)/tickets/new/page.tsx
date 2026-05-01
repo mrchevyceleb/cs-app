@@ -97,6 +97,8 @@ export default function NewTicketPage() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
 
+    if (isSubmitting) return
+
     const normalizedEmail = customerEmail.trim().toLowerCase()
     const trimmedSubject = subject.trim()
 
@@ -112,64 +114,12 @@ export default function NewTicketPage() {
     setIsSubmitting(true)
 
     try {
-      let customerId: string | null = null
-
-      const { data: existingCustomer, error: existingError } = await supabase
-        .from('customers')
-        .select('id, name, email')
-        .eq('email', normalizedEmail)
-        .single()
-
-      if (existingCustomer && !existingError) {
-        customerId = existingCustomer.id
-        if (customerName.trim() && customerName.trim() !== (existingCustomer.name || '')) {
-          await supabase
-            .from('customers')
-            .update({ name: customerName.trim() })
-            .eq('id', existingCustomer.id)
-        }
-      } else if (existingError && existingError.code !== 'PGRST116') {
-        throw existingError
-      }
-
-      if (!customerId) {
-        const { data: createdCustomer, error: createError } = await supabase
-          .from('customers')
-          .insert({
-            email: normalizedEmail,
-            name: customerName.trim() || null,
-            metadata: { source: 'dashboard' },
-          })
-          .select('id')
-          .single()
-
-        if (createError) {
-          const isDuplicate = createError.code === '23505' || createError.message?.includes('duplicate')
-          if (isDuplicate) {
-            const { data: fallbackCustomer, error: fallbackError } = await supabase
-              .from('customers')
-              .select('id')
-              .eq('email', normalizedEmail)
-              .single()
-
-            if (fallbackError || !fallbackCustomer) {
-              throw createError
-            }
-
-            customerId = fallbackCustomer.id
-          } else {
-            throw createError
-          }
-        } else {
-          customerId = createdCustomer.id
-        }
-      }
-
       const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerId,
+          customerEmail: normalizedEmail,
+          customerName: customerName.trim() || undefined,
           subject: trimmedSubject,
           initialMessage: initialMessage.trim() || undefined,
           priority,
@@ -202,7 +152,6 @@ export default function NewTicketPage() {
         title: 'Failed to create ticket',
         description: error instanceof Error ? error.message : 'Please try again.',
       })
-    } finally {
       setIsSubmitting(false)
     }
   }
